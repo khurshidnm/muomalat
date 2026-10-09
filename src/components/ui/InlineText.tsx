@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
+import { TOKEN } from '@/content/markup'
 import type { Locale } from '@/i18n/config'
 import { href, paths } from '@/lib/routes'
 
@@ -7,9 +8,9 @@ import { href, paths } from '@/lib/routes'
  * Renders RichText inline markup:
  *   **bold**   *italic*   [label](/path or https://…)   [[glossary-slug|label]]   {en:English words}
  * `{en:…}` marks foreign (English) words: they keep their Latin spelling in the
- * Cyrillic edition and get lang="en".
+ * Cyrillic edition and get lang="en". The tokenizer is shared with the CMS
+ * importer and serializer (src/content/markup.ts).
  */
-const TOKEN = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[\[[^|\]]+\|[^\]]+\]\]|\[[^\]]+\]\([^)\s]+\)|\{en:[^}]+\})/g
 
 /** A number joined to a word by a hyphen: 2026-yil, 8-oktabr, 22-июл. */
 const NUMBER_WORD = /(\d+[–-][\p{L}ʻʼ]+)/u

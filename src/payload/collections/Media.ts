@@ -2,7 +2,10 @@ import type { CollectionConfig } from 'payload'
 import path from 'node:path'
 import sharp from 'sharp'
 
-import { hasRole, isStaff } from '../access/roles'
+import { hasRole, isStaff, withEdge } from '../access/roles'
+import { REL } from '../fields/relations'
+import { displayFields, rightsFields } from '../fields/rights'
+import { hooksFor } from '../hooks'
 
 const staticDir = path.resolve(process.env.MEDIA_DIR || './.data/media')
 const webp = { format: 'webp' as const, options: { quality: 82 } }
@@ -12,7 +15,8 @@ const jpeg = { format: 'jpeg' as const, options: { quality: 85, mozjpeg: true } 
 /**
  * Images (CMS-SPEC §3.12). Raster formats only: SVG and XML uploads were the
  * route for two 2026 Payload advisories. `pasteURL` stays off (SSRF class).
- * Rights fields, usage join and publish checks arrive with the core build.
+ * Alt text, credit and rights (§3.12) are checked when a story that uses the
+ * image is published (ART-13/14/15, validation concern).
  *
  * Metadata: Payload's formatOptions strips EXIF only on a plain upload. When an
  * editor sets just a focal point before the first save, Payload stores the raw
@@ -24,7 +28,12 @@ const jpeg = { format: 'jpeg' as const, options: { quality: 85, mozjpeg: true } 
 export const Media: CollectionConfig = {
   slug: 'media',
   labels: { singular: 'Rasm', plural: 'Rasmlar' },
-  admin: { group: 'Kontent', defaultColumns: ['filename', 'alt', 'credit', 'updatedAt'] },
+  admin: {
+    group: 'Kontent',
+    defaultColumns: ['filename', 'alt', 'credit', 'rightsCategory', 'updatedAt'],
+    // The built-in Copy to locale publishes and overwrites without review (PHASE0 item 16).
+    disableCopyToLocale: true,
+  },
   access: {
     // Anonymous visitors may fetch an image file (GET /api/media/file/<name>,
     // where Payload sets isReadingStaticFile) and nothing else: listing media
@@ -33,10 +42,10 @@ export const Media: CollectionConfig = {
     // the collection first, so only registered uploads are served and unknown
     // names are refused without touching the disk.
     // proxy.ts additionally lets only /api/media/file/* through on the public host.
-    read: (args) => (args.isReadingStaticFile === true ? { filename: { exists: true } } : isStaff(args)),
-    create: ({ req }) => hasRole(req, 'reporter', 'editor', 'eic', 'commercial'),
-    update: ({ req }) => hasRole(req, 'reporter', 'editor', 'eic', 'commercial'),
-    delete: ({ req }) => hasRole(req, 'eic'),
+    read: withEdge((args) => (args.isReadingStaticFile === true ? { filename: { exists: true } } : isStaff(args))),
+    create: withEdge(({ req }) => hasRole(req, 'reporter', 'editor', 'eic', 'commercial')),
+    update: withEdge(({ req }) => hasRole(req, 'reporter', 'editor', 'eic', 'commercial')),
+    delete: withEdge(({ req }) => hasRole(req, 'eic')),
   },
   upload: {
     staticDir,
@@ -54,7 +63,7 @@ export const Media: CollectionConfig = {
     ],
     adminThumbnail: 'thumb',
   },
-  hooks: {
+  hooks: hooksFor('media', {
     beforeOperation: [
       async ({ args, operation }) => {
         const file = args.req?.file
@@ -67,11 +76,31 @@ export const Media: CollectionConfig = {
         return args
       },
     ],
-  },
+  }),
   fields: [
-    { name: 'alt', label: 'Muqobil matn (alt)', type: 'text', localized: true },
-    { name: 'decorative', label: 'Bezak uchun (alt boʻsh)', type: 'checkbox' },
-    { name: 'caption', label: 'Izoh', type: 'text', localized: true },
-    { name: 'credit', label: 'Muallif / manba', type: 'text', localized: true },
+    {
+      name: 'alt',
+      label: 'Muqobil matn (alt)',
+      type: 'text',
+      localized: true,
+      admin: { description: 'Rasmda nima muhimligini yozing. Diagramma rasmi uchun raqamlar jadvalda boʻladi. Oʻzbekchasi shart, agar rasm bezak uchun boʻlmasa.' },
+    },
+    ...displayFields(),
+    { type: 'collapsible', label: 'Foydalanish huquqlari', fields: rightsFields() },
+    {
+      name: 'usedIn',
+      label: 'Qayerda ishlatilgan (qoralamalar ham)',
+      type: 'join',
+      collection: REL.articles,
+      on: 'mediaRefs',
+      // Trashed stories are left out; drafts and published stories are listed.
+      where: { deletedAt: { exists: false } },
+      defaultLimit: 20,
+      admin: {
+        description: 'Bu rasm ishlatilgan maqolalar, chop etilmagan qoralamalar bilan birga. Rasmni oʻchirishdan oldin tekshiring.',
+        defaultColumns: ['title', 'workflowStatus', 'updatedAt'],
+        allowCreate: false,
+      },
+    },
   ],
 }

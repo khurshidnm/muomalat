@@ -22,6 +22,26 @@ const FIRST_USER = /^\/(?:api\/users\/first-register|admin\/create-first-user)(?
 
 const notFound = () => new NextResponse('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } })
 
+/**
+ * Payload's admin language cookie (`<cookiePrefix>-lng`, prefix `muomalat` in
+ * src/payload.config.ts). Payload picks the interface language from this
+ * cookie, then from Accept-Language, and only then from `fallbackLanguage`
+ * ('uz'). Accept-Language never selects `uz` (it is not one of Payload's
+ * languages) but does select `ru` or `en`, so a browser set to Russian or
+ * English, or "uz, ru", would get those. Until a staff member picks a
+ * language in their account settings, which stores this cookie, the CMS host
+ * presents `uz` to Payload (CMS-SPEC §6.6).
+ */
+const ADMIN_LANGUAGE_COOKIE = 'muomalat-lng'
+
+function cmsRequest(request: NextRequest) {
+  if (request.cookies.has(ADMIN_LANGUAGE_COOKIE)) return NextResponse.next()
+  const headers = new Headers(request.headers)
+  const cookie = request.headers.get('cookie')
+  headers.set('cookie', cookie ? `${cookie}; ${ADMIN_LANGUAGE_COOKIE}=uz` : `${ADMIN_LANGUAGE_COOKIE}=uz`)
+  return NextResponse.next({ request: { headers } })
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const cmsHost = process.env.CMS_HOST
@@ -30,7 +50,7 @@ export function proxy(request: NextRequest) {
   if (FIRST_USER.test(pathname)) return notFound()
 
   if (CMS_ONLY.test(pathname)) {
-    if (onCms) return NextResponse.next()
+    if (onCms) return cmsRequest(request)
     const read = request.method === 'GET' || request.method === 'HEAD'
     return read && PUBLIC_FILE.test(pathname) ? NextResponse.next() : notFound()
   }

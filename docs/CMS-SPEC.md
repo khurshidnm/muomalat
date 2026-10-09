@@ -1,12 +1,21 @@
 # Muomalat CMS: implementation specification
 
 Payload CMS 3 embedded in this Next.js app at `/admin`, on PostgreSQL.
-Version 1.1, 9 October 2026. Why each decision was made is in [CMS-RESEARCH.md](./CMS-RESEARCH.md). This document says what to build. Version 1.1 applies the corrections from an independent verification pass (CMS-RESEARCH, "Verification notes").
+Version 1.2, 9 October 2026. Why each decision was made is in [CMS-RESEARCH.md](./CMS-RESEARCH.md). This document says what to build.
+
+**Changes in 1.2**
+
+- Applies the Phase 0 results: the edits S1–S78 in [PHASE0-FINDINGS.md](./PHASE0-FINDINGS.md) §3. Where Phase 0 differs from 1.1, the tested design replaces the old text. The largest changes are caching Option B (§8.2), the three publish locks with no update-access Where clauses (§4.3), failed logins through `users.hooks.afterError` (§9.4), media metadata stripping (§3.12), the copy-from-Uzbek action (§3.3), server-side checks on the article body (§3.4) and session limits (§12.2).
+- Records the Cloudflare Free plan at launch, with a paid plan after launch (§1). Rate limiting moves into the app (§12.3), purges go by exact URL (§8.4), and a fallback is set in case Independent MFA is not on Free (§12.3).
+- Moves the Uzbek admin pack into Phase 1 (§6.6, §17).
+- §18 now shows what Phase 0 resolved and what is still open.
+
+Version 1.1 applied the corrections from an independent verification pass (CMS-RESEARCH, "Verification notes").
 
 **Conventions**
 
 - **MUST** is required for launch. **SHOULD** is expected unless there is a written reason not to. **LATER** is out of scope for Phase 1.
-- **VERIFY** marks Payload, Next.js or Cloudflare behaviour we have not confirmed. Each one is listed in §18 and checked in the Phase 0 spike before the code depends on it.
+- **VERIFY** marks Payload, Next.js or Cloudflare behaviour we have not confirmed. The Phase 0 spike checked every item listed in §18. Its results are in [PHASE0-FINDINGS.md](./PHASE0-FINDINGS.md), and §18 lists the checks that are still open.
 - **Names:**
   - Code names (fields, collections, roles, states) are English, so the code stays readable.
   - Admin labels and help text are Uzbek Latin, written with ʻ (U+02BB) and ʼ (U+02BC).
@@ -27,12 +36,13 @@ Version 1.1, 9 October 2026. Why each decision was made is in [CMS-RESEARCH.md](
 | Runtime | Node 24 LTS (Payload 4 will need ≥ 24.15). Next 16.4.x, React 19.3.x. PostgreSQL 17 through `@payloadcms/db-postgres` |
 | Hosting | One Hostinger VPS in the **Lithuania** region (Germany if unavailable), at least 2 vCPU, 8 GB RAM and 100 GB NVMe. Docker Compose. Cloudflare in front. Cloudflare Tunnel is the only way in; no public ports |
 | Hostnames | `muomalat.uz` is the public site, cached at Cloudflare. `cms.muomalat.uz` is the same app behind Cloudflare Access; it serves `/admin`, `/api` and preview |
-| Admin login | Phase 1: Cloudflare Access (security keys or biometrics only) **and** a Payload password; Payload also checks the Access JWT (§12.2). Phase 2: Payload trusts the Access JWT and the password becomes break-glass only |
+| Cloudflare plan | **Free at launch; a paid plan after launch.** Phase 1 uses no paid feature: rate limiting is done in the app (login per IP and per account, the four public forms, search), and the single Free rate-limiting rule covers the form and search paths (§12.3); the cache is purged by exact URL (§8.4); five WAF custom rules without regex; Universal SSL, which covers only first-level subdomains (§15). Whether Independent MFA is on Free is not yet verified (§12.3) |
+| Admin login | Phase 1: Cloudflare Access **and** a Payload password. The requirement stands: staff reach the admin only with a security key (or biometrics). It is enforced at the edge through Independent MFA if our plan has it (§12.3). Otherwise staff sign in to Access through an identity provider that enforces security keys: Google Workspace with 2-step verification set to "security key only" (§12.9), a policy Access cannot verify; the Payload password stays, and WebAuthn inside Payload is LATER. Payload also checks the Access JWT (§12.2). Phase 2: Payload trusts the Access JWT and the password becomes break-glass only |
 | Workflow | A custom `workflowStatus` field, a transition table, and hooks that enforce the two-person rule. Payload's `_status` only decides whether a document is public |
 | Scheduling | Our own scheduler running in the worker. Payload's `schedulePublish` is **not** enabled |
 | Article body | A Lexical rich-text field with typed blocks, serialized at read time into the existing `ArticleBlock[]` and `RichText` markup, so the front-end components do not change |
-| Languages | Payload locales `uz` (default), `ru` and `en`, with `fallback: false`. `kr` is transliterated at read time and is never a Payload locale. Russian and English appear only when the translation status is `approved` |
-| Caching | Content layer becomes async. Phase 0 chooses Option A (Next Cache Components, `'use cache'` with `cacheTag`) or Option B (`unstable_cache` with ISR). Tag names are the same in both. Cache invalidation runs after commit. A purge of Cloudflare by URL and prefix follows |
+| Languages | Payload locales `uz` (default), `ru` and `en`, with `fallback: false`. `kr` is transliterated at read time and is never a Payload locale. Russian and English appear only when the translation status is `approved`. The admin interface is in Uzbek from Phase 1, through a custom `uz` language pack (§6.6) |
+| Caching | Content layer becomes async. Option B: content functions wrapped in `unstable_cache` with tags, plus route-level `revalidate` (chosen in Phase 0, see PHASE0-FINDINGS). Option A (Cache Components) is deferred until the Partial Prefetching problems found in Phase 0 are fixed. Tag names are the same in both. Cache invalidation runs after commit. A Cloudflare purge by exact URL follows; prefix purge is used only when a slug or rubric changes (§8.4) |
 | Background work | A `worker` container that runs the same image: scheduler, outbox (purge, warm-up, Telegram), retention, alerts |
 | Audit | An append-only `audit-log` collection with a hash chain. The database role has no UPDATE or DELETE on it. Critical events are forwarded at once to a private Telegram alerts group; a nightly export goes to immutable storage |
 | Telegram | Phase 2. Every post is approved by a non-author editor and leaves through a cancellable 3-minute delay. Bot rights are post, edit and delete only, plus `can_manage_chat`, which Telegram implies for every admin |
@@ -113,7 +123,7 @@ docker/
 
 Notes on routing:
 
-- **Root layouts:** `src/app/[lang]/layout.tsx` stays the site's root layout, and `(payload)/layout.tsx` is the admin's. Static segments (`admin`, `api`, `preview`, `internal`, `t`) take precedence over the dynamic `[lang]` segment. **VERIFY** that there is no conflict.
+- **Root layouts:** `src/app/[lang]/layout.tsx` stays the site's root layout, and `(payload)/layout.tsx` is the admin's. Static segments (`admin`, `api`, `preview`, `internal`, `t`) take precedence over the dynamic `[lang]` segment. No conflict was seen in Phase 0: the site, `/admin`, `/api` and `/internal/revalidate` built and served from one app. `/preview` and `/t` were not exercised.
 - **`src/proxy.ts` changes:**
   - The matcher must exclude `admin`, `api`, `preview`, `exit-preview`, `internal` and `t/`.
   - Host-based blocking is added (§2.3).
@@ -147,8 +157,10 @@ Notes on routing:
 "@payloadcms/plugin-redirects": "3.90.2",
 "@payloadcms/email-nodemailer": "3.90.2",
 "@payloadcms/live-preview-react": "3.90.2",
-"sharp": "<exact>",
-"jose": "<exact>",              // Access JWT verification
+"@payloadcms/translations": "3.90.2", // uz admin pack (§6.6)
+"sharp": "0.35.5",
+"jose": "5.10.0",               // Access JWT verification; the version payload@3.90.2 depends on
+"bson-objectid": "2.0.4",       // fromMarkup.ts block ids; the version payload uses
 "graphql": "<as required by payload peer deps>"
 // dev: "vitest", "@playwright/test"
 ```
@@ -198,12 +210,16 @@ Also add `"@payload-config": ["./src/payload.config.ts"]` to `tsconfig.json` pat
   - Frozen at first publication. A later change is allowed only to editors and the editor-in-chief; it records the old path in `slugHistory` and creates a 301 redirect.
 - **Dates.**
   - Stored as `timestamptz` (UTC).
-  - The admin shows and enters Asia/Tashkent, with UTC alongside for embargoes.
-  - The read layer outputs ISO strings with `+05:00`, the format `scripts/validate-content.ts` already checks.
+  - The admin shows and enters Asia/Tashkent: `admin.timezones: { defaultTimezone: 'Asia/Tashkent', supportedTimezones: [{ label: 'Toshkent (UTC+05:00)', value: 'Asia/Tashkent' }] }`, and `timezone: true` on every date-time that an editor enters: `dueAt`, `scheduledAt`, `embargo.until`, `secondRead.dueAt`, `sponsored.campaignStart` / `campaignEnd`, home-page `pinned[].until` and `breaking.until`, ad-slot `startsAt` / `endsAt`, and club-event `startsAt`, `endsAt` and `registrationClosesAt`. A date field without it shows each staff browser's own zone. With one supported zone the zone picker is read-only.
+  - `timezone: true` adds a hidden `<field>_tz` Postgres enum column (named oddly: `scheduledAt` → `scheduledat_tz`). Changing the zone list is a migration. A value outside the list fails only at the database, as a raw 500.
+  - Payload never shows UTC. The embargo field gets a small `afterInput` or description component that prints the UTC time.
+  - System dates (`publishedAt`, `createdAt`, `updatedAt`, the version list) show the browser's zone. Their list cells use a custom Cell that formats in Tashkent.
+  - Payload returns dates as UTC strings ending in `Z`. The read layer formats ISO strings with `+05:00` itself, the format `scripts/validate-content.ts` already checks.
+  - Hooks, the worker and the import always write ISO strings with `Z` or an explicit offset. The Postgres session time zone is pinned to UTC (§12.2), because offset-less strings are read in the session zone and the dev container runs `TZ=Asia/Tashkent`.
   - Day-only fields (`Source.date`, `Institution.statusDate`) stay `YYYY-MM-DD` strings.
 - **Rich text** uses one of two Lexical configurations (§3.4). Both serialize to the existing markup: `**bold**`, `*italic*`, `[label](href)`, `[[slug|label]]`, `{en:…}`.
-- **System fields** are written by hooks only. Each collection `beforeChange` hook first copies these fields from `originalDoc`, which discards anything a client sent, and then sets them itself.
-- **Drafts.** Every content collection uses `versions.drafts` (drafts are not validated, **VERIFY**). Payload's `_status` means "public or not". Our `workflowStatus` means "where in the newsroom process".
+- **System fields** are written by hooks only. Each collection `beforeChange` hook first copies these fields from `originalDoc`, which discards anything a client sent, and then sets them itself. Field-level `access: { create: () => false, update: () => false }` is a second guard: Payload drops client values silently, and values set in a collection hook still persist (confirmed in Phase 0).
+- **Drafts.** Every content collection uses `versions.drafts`. Drafts are not validated (confirmed in Phase 0; `drafts.validate` stays at its default, `false`). Payload's own checks (`required` on non-localized fields such as `slug` and `rubric`, select options, `filterOptions`) therefore run only on publish, and every publish rule in §7 must run in the publish path. Payload's `_status` means "public or not". Our `workflowStatus` means "where in the newsroom process".
 - **Admin language.** Collection and field labels are Uzbek strings; descriptions say what to do in one sentence.
 
 ### 3.2 Shared field groups
@@ -226,9 +242,10 @@ Admin group "Tahririyat", labels "Maqola" / "Maqolalar".
 - `lockDocuments: { duration: 600 }`.
 - `trash: true`.
 - `enableQueryPresets: true`.
+- `admin.disableCopyToLocale: true`: the built-in Copy to locale publishes and copies translation status (see the "Tarjima" tab).
 - `admin.livePreview` (§5.13).
 - `defaultColumns: ['title','workflowStatus','rubric','authors','assignee','dueAt','updatedAt']`.
-- Custom list cells: an embargo badge and a translation-status dots column.
+- Custom list cells (`admin.components.Cell`, server components registered in the import map): an embargo badge on the `embargo` group; a Cell on `title` that renders the badge before the title (a custom Cell replaces the default one, so it renders the link to the document itself); and a translation-status dots column.
 
 **Tab "Matn" (Content)**
 
@@ -264,7 +281,7 @@ Admin group "Tahririyat", labels "Maqola" / "Maqolalar".
 | `terms` | relationship → `glossary-terms`, hasMany | — | On save, the hook merges in every term referenced in the body (inline links and term cards) | `terms` |
 | `about` | relationship → `institutions` | — | Primary entity | new: `about` |
 | `mentions` | relationship → `institutions`, hasMany | — | | new: `mentions` |
-| `related` | relationship → `articles`, hasMany, max 4 | — | `filterOptions`: not self, not sponsored, published | `related` |
+| `related` | relationship → `articles`, hasMany, max 4 | — | `filterOptions`: not self, `sponsored.enabled` ≠ true, `firstPublishedAt` exists, `withdrawal.at` does not exist. There is no `_status` filter: the admin picker queries the latest version, so a `_status` filter hides stories that have a pending draft. ART-19 checks at publish that each target is currently published (main row, `draft: false`) | `related` |
 | `interviewee` | group: `name`, `role`, `organisation` (text), `portrait` (upload) | yes for rubric `intervyu` | | `interviewee` |
 | `sources` | array: `title` (text, req), `publisher` (text, req), `url` (text, https only), `date` (YYYY-MM-DD), `type` (select: document, report, interview, press, data) | at least 1 | | `sources` |
 | `featured` | checkbox "Bosh sahifa yetakchisiga nomzod" (lead candidate) | — | Ignored when sponsored; used only when HomePage has no lead | `featured` |
@@ -290,7 +307,7 @@ Admin group "Tahririyat", labels "Maqola" / "Maqolalar".
 
 | Field | Type | Behaviour | Maps to |
 |---|---|---|---|
-| `corrections` | array, append-only (§5.7). Each item has: `kind` (select: `correction`, `clarification`, `editors_note`); `publicText` [L] (textarea; uz required; ru/en required when that translation is approved); `location` (text, e.g. "3-xatboshi", paragraph 3); `internalReason` (textarea); `createdAt`, `createdBy`, `approvedBy`, `versionId` (system); `request` (rel `requests`); `telegramAction` (select: none, caption_edited, reply_posted; system) | Shown on the article (`CorrectionNote`), in JSON-LD `CorrectionComment`, and on the public corrections list | `corrections[]` → `{ date: createdAt, text: publicText, kind }` |
+| `corrections` | array, append-only (§5.7). Each item has: `kind` (select: `correction`, `clarification`, `editors_note`); `publicText` [L] (textarea; uz required; ru/en required when that translation is approved; enforced in `hooks/corrections.ts`, never with `required: true`, which Payload checks in every saving locale for every row); `location` (text, e.g. "3-xatboshi", paragraph 3); `internalReason` (textarea); `createdAt`, `createdBy`, `approvedBy`, `versionId` (system); `request` (rel `requests`); `telegramAction` (select: none, caption_edited, reply_posted; system) | Shown on the article (`CorrectionNote`), in JSON-LD `CorrectionComment`, and on the public corrections list | `corrections[]` → `{ date: createdAt, text: publicText, kind }` |
 
 **Tab "Tijorat" (Sponsored)**
 
@@ -314,7 +331,12 @@ Read: editor, editor-in-chief, commercial. Write: commercial and editor-in-chief
 **Tab "Tarjima" (Translation)**
 
 - The `translation` [L] group (§3.2), with a custom status component showing uz / ru / en side by side.
-- A "Copy Uzbek body into this language" action for translators. **VERIFY** Payload's copy-to-locale feature; otherwise use a custom endpoint.
+- An "Oʻzbekchadan nusxalash" (copy from Uzbek) action for translators: a custom endpoint and document button. The built-in Copy to locale does not fit (Phase 0): it publishes at once when the latest version is published, copies the `translation` group (including an `approved` status), does not fill a body that holds an empty Lexical state, and its overwrite mode replaces every field. The action:
+  - copies only `title`, `kicker`, `lead`, `body` and `imageCaption` (and media alt, if wanted) from uz into the current locale;
+  - per field, fills it when empty (an empty Lexical root counts as empty), or overwrites it when the translator chooses;
+  - always saves a draft (`draft: true`, `_status: 'draft'`);
+  - sets `translation.status` to `in_edit` (`machine_draft` when machine translation was used) and `translatedBy` to the user;
+  - never copies `translation.*`, `meta`, `sponsored.*` or `corrections[].publicText`.
 
 **Tab "Kirill" (Cyrillic)**
 
@@ -351,7 +373,7 @@ Read: editor, editor-in-chief, commercial. Write: commercial and editor-in-chief
 | `validationWarnings` | json, system | editorial | Shown by `ChecksPanel` |
 | `views` | number, read-only | editorial | Filled by the analytics job (LATER); 0 until then; maps to `views` |
 | `_authorUsers` | relationship → users, hasMany, hidden, system | — | User accounts linked to `authors`; used in access checks |
-| `mediaRefs` | relationship → media, hasMany, hidden, system | — | Every media item used by hero, body or SEO; powers "Used in" |
+| `mediaRefs` | relationship → media, hasMany, hidden, system | — | Every media item used by hero, body or SEO; powers "Used in". Must stay a top-level hasMany relationship: in 3.90.2 a join into an array of hasMany relationships returns duplicates, and a join into blocks crashes every media query |
 
 ### 3.4 Article body: Lexical configuration, blocks and serializer
 
@@ -366,7 +388,18 @@ Read: editor, editor-in-chief, commercial. Write: commercial and editor-in-chief
   - `FixedToolbarFeature`, `InlineToolbarFeature`
   - `BlocksFeature({ blocks: [figure, table, chart, quote, qa, factbox, callout, term], inlineBlocks: [glossaryLink, keepLatin] })`
 - **Not enabled:** underline, strikethrough, sub/superscript, inline code, alignment, indent, `UploadFeature` (images go through the `figure` block so alt and credit are enforced), `RelationshipFeature`, `BlockquoteFeature` (use the `quote` block), horizontal rule, checklist, the experimental table feature, raw HTML or embed of any kind.
-- Text pasted from Google Docs or Telegram loses unsupported formatting. **VERIFY**
+- **Server-side enforcement (MUST).** The editor's limits exist only in the browser. REST and the Local API accept disabled format bits, node types the editor does not register (quote, upload, horizontal rule), nested lists and `javascript:` links, and drafts skip validation. So:
+  - a `body` hook (`beforeValidate`, every save, drafts included) walks the Lexical tree and rejects node types the editor does not register, because the admin editor cannot load them;
+  - the same walk reports nested lists, `listType: 'check'` and links that are neither `https:` nor a site path (ART-21, ART-22: errors at publish, findings on drafts);
+  - the LinkFeature `fields` override validates the `url` field with `^https://` or `^/(?!/)` (runs at publish);
+  - the serializer ignores extra format bits and element `format` (alignment).
+- **Pasting** (Phase 0). From Google Docs or Telegram, the admin editor keeps only bold and italic, because Payload's client `TextPlugin` removes every disabled format. Blockquotes, tables, images and horizontal rules become paragraphs or are dropped; scripts and iframes are removed. Some things get through:
+  - Docs headings h1 and h4–h6 become **h3** (Payload maps a disabled heading to the last enabled size). If h1 should become h2, add a small feature with a `HeadingNode` transform (optional);
+  - checklists arrive as lists with `listType: 'check'`;
+  - nested lists survive;
+  - text alignment is stored as the paragraph `format`;
+  - links keep `http:`, `javascript:` and `#` anchors;
+  - a Telegram line break becomes a `linebreak` node.
 
 **Inline editor (`inlineEditor`)** is used inside blocks and in the glossary:
 
@@ -378,8 +411,8 @@ Read: editor, editor-in-chief, commercial. Write: commercial and editor-in-chief
 | Block (`blockType`) | Fields | Req | Rules | Output `ArticleBlock` |
 |---|---|---|---|---|
 | `figure` | `image` (upload → media, req), `caption` (text) | image | The media item must pass rights and alt checks (ART-13/14/15) | `{ type:'figure', image: ImageRef }` (alt and credit from the media item in the body's locale; caption from the block, else the media caption) |
-| `table` | `caption` (text, req), `columns` (array: `label` req, `align` left/right, `unit`), `data` (textarea: paste from Excel or CSV; tab, semicolon or comma separated), `rows` (json, hidden, parsed by hook), `note`, `source` (text, req at publish) | caption, columns, data, source | Hook parses `data` into `rows`. Uzbek number format: space as thousands separator, comma as decimal ("4,5" → 4.5). Empty cell → `null`; otherwise string. Each row must have as many cells as there are columns (ART-8) | `{ type:'table', caption, columns, rows, note, source }` |
-| `chart` | `kind` (bar/line), `title` (req), `subtitle`, `unit` (req), `categoryLabel` (bar), `xLabel` (line), `data` (textarea), `parsed` (json, hidden), `source` (req at publish), `note` | kind, title, unit, data, source | Bar data: one line per bar, `label;value` plus an optional `;*` that highlights the bar. Line data: a header row `Davr;Series A;Series B…`, then one row per period. Hook parses the data and checks series lengths (ART-8, ART-10). A live preview uses the existing `BarChart` / `LineChart` | `{ type:'chart', chart: ChartSpec }` |
+| `table` | `caption` (text, req), `columns` (array: `label` req, `align` left/right, `unit`), `data` (textarea: paste from Excel or CSV; tab or semicolon separated; comma is not a separator, because it is the Uzbek decimal mark), `rows` (json, hidden, parsed by hook), `note`, `source` (text, req at publish) | caption, columns, data, source | Hook parses `data` into `rows`. Uzbek number format: space as thousands separator, comma as decimal ("4,5" → 4.5). Empty cell → `null`; a cell in Uzbek number format → number; otherwise string. A text cell that looks like a number (a year, a code such as "05") becomes a number; none exist in the mock data. Each row must have as many cells as there are columns (ART-8) | `{ type:'table', caption, columns, rows, note, source }` |
+| `chart` | `kind` (bar/line), `title` (req), `subtitle`, `unit` (req), `categoryLabel` (bar), `xLabel` (line), `data` (textarea), `parsed` (json, hidden), `source` (req at publish), `note` | kind, title, unit, data, source | Bar data: one line per bar, `label;value` plus an optional `;*` that highlights the bar. Line data: a header row `Davr;Series A;Series B…` (its first cell is ignored; the axis label is `xLabel`), then one row per period. Bar labels and series names cannot contain `;`. Hook parses the data and checks series lengths (ART-8, ART-10). A live preview uses the existing `BarChart` / `LineChart` | `{ type:'chart', chart: ChartSpec }` |
 | `quote` | `text` (textarea, plain, req), `cite`, `role` | text | No links or formatting (Oak-style mark limits) | `{ type:'quote', text, cite, role }` |
 | `qa` | `question` (textarea, req), `answer` (richText, inline editor, req) | both | Rubric `intervyu` requires at least one (ART-6) | `{ type:'qa', question, answer: RichText[] }` (one string per paragraph) |
 | `factbox` | `title` (default "Raqamlarda", "In figures"), `items` (array 2–8: `label`, `value`), `note` | items | | `{ type:'factbox', … }` |
@@ -391,21 +424,22 @@ Read: editor, editor-in-chief, commercial. Write: commercial and editor-in-chief
 **Serializer contract (`src/payload/lexical/serialize.ts`).** A pure function with no I/O:
 
 ```ts
-serializeBody(state: SerializedEditorState, ctx: { resolveDoc(rel): {path} | undefined, mediaById: Map, locale }): ArticleBlock[]
+serializeBody(state: SerializedEditorState, ctx: { locale, resolveDoc(rel): { path, slug, published } | undefined, mediaById: Map<id, MediaDoc>, warn(code, message) }): ArticleBlock[]
+// resolveDoc returns undefined for a bare id read at depth ≥ 1: the target is not visible (unpublished or deleted)
 serializeInline(nodes, ctx): RichText            // one paragraph
 serializeParagraphs(state, ctx): RichText[]      // qa.answer, glossary definition…
 ```
 
 | Lexical node | Output |
 |---|---|
-| `paragraph` | `{ type:'p', text: serializeInline(children) }`; empty paragraphs are dropped |
+| `paragraph` | `{ type:'p', text: serializeInline(children) }`; empty paragraphs are dropped; element `format` (alignment from a paste) is ignored |
 | `heading` (`h2` / `h3`) | `{ type:'h2' \| 'h3', text: plainText(children) }`; formatting is dropped with warning ART-21 |
-| `list` (`bullet` / `number`) | `{ type:'list', ordered, items: listitem → serializeInline }`; nested lists give error ART-21 |
+| `list` (`bullet` / `number`) | `{ type:'list', ordered, items: listitem → serializeInline }`; nested lists and `listType: 'check'` give error ART-21 |
 | `block` | Mapped by `fields.blockType` (table above) |
 | `text` | Format bit 1 → `**…**`, bit 2 → `*…*`; bold + italic → bold with a warning; other bits are ignored |
 | `linebreak` | A single space |
 | `link` (custom URL) | `[label](url)`; `https:` or a site path only (ART-22) |
-| `link` (internal doc) | `[label](/rubric/slug)` or `[label](/lugat/slug)`; an unpublished target gives a warning |
+| `link` (internal doc) | `[label](/rubric/slug)` or `[label](/lugat/slug)`; a target that is not visible (`resolveDoc` returns `undefined`) is dropped, the label is kept, and ART-19 warns. Formatting inside a link is dropped |
 | `inlineBlock` `glossaryLink` / `keepLatin` | `[[slug\|label]]` / `{en:text}` |
 
 The reverse, `fromMarkup.ts` (markup string → Lexical), is used only by the importer (§11.3). Unit tests round-trip every mock article: `serialize(fromMarkup(x)) === x`.
@@ -534,16 +568,25 @@ upload: {
   pasteURL: false,                                   // closes the SSRF class (GHSA-6r7f-…, GHSA-hhfx-…)
   focalPoint: true, crop: true,
   resizeOptions: { width: 3000, height: 3000, fit: 'inside', withoutEnlargement: true },
-  formatOptions: { format: 'webp', options: { quality: 82 } },   // re-encode strips EXIF/GPS — VERIFY applies to original
-  imageSizes: [
-    { name: 'thumb', width: 400 }, { name: 'card', width: 800 },
-    { name: 'wide', width: 1600 }, { name: 'og', width: 1200, height: 630, position: 'centre' },
+  formatOptions: { format: 'webp', options: { quality: 82 } },   // the stored original, plain uploads only (Phase 0)
+  imageSizes: [   // webp = { format: 'webp', options: { quality: 82 } }; the collection formatOptions does not apply to sizes
+    { name: 'thumb', width: 400, formatOptions: webp }, { name: 'card', width: 800, formatOptions: webp },
+    { name: 'wide', width: 1600, formatOptions: webp }, { name: 'og', width: 1200, height: 630, position: 'centre', formatOptions: webp },
   ],
   adminThumbnail: 'thumb',
 }
 ```
 
 The file size limit is 15 MB, set in the Payload `upload.limits`.
+
+**Metadata stripping (MUST, Phase 0).** `formatOptions` re-encodes and strips the original only on a plain upload. With the admin's crop tool, the stored original is a cropped JPEG named `.webp`. When crop data arrives with unchanged dimensions, Payload stores the raw upload with its EXIF, GPS, XMP and ICC data. The Edit-image drawer sends exactly that whenever an editor sets only the focal point before the first save.
+
+A Media `hooks.beforeOperation` (create and update) therefore re-encodes `req.file.data` with `sharp(data).rotate()` (sharp drops all metadata by default) and updates `size` and `mimetype` before Payload processes the file.
+
+- Tested in Phase 0 with a WebP quality-95 intermediate (`.spike/lexical/media-fixed.ts`): every stored file came out as WebP with no EXIF, XMP or ICC.
+- A lossless intermediate avoids a second lossy encode, but on the unchanged-crop path Payload keeps the intermediate as the stored original, so it would be large. This is an inference from `cropImage.js`.
+- `crop: false` alone does not fix the image sizes.
+- Moving the focal point later does not re-encode the stored original.
 
 | Field | Type | L | Req | Notes |
 |---|---|---|---|---|
@@ -559,7 +602,7 @@ The file size limit is 15 MB, set in the Payload `upload.limits`.
 | `restrictions` | textarea | — | — | |
 | `evidence` | text | — | — | Link or reference to the licence or permission |
 | `sponsoredOnly` | checkbox | — | — | Forced `true` for uploads by commercial; such images cannot appear in editorial stories (ART-15) |
-| `usedIn` | join → `articles.mediaRefs` | — | — | "Qayerda ishlatilgan" (where used) |
+| `usedIn` | join → `articles.mediaRefs` | — | — | "Qayerda ishlatilgan" (where used). Lists drafts as well as published stories, and says so in its label; trashed stories are left out with the join's `where: { deletedAt: { exists: false } }`. Media `delete` checks this count first: deleting a media item cascades through `articles_rels` and silently removes the references |
 
 Files are served at `GET /api/media/file/<filename>`, which is allowed on the public host (§2.3), and optimized through `next/image` (`images.localPatterns`). Media read access is public for files, because the URLs are unguessable and published images are public anyway. Metadata reads over REST are possible only on the CMS host.
 
@@ -638,7 +681,16 @@ Overdue items alert the editor-in-chief daily. Reporters may create `error_repor
 
 ### 3.16 Globals
 
-All globals keep versions (`versions.max: 0`; **VERIFY** the key name for globals) and are audited.
+All globals keep versions and are audited: `versions: { drafts: true, max: 0 }` for `home-page`, `ad-slots` and `navigation`, and `versions: { max: 0 }` for the others. Globals use `max`; `maxPerDoc` is missing from the global types (Payload still enforces it) and is not used.
+
+- **Restore bypasses our hooks.** `restoreGlobalVersion` runs no `beforeValidate` or `beforeChange` hooks and no field validation. It writes the main row directly and republishes at once (with `?draft=true` it unpublishes). The admin offers no "restore as draft" for globals. A `beforeOperation` hook on `restoreVersion`:
+  - limits restore to the roles that may publish that global;
+  - re-runs HOME-1, HOME-2, SP-7 and SET-1 against the version being restored.
+
+  `afterChange` audits the restore.
+- **Public reads.** An unpublished global's main row holds the draft content. The read layer treats a global whose `_status` is not `published` as absent and uses the "Empty →" defaults. Public `access.read` returns `{ _status: { equals: 'published' } }`.
+- **System writes.** Worker and scheduler calls to `updateGlobal` pass a system `user` that can read articles: relationship `filterOptions` validation on globals runs as `req.user`, and without one it rejects valid articles.
+- **Unpublish calls** (the ad-slots veto, custom endpoints) pass `unpublishAllLocales: true`. Without it the whole global is validated and the call can fail.
 
 **`site-settings` ("Sayt sozlamalari", site settings)**
 
@@ -677,7 +729,7 @@ Write: editor-in-chief, admin. Item paths are built with `href(locale, paths.x()
 
 | Field | Type | Notes |
 |---|---|---|
-| `lead` | rel articles | `filterOptions`: published, not sponsored, not withdrawn. Empty → newest `featured` non-sponsored story (today's `getLeadStory`) |
+| `lead` | rel articles | `filterOptions` (the picker): `firstPublishedAt` exists, not sponsored, not withdrawn; no `_status` filter (see `related`, §3.3). HOME-2 checks the current published state. Empty → newest `featured` non-sponsored story (today's `getLeadStory`) |
 | `secondary` | rel articles, hasMany, max 3 | Empty → today's slot picker |
 | `pinned` | array (max 3): `article`, `until` (date) | "Muhim" (important) |
 | `breaking` | group: `enabled`, `text` [L], `article`, `until` | |
@@ -794,7 +846,7 @@ Legend:
 | Sponsored fields: write | — | — (read) | ✓ | ✓ | — |
 | `sourceNotes`: read | if author | if author | ✓ | — | — |
 | Read versions | own | ✓ | ✓ | own sponsored | — |
-| Restore a version (creates a draft) | — | ✓ | ✓ | — | — |
+| Restore a version as a draft (on a story that has been published, a restore without `draft: true` is rejected for every role, §5.12) | — | ✓ | ✓ | — | — |
 | Move to trash (never-published only) | own `idea` / `draft` | ✓ | ✓ | own sponsored draft | — |
 | Delete permanently from trash | — | — | never-published, not retained, not on legal hold | — | — |
 
@@ -845,7 +897,8 @@ Every access function goes through one helper module, `src/payload/access/roles.
 ```ts
 export const userRole = (req: PayloadRequest) => (req.user?.active ? req.user.role : undefined)
 
-/** Trusted in-process callers (worker, scripts) set this; HTTP requests can never set req.context. VERIFY */
+/** Trusted in-process callers (worker, scripts) set this. HTTP requests cannot set req.context (Phase 0).
+ *  Set it only on Local API calls made without an HTTP `req`: context merges into req.context and stays there. */
 const isTrustedInternal = (req) => req.context?.trustedInternal === true
 
 /** Wraps every access fn: logged-in requests must carry a valid Cloudflare Access JWT for the same email. */
@@ -879,9 +932,26 @@ Rules:
 
 - **Anonymous REST and GraphQL reads are denied on every collection except `media`.** Media `read` is public so that `GET /api/media/file/*` works (§3.12). Its metadata routes are blocked at the edge on the public host (§2.3). The public site reads only through the server-side Local API, with **`overrideAccess: false` passed explicitly** and no user. It therefore gets published documents only. Internal fields carry a field-level `read` that requires `req.user`.
 - **Every Local API call passes `overrideAccess` explicitly**, which prepares for the Payload 4 default flip. A lint rule (a custom ESLint `no-restricted-syntax` rule, or a grep in CI) fails the build when a `payload.find`, `create`, `update` or `delete` call has no `overrideAccess` key.
-- **The publish permission is double-locked:**
-  - `update` access returns `{ _status: { equals: 'draft' } }` for reporters and commercial. This is the documented pattern that hides Publish in the UI (**VERIFY** side effects).
-  - **And** `hooks/twoPerson.ts` throws on any disallowed publish, whatever the UI did.
+- **The publish permission has three locks** (Phase 0). The `{ _status: { equals: 'draft' } }` pattern is not used. Payload checks such a Where against the main row in the admin and against the latest version on save. In the spike it showed Publish on new drafts, let a reporter publish over REST, and made published stories read-only for reporters.
+  1. **Access.** Articles `update` access returns a boolean. For roles that cannot publish (reporter, commercial) it is `false` when `data?._status === 'published'`; otherwise their normal role check applies. `create` access does the same. This hides Publish, Unpublish and "Publish in <locale>" from those roles, and Save draft and autosave keep working on published stories.
+  2. **Operation guard.** An articles `beforeOperation` hook (`hooks/workflow.ts`) throws `APIError(403)` for those roles on every call that writes the main row:
+     - `create` with `data._status === 'published'`;
+     - `update` without `draft: true`, or with `data._status === 'published'`;
+     - `restoreVersion` without `draft: true`.
+
+     Access alone leaves four reporter calls open, and each one publishes or unpublishes:
+     - the admin's Unpublish (`PATCH ?unpublishAllLocales=true {_status:'draft'}`);
+     - a plain `PATCH {_status:'draft'}`;
+     - a PATCH with neither `draft` nor `_status` (Payload copies the latest draft into the main row as `draft`);
+     - a `POST` with `_status: 'published'`.
+
+     The same hook stores `req.context.draftArg = Boolean(args.draft)` for `update` and `restoreVersion`, because `beforeChange` does not receive the draft argument, and `req.query.draft` exists only on built-in REST routes.
+  3. **Two-person rule.** `hooks/twoPerson.ts` throws on any disallowed publish by an editor or the editor-in-chief (§5.3), whatever the UI did.
+- **No workflow, ownership or embargo rules as update-access Where clauses** on collections with drafts (`workflowStatus`, `assignee`, `_authorUsers`, `embargo`). They are checked against the main row in the admin, and against the latest version on save, falling back to the main row. In Phase 0 a stale main row let a reporter save and reverted an editor's draft. These rules run in `beforeChange`, against `payload.findByID({ draft: true })`. An async access function that loads the draft and returns a boolean would also make the admin show the form read-only (not tested).
+- **Read access has the same split.** A Where in `articlesRead` is checked against the main row by the admin's permission check, and against versions in `draft: true` queries. Test the embargo, `legallySensitive` and `_authorUsers` rules with `draft: true` reads (test A4).
+- **Writes built from a document read back** (transition endpoint, scheduler, import, copy actions) set `_status` explicitly. `payload.update({ draft: true, data })` publishes whenever `data._status === 'published'`.
+- **Nested Local API calls never pass `req` together with a different `locale`.** Open bug payloadcms#18246: the nested call overwrites `req.locale`, and the outer save writes ru text into uz (with `locale: 'all'` it loses the text). Pass `isolateObjectProperty(req, ['locale', 'fallbackLocale'])` (exported by `payload`), or read from `originalDoc` or `docWithLocales`. A CI grep flags `locale:` next to `req` in Local API calls inside hooks, validators and `filterOptions`.
+- **`req.payloadAPI` is not a trust signal.** Admin server components and server functions run as `'local'` with the logged-in user, and Local API calls made inside an endpoint with its `req` run as `'REST'`. `articlesRead` may use it only in the anonymous branch, where it grants published documents and nothing more.
 - **Field-level access returns booleans only, and a denied write is silently dropped** ([Payload docs](https://payloadcms.com/docs/access-control/fields)). Rules that must fail loudly (workflow, sponsored, corrections) therefore live in hooks that throw `APIError` or `ValidationError`.
 - **Users collection:**
   - `access.unlock = isAdmin`, which overrides the unsafe default (CVE-2026-11779);
@@ -895,14 +965,16 @@ Rules:
 
 1. **Joiner.**
    - An admin creates the Payload user with a role.
-   - The person is added to the Cloudflare Access policy group and enrols two security keys.
+   - The person enrols two security keys, in front of an admin, **before** being added to the Cloudflare Access policy group:
+     - on their Google Workspace account, which enforces "security key only" (§12.9);
+     - and, if Independent MFA is on (§12.3), at `/AddMfaDevice`. Access trusts the first enrolment without a second factor, which is why an admin watches it. An admin then checks Zero Trust → Users → MFA devices.
    - They get Telegram admin rights only if needed (§10.5, §12.9).
    - Audit event and alert.
 2. **Role change.** Admin only. It is alerted to the editor-in-chief and the founder.
 3. **Leaver checklist** (a SiteSettings checklist page, LATER; a runbook in Phase 1):
    - set `active = false` and `offboardedAt`;
    - remove them from the Access group;
-   - revoke their Access sessions;
+   - revoke their Access sessions (Users → Revoke). Removing them from the group alone leaves their session working until it expires (§12.10);
    - remove their Telegram channel admin rights;
    - rotate any shared secret they could have seen;
    - remove their SSH key;
@@ -935,7 +1007,17 @@ A published story cannot be put on hold. Use withdrawal (§5.8) or legal hold in
 
 Transitions are performed through the custom endpoint `POST /api/articles/:id/transition` with body `{ to, comment?, scheduledAt? }`. The `WorkflowActions` component calls it.
 
-The endpoint loads the document and checks the table below. It then calls `payload.update({ collection:'articles', id, data, req, overrideAccess: false, context: { transition } })`. Hooks run as usual. A direct PATCH that changes `workflowStatus` without `context.transition` is rejected. **VERIFY** that a custom endpoint can pass `context` and that HTTP requests cannot.
+The endpoint loads the document and checks the table below. It then calls `payload.update({ collection:'articles', id, data, req, overrideAccess: false, context: { transition } })`. Hooks run as usual. A direct PATCH that changes `workflowStatus` without `context.transition` is rejected.
+
+Confirmed in Phase 0. The endpoint gets the same cookie auth and CSRF check as built-in routes. `context` reaches `beforeOperation`, `beforeChange` and `afterChange`, and HTTP requests cannot set `context`. The endpoint must:
+
+- return 401 when `req.user` is null, and check the role itself. A cookie request from a foreign origin is not rejected: Payload ignores the cookie and the request runs as anonymous, and custom endpoints get no automatic access control;
+- parse the body with `await addDataAndFileToRequest(req)`; custom endpoints do not get `req.data`;
+- pass `draft` explicitly on every call, with `draft: true` for every transition that does not publish. With `draft: false` and no `_status`, Payload writes the latest draft into the main row as `draft`, which unpublishes a live story;
+- wrap the update and its audit insert in `initTransaction(req)`, then `commitTransaction(req)` or `killTransaction(req)`. Otherwise `payload.update` commits on its own;
+- not let hooks rely on `req.query`: they see the endpoint's own query string, with `draft` as the string `'true'`.
+
+`payload.update({ req, context })` merges `context` into `req.context`, and the keys stay on `req` for later calls in the same request.
 
 | From → to | Who | Guards | Side effects |
 |---|---|---|---|
@@ -965,7 +1047,7 @@ The endpoint loads the document and checks the table below. It then calls `paylo
 
 ### 5.3 The two-person rule
 
-This runs in `hooks/twoPerson.ts` as an articles `beforeChange` hook for every operation where `data._status === 'published'`.
+This runs in `hooks/twoPerson.ts` as an articles `beforeChange` hook on every write that publishes: `data._status === 'published'`, except a version restored as a draft (`context.isRestoringVersion && context.draftArg`). On a restore, Payload sets `data._status` to the restored version's status even when it saves a draft. A call with `?draft=true` and `_status: 'published'` still publishes. `originalDoc` is the latest version, not the live row: the workflow checks below read it, but whether the story is live comes from `firstPublishedAt`.
 
 ```ts
 const actor = req.user                                     // the scheduler passes the scheduling user
@@ -997,7 +1079,7 @@ if (first) {
 - the **uz** values of `title`, `kicker`, `lead`, `imageCaption`, and `body` serialized to `ArticleBlock[]`;
 - the non-localized `rubric`, `authors`, `image`, `sources`, `interviewee`, `about`, `mentions` and `sponsored.*`.
 
-During a save in another locale, `data` holds only that locale's values. The hook therefore loads the document with `locale: 'all', draft: true` and merges `data` into it before hashing. Translations have their own hash (§6.3).
+During a save in another locale, `data` holds only that locale's values. The hook therefore loads the document with `locale: 'all', draft: true`, through an isolated request (`isolateObjectProperty(req, ['locale', 'fallbackLocale'])`, bug payloadcms#18246, §4.3), and merges `data` into it before hashing. Translations have their own hash (§6.3).
 
 ### 5.4 Urgent fast path ("Shoshilinch")
 
@@ -1085,7 +1167,9 @@ The corrections log lives in `hooks/corrections.ts`.
 - **Unpublish:**
   - The Payload Unpublish action is rejected by the hook unless it is the accidental-unpublish transition (§5.2).
   - Error text: «Chop etilgan maqola oʻchirilmaydi — "Olib tashlash"dan foydalaning» ("A published story is not deleted — use Withdraw").
-  - **VERIFY** how to tell "save draft" from "unpublish" in `beforeChange`, using the hook args or `req.query.draft`.
+  - **Detection** (Phase 0). `beforeChange` gets no draft argument, and its `originalDoc` is the latest version, not the live row. The articles `beforeOperation` hook stores `Boolean(args.draft)` in `req.context.draftArg` (§4.3).
+    - An unpublish is `data._status === 'draft'` with no draft argument, on a story that is live. Read "live" from `firstPublishedAt` or `findByID({ draft: false })._status`, never from `originalDoc._status`.
+    - The admin's Unpublish sends `?unpublishAllLocales=true`. Three other calls unpublish the same way and must be caught by the same rule: a plain `PATCH {_status:'draft'}`, `?draft=false`, and a PATCH with neither `draft` nor `_status` on a story whose latest version is a draft.
 - **Legal hold** (editor-in-chief): while it is set, the article is protected from:
   - trash and delete;
   - edits by anyone else;
@@ -1137,10 +1221,10 @@ The embargo lives in `hooks/embargo.ts`.
   - the read rules in §4.3 apply;
   - preview pages send `noindex`.
 - **Admin display, in three places:**
-  - a red `EmbargoBadge` list cell: "EMBARGO 14:00 (09:00 UTC)";
+  - a red `EmbargoBadge` list cell: "EMBARGO 14:00 (09:00 UTC)", as a Cell on the `embargo` group and in front of the title (the Cell on `title`, §3.3);
   - a banner at the top of the edit view;
-  - the browser tab title prefixed with "EMBARGO" through a virtual field used as the title (**VERIFY** virtual fields).
-- **Handover list.** A saved query preset "Embargolar" (embargoes) lists all active embargoes by release time.
+  - the browser tab title prefixed with "EMBARGO · " by the edit-view banner component, which sets `document.title` in an effect while the embargo is active. A virtual field cannot be `useAsTitle`, and `useAsTitle` never sets the tab title (Phase 0).
+- **Handover list.** A saved query preset "Embargolar" (embargoes) lists embargoes by release time. It filters on stored fields only (`embargo.indefinite = true` or `embargo.until` exists, sorted by `embargo.until`), never on a virtual field. A saved preset probably cannot hold a relative "now" (lead's inference, untested), so the badge shows which embargoes are still active.
 - **Early release.** If an embargoed story is released early by mistake, it is not deleted. The playbook (§12.10) applies: publish an advisory note, tell the source, and assess whether the regulator should be told.
 
 ### 5.11 Scheduled publishing
@@ -1163,7 +1247,7 @@ for (const doc of due.docs) {
 
 If the scheduling user has been disabled since, the publish fails closed. This is our own design choice. Payload 3.90.0 changed its built-in scheduled jobs only to keep the scheduling user's auth collection ([release notes](https://github.com/payloadcms/payload/releases/tag/v3.90.0)); it does not say they fail closed for a disabled user.
 
-**VERIFY** (§18, item 22) that `payload.update` with `data: { _status: 'published' }` and `draft: false` publishes the latest draft's content, not the last published version.
+Confirmed in Phase 0 (§18 item 22): this call publishes the latest draft's content. The worker runs outside a request, so `after()` throws there; its invalidations go through the outbox (§8.4).
 
 ### 5.12 Drafts, autosave, versions, locking
 
@@ -1175,7 +1259,7 @@ If the scheduling user has been disabled since, the publish fails closed. This i
 | `media` | — | — | 50 | default |
 | globals | ✓ (`home-page`, `ad-slots`, `navigation`) | — | 0 (`max`) | — |
 
-`readVersions` mirrors the "Read versions" row in §4.2. Restoring a version creates a draft, and publishing it follows the normal rules. Version records do not store the user in 3.x, so `lastEditedBy` is written on every change and therefore copied into each version.
+`readVersions` mirrors the "Read versions" row in §4.2. Restoring a collection version must create a draft. The admin's Restore button sends `?draft=false` by default, which republishes at once; "Restore as draft" is a sub-menu item, offered only for versions that are not drafts. So `beforeOperation` rejects `restoreVersion` without `draft: true` on any story with `firstPublishedAt` set, and its message points to "Restore as draft". Restoring a draft version onto a live story is therefore not possible from the admin; this is accepted. Publishing the restored draft follows the normal rules. Globals behave differently (§3.16). Version records do not store the user in 3.x, so `lastEditedBy` is written on every change and therefore copied into each version.
 
 ### 5.13 Live preview and draft preview
 
@@ -1240,6 +1324,8 @@ localization: {
 
 `experimental.localizeStatus` (per-language publish status, Beta) is **not** enabled.
 
+**"Publish in <locale>" is blocked.** The admin offers it (`publishSpecificLocale`) to anyone who may publish. In Phase 0, on a story that had never been published, it set the main row to published with only that locale's title. The `beforeOperation` hook of `articles`, `glossary-terms` and `club-events` rejects `args.publishSpecificLocale`.
+
 ### 6.2 What is localized
 
 | Collection | Localized fields | Not localized |
@@ -1255,7 +1341,19 @@ localization: {
 | `media` | `alt`, `caption`, `credit`, `creativeAlt` (in ad slots) | |
 | globals | labels, notices, texts | |
 
-Payload `required: true` is **not** set on localized fields. The `uz` requirement is enforced by `hooks/validate.ts`. **VERIFY** whether Payload validates required localized fields per saved locale.
+Payload `required: true` is **not** set on localized fields. Phase 0 confirmed why:
+- Payload checks `required` only in the locale being saved;
+- it never enforces `uz` from another locale;
+- it would block ru and en saves and publishes from other tabs.
+
+The `uz` requirement is enforced by `hooks/validate.ts`, which reads the uz values from `docWithLocales` whatever `req.locale` is. Localized children of non-localized arrays (`corrections[].publicText`) follow the same rule.
+
+**Arrays across locales.** Array rows are shared by all locales and matched by `id`.
+- A save that sends a row without its `id` replaces the row, and the other locales' text is lost.
+- A save in any locale that drops a row drops it for every locale.
+- A save that leaves the array out keeps it.
+
+So the corrections hook compares row ids with `originalDoc` in every locale (§5.7), and the importer reuses row ids (§11.1). An update with `locale: 'all'` returns OK but writes nothing localized: write each locale in its own call.
 
 ### 6.3 Translation status and gating
 
@@ -1264,6 +1362,8 @@ Payload `required: true` is **not** set on localized fields. The `uz` requiremen
   - Only an editor or the editor-in-chief can set `approved`.
   - The approver must be someone other than `translatedBy`.
   - On approval the hook records `reviewedBy`, `approvedAt` and `contentHash`. The hash covers that locale's `title`, `kicker`, `lead`, `body` and `imageCaption`.
+  - The hook rejects any write that brings in `translation.status`, `approvedAt`, `reviewedBy` or `contentHash` values unless the approval rules pass. A copied `approved` status (for example from Payload's Copy to locale, if it is ever enabled) must never pass the read gate.
+  - The hash is computed from a read with `locale: 'all'` through an isolated request (§4.3, bug payloadcms#18246).
 - **Automatic changes:**
   - If those fields change in a locale whose status is `approved`, the status becomes `in_edit`. If the approver makes the change, the hash is refreshed instead.
   - Corrections and updates to the uz source set ru/en to `outdated` (§5.6).
@@ -1286,7 +1386,8 @@ Payload `required: true` is **not** set on localized fields. The `uz` requiremen
 async function loadArticle(slug, locale: Locale): Promise<ArticleView | undefined> {
   const source = locale === 'kr' ? 'uz' : locale
   const doc = await payload.find({ collection: 'articles', locale: 'all', fallbackLocale: false, draft: isDraft,
-    where: { slug: { equals: slug } }, depth: 2, overrideAccess: false, user: draftUser })   // locale 'all': one query, all languages
+    where: { slug: { equals: slug } }, depth: 1, overrideAccess: false, user: draftUser,
+    populate: { 'glossary-terms': { slug: true, _status: true }, articles: { slug: true, rubric: true, _status: true } } })   // locale 'all': one query, all languages
   const uz = pickLocale(doc, 'uz')
   if (locale === 'ru' || locale === 'en') {
     const tr = doc.translation?.[locale]
@@ -1301,12 +1402,20 @@ async function loadArticle(slug, locale: Locale): Promise<ArticleView | undefine
 - `toView` serializes Lexical fields with §3.4.
 - `toView` resolves media alt and credit in the view's locale, falling back to uz alt when the text around the image is uz. This is today's `translateImage` rule.
 - `toView` computes `readingMinutes` and `url`.
+- **Depth** (Phase 0). `depth: 1` populates link targets, glossary links, term cards and figures in the body. Each relationship inside rich text uses one depth level, so `depth: 2` also populated the glossary links inside every linked term's definition. Article paths come from a rubric-id → slug map.
+- **Media** come from a separate `payload.find({ collection: 'media', where: { id: { in: ids } }, locale: 'all', overrideAccess: true })` into `mediaById`, for the IDs that the published document references. On the public read (no user, `overrideAccess: false`), uploads stay bare IDs, because Media read access refuses anonymous metadata reads. Also, with `locale: 'all'`, documents populated inside rich text come back in the default locale only.
+- **A bare ID at depth 1 means "not visible"** (unpublished or deleted). `resolveDoc` returns `undefined`: the link is dropped, the label is kept, and ART-19 warns.
 
 ### 6.6 Admin interface language
 
-- Payload ships 44 admin languages and no `uz`.
-- **Phase 1:** `i18n.supportedLanguages: { ru, en }` with `fallbackLanguage: 'ru'`. All collection and field labels and descriptions are written in Uzbek, so editors see Uzbek wherever it matters.
-- **LATER:** add a custom `uz` language pack through `i18n.supportedLanguages` and `translations`, by translating the `ru` pack, about 1,000 strings. **VERIFY** whether custom languages are supported.
+- Payload ships 44 admin languages and no `uz`. A custom language works in 3.90.2 (Phase 0).
+- **Phase 1:** a `uz` pack in `src/payload/i18n/uz.ts`, built as Russian plus Uzbek overrides so that untranslated keys stay Russian:
+  - `const uz: Language = { dateFNSKey: 'ru', translations: deepMergeSimple(ru.translations, uzOverrides) }`, with `uzOverrides` typed `DeepPartial<DefaultTranslationsObject>`, so a misspelt key fails the typecheck;
+  - `i18n.supportedLanguages: { ...{ uz }, ru, en }` (a fresh `{ uz, ru, en }` literal is a type error) and `fallbackLanguage: 'uz' as AcceptedLanguages`. A browser's `Accept-Language` never selects `uz`, so the fallback is what makes Uzbek the default;
+  - `i18n.translations: { ...{ uz: { lexical: …, muomalat: … } }, ru: { muomalat: … } }`. The uz entry must include the `lexical` namespace (27 strings today, more if features are added), otherwise every Lexical label shows as a raw key. It also carries our own component strings. Another known language key is needed next to `uz`, because an object with only `uz` is a type error;
+  - about 614 strings to translate (587 Payload core + 27 Lexical in 3.90.2), not about 1,000;
+  - dates in the admin use Russian month names, because Payload has no `uz` date-fns locale wired in.
+- All collection and field labels and descriptions are written in Uzbek, as before.
 
 ---
 
@@ -1367,9 +1476,9 @@ Levels:
 | ART-17 | No tags | W | | new |
 | ART-18 | SEO title or description missing, or over length | W | | new |
 | ART-19 | A referenced term, article or institution is unpublished or trashed | E (term card) / W (link) | | validate-content (references) |
-| ART-20 | Literal markup characters in text (`**`, `[[`, `](`, `{en:`) | W | | new (serializer) |
-| ART-21 | Formatting inside a heading; nested list; bold + italic | W / E (nested list) | | new |
-| ART-22 | External link not https; link to a disallowed scheme | E | | new |
+| ART-20 | Literal markup characters in text (`*`, `**`, `[[`, `](`, `{en:`): W. Text that breaks the markup and cannot round-trip: E. That means a link label containing `]`, a URL containing `)`, a glossary label containing `\|`, or keepLatin text containing `}`. The serializer finds both by re-tokenising its own output with the `TOKEN` regex | W / E | | new (serializer) |
+| ART-21 | Formatting inside a heading or a link (dropped); bold + italic (becomes bold); a line break (becomes a space): W. Nested list or `listType: 'check'`: E | W / E | | new |
+| ART-22 | External link not https; link to a disallowed scheme. Enforced on the server, because REST, the Local API and pasting all accept `http:` and `javascript:` links (§3.4) | E | | new |
 | ART-23 | Active embargo at publish | E | | §5.10 |
 | ART-24 | `needsLegal = required` | E | | §5.5 |
 | ART-25 | Approved translation with an empty title, lead or body in that locale | E | | §6.3 |
@@ -1425,26 +1534,47 @@ Levels:
 
 ### 8.2 Caching model
 
-**Option A (preferred if the Phase 0 spike passes).** Next Cache Components: `cacheComponents: true` and `partialPrefetching: true` in `next.config.ts` (local Next docs).
+**Chosen: Option B** (Phase 0, PHASE0-FINDINGS §1.1). This is the previous Next caching model:
 
-- Each content function starts with `'use cache'`, `cacheLife('days')` and `cacheTag(...)`.
-- `dynamicParams` exports are deleted, because they are incompatible with Cache Components.
-- Pages call `notFound()` for unknown params.
-- `generateStaticParams` returns at least one param: the latest 50 articles, all terms, and so on.
-- Draft mode reads bypass the cached functions: `draftMode()` is read outside the cache scope and an uncached path is called.
-- Risk: we have not confirmed that the Payload admin works with `cacheComponents` (§18).
-- Risk: two Next.js advisories of 30 September 2026 describe failures of exactly this design:
-  - GHSA-3w37-wq28-93x7: a pending `use cache` fill shared with a draft-mode request leaks unpublished content into regular responses and prerendered pages;
-  - GHSA-h694-7cp9-m8p3: a nested `use cache` call is keyed without a root param, and `[lang]` is our root param.
-
-  Both affect 16.3.x. We infer that 16.4.0 (6 October) includes the fixes ([advisories](https://github.com/vercel/next.js/security/advisories)). Keep `next` at 16.4.0 or later, keep draft reads outside every cached function (above), and run test H10.
-
-**Option B (fallback).** The previous model:
-
-- content functions are wrapped in `unstable_cache(fn, key, { tags, revalidate })`, which is deprecated in favour of `'use cache'` but supported in 16;
+- content functions in `src/content/adapters/payload.ts` are wrapped in `unstable_cache(fn, key, { tags, revalidate })` with the §8.3 tags. `unstable_cache` is marked as replaced by `'use cache'` in Next 16 but is supported, and its entries persist in `.next/cache` (the `next-cache` volume, §2.1);
+- OG routes and `lib/rss.ts` read through the same tagged functions;
 - content routes get `export const revalidate`: home 300, rubric 600, others 3600;
-- `dynamicParams = false` is removed from content routes (article, term, tag, author, club event, rubric pages) and kept on `[lang]`;
-- `generateStaticParams` returns recent items.
+- `export const dynamicParams = false` is removed from the content routes: `[rubric]/page.tsx`, `[rubric]/[slug]/page.tsx`, `[rubric]/sahifa/[page]/page.tsx`, `lugat/[term]/page.tsx`, `mavzu/[tag]/page.tsx`, `muallif/[slug]/page.tsx`, `klub/[slug]/page.tsx`, and the `opengraph-image.tsx` files under `[rubric]/[slug]`, `lugat/[term]` and `klub/[slug]`. It stays on the `[lang]`-only pages, on `[lang]/opengraph-image.tsx` and on `rss.xml`;
+- `generateStaticParams` returns recent items;
+- every page calls `notFound()` for unknown or invalid params after the slug check (§8.1). OG routes do the same instead of returning the generic card;
+- draft-mode reads bypass the cached functions (§5.13).
+
+Phase 0 result: in a production build every test passed:
+- the admin end-to-end run had no errors;
+- unknown URLs returned 404 on the first request;
+- redirects were 308 with `Location`;
+- tag invalidation worked with `'max'` and with `{ expire: 0 }`;
+- `after()` worked from Payload hooks;
+- layout and pattern `revalidatePath` worked.
+
+Responses carried `s-maxage=3600, stale-while-revalidate=31532400`; the Cloudflare TTL caps in §8.4 still apply. Unknown slugs also create cached 404 entries on disk, so the slug check runs before any rendering, and Cloudflare rate limits apply.
+
+**Deferred: Option A** (Next Cache Components: `cacheComponents: true`, `partialPrefetching: true`). Revisit it before Next 17, which the Next docs say turns both on permanently. With the spec's settings, Phase 0 found:
+
+- the Payload admin works, because Payload wraps its root layout in `<Suspense>`. But every authenticated admin request logs "Next.js encountered the unstable value `new Date()`" from Payload's JWT check;
+- the unmodified site does not build. There are 21 errors from `dynamicParams` and `dynamic` exports; then an empty `generateStaticParams`; then `searchParams` read outside Suspense in `qidiruv`;
+- after those fixes, four runtime failures remain:
+  - unknown URLs return 200 on the first request (Googlebot included) and 404 only afterwards;
+  - a page prerendered at build time returns its build-time content once after `revalidateTag(…, { expire: 0 })` or `revalidatePath`;
+  - `revalidatePath('/[lang]', 'layout')` or a pattern path makes every page under a dynamic segment return 500 until restart. This stops only if the root layout reads `lang` through `next/root-params`, the Header sits inside `<Suspense>`, and every page awaits `params` inside `<Suspense>`;
+  - `permanentRedirect` inside Suspense gives a cached 308 with no `Location`, so redirects would have to move to `proxy.ts`;
+- with `partialPrefetching: false` these problems did not appear, but the docs reserve that setting for migration and remove it in the next major release;
+- the default `'use cache'` store is in memory, so the data cache would be empty after every restart.
+
+If Option A is adopted later, it needs:
+- the site changes above;
+- redirects moved to `proxy.ts`;
+- `cacheTag`-based invalidation instead of layout or pattern `revalidatePath`;
+- a log filter for the Payload line;
+- test H10;
+- a pinned Next version in which these problems are fixed.
+
+The advisories GHSA-3w37-wq28-93x7 and GHSA-h694-7cp9-m8p3 apply only to Option A.
 
 Both options use the same tags (§8.3) and the same invalidation code.
 
@@ -1469,25 +1599,34 @@ Both options use the same tags (§8.3) and the same invalidation code.
    1. Compute the targets: tags and internal paths (§8.5).
    2. Insert a `publish-events` row in the same transaction (pass `req`).
    3. Schedule `after(() => invalidate(targets))` with `after` from `next/server`. It runs after the response, so after the transaction has committed, which avoids the stale-regeneration race.
-   4. In worker context, `after` is unavailable; the worker posts to `/internal/revalidate` once its operation returns.
+   4. Outside a request (worker, scheduler, import, break-glass scripts), `after()` throws "called outside a request scope", and a direct `revalidateTag` throws as well.
+      - `invalidate.ts` wraps `after()` in try/catch. On failure it leaves the work to the outbox row from step 2, which the worker posts to `/internal/revalidate`.
+      - Nothing calls `revalidateTag` or `revalidatePath` directly outside a request.
+      - Payload `jobs.autoRun` is never enabled in the app process. Payload starts its cron there (`getPayload({ cron: true })`), and those jobs run outside a request.
 2. **`invalidate(targets)`:**
-   - `revalidateTag('article:<id>', { expire: 0 })` for the changed article: the next request blocks and gets fresh data;
+   - `revalidateTag('article:<id>', { expire: 0 })` for the changed article: the next request blocks and gets fresh data (confirmed under Option B);
    - `revalidateTag('articles' | 'rubric:*' | 'home' | …, 'max')` for lists;
-   - `revalidatePath()` for the **internal** paths: `/uz/<rubric>/<slug>`, `/kr/…`, `/ru/…`, `/en/…`, plus the `/opengraph-image` sub-route. With a rewrite, the destination path is the one to pass (local Next docs, `revalidatePath`). **VERIFY** that this also holds for `proxy.ts` rewrites and for OG routes.
+   - `revalidatePath()` for pages uses the **internal** path: `/uz/<rubric>/<slug>`, `/kr/…`, `/ru/…`, `/en/…`. This was confirmed under the `proxy.ts` rewrite; the public path does nothing.
+   - **Route handlers in the uz edition** (`opengraph-image`, `rss.xml`) need **both** forms: `/uz/<r>/<s>/opengraph-image` and `/<r>/<s>/opengraph-image`, and `/uz/rss.xml` and `/rss.xml`. An entry regenerated at runtime through the rewrite is tagged with the public path. `proxy.ts` serves OG images at their `/uz` path, but `/rss.xml` always goes through the rewrite.
+   - `revalidatePath` on a page never refreshes its `opengraph-image`. Because OG routes and `lib/rss.ts` read through the tagged content functions, `revalidateTag` covers them either way.
    - `/internal/revalidate` (route handler) does the same for callers outside a request. It accepts `POST {targets, ts}` with header `X-Signature: HMAC-SHA256(body, INTERNAL_REVALIDATE_SECRET)`. It rejects requests with a timestamp older than 60 s and any request carrying `cf-connecting-ip`, which means it arrived through the tunnel.
 3. **Worker outbox loop** (every 5 s) over `publish-events` with `status = pending`:
+   0. **Re-post invalidations.** For each pending event, POST its targets to `/internal/revalidate` before the warm-up. Next keeps tag invalidations in memory, so a restart forgets any it has not yet acted on. The repeat is harmless.
    1. **Warm-up.** `GET ${INTERNAL_APP_URL}<public path>` with `Host: muomalat.uz` for each edition URL, twice, 2 s apart.
    2. **Cloudflare purge.** `POST /zones/{zone}/purge_cache`.
       - Purge by exact URL by default: the article in each edition, each one's `/opengraph-image` URL, `/`, `/kr`, `/ru`, `/en`, the rubric fronts, `/rss.xml` for each edition, and `/sitemap.xml`.
       - On the Free plan, single-URL purge allows 800 URLs a second with at most 100 per request. Prefix, tag and hostname purges are limited to 5 requests a minute, with a bucket of 25 ([Cloudflare purge](https://developers.cloudflare.com/cache/how-to/purge-cache)).
       - Use prefix purge (`muomalat.uz/<rubric>/<slug>`, …) only for slug or rubric changes, where unknown sub-URLs may exist.
+      - Purge limits are **per account** and shared by every zone on the same plan, staging included (§15). Batch up to 100 prefixes or tags per request.
+      - Next's RSC payloads are requested with a `?_rsc=` query, and an exact-URL purge does not remove those variants. The cache rule below therefore bypasses the cache for RSC requests. Tag purge (`Cache-Tag: p:<path>` set by `proxy.ts`, available on Free) is the alternative if RSC caching is ever wanted.
       - The worker batches and paces its requests.
    3. **Telegram.** Create the draft post on first publication; queue edit or reply posts for corrections (§10).
    4. Mark the event done, or failed with `attempts` and `lastError`. Retry with backoff up to 10 times, then alert.
 4. **Cloudflare cache rules for `muomalat.uz` HTML:**
    - eligible for cache, respecting origin `Cache-Control`;
-   - edge TTL capped at 120 s for `/`, `/kr`, `/ru`, `/en` and the rubric fronts, and at 1 h elsewhere;
+   - edge TTL from the origin. On Free, a cache rule cannot set an Edge TTL below 2 hours (Pro: 1 hour; [Cloudflare](https://developers.cloudflare.com/cache/how-to/edge-browser-cache-ttl/)), so the planned caps (120 s for `/`, `/kr`, `/ru`, `/en` and the rubric fronts, 1 h elsewhere) cannot be set as overrides. The rule respects the origin's `s-maxage` instead, which Option B sets from the route `revalidate`: home 300 s, rubric 600 s, others 3600 s (§8.2). The exact-URL purge after each publish keeps pages fresh, and the TTL is only the backstop. Check on staging (`cf-cache-status`, `age`) that Free honours an origin `s-maxage` shorter than its minimum;
    - cache bypassed when the request carries `__prerender_bypass` or a `muomalat-token` cookie, which should not happen on this host. Payload names its cookie `<cookiePrefix>-token`, and §12.2 sets `cookiePrefix: 'muomalat'`, so the cookie is not called `payload-token`;
+   - cache bypassed for RSC requests: `_rsc` in the query or an `RSC` request header. Which RSC responses Next marks cacheable under Option B is still to be checked;
    - `cms.muomalat.uz` bypasses the cache entirely.
 
 **`publish-events` fields:**
@@ -1527,7 +1666,8 @@ Access: `create`, `update` and `delete` are false for every API user (hooks writ
 - **`[lang]/[...rest]/page.tsx`** (404 handler) calls `resolveMissing(path)` first.
 - **`[lang]/klub/*`** computes the meeting status from request time.
 - **`Header.tsx`** reads the demo notice and the emergency banner from settings (tag `settings`).
-- **Forms** (`src/app/actions.ts`, `src/lib/actions/*`) write through `createSubmission()` (§3.14). They keep the current error codes and the honeypot. Optional LATER: Cloudflare Turnstile, which needs a CSP update.
+- **Forms** (`src/app/actions.ts`, `src/lib/actions/*`) write through `createSubmission()` (§3.14). They keep the current error codes and the honeypot, and they check the app-level rate limit before writing (§12.3), which adds one form-level error code, `rate_limited`. Optional LATER: Cloudflare Turnstile, which needs a CSP update.
+- **Search** (`qidiruv`) checks the same rate limit before it runs a query (§12.3).
 
 ### 8.7 RSS, sitemaps, OG, JSON-LD
 
@@ -1542,7 +1682,7 @@ Access: `create`, `update` and `delete` are false for every API user (hooks writ
   - `lastModified` from `articleModified()`, unchanged;
   - `ownEditions()` rule unchanged: ru/en are listed only when the translation passes the gate in §6.3.
 - **LATER:** a Google News sitemap at `/sitemap-news.xml` with stories from the last 48 h, not sponsored, own editions only. Add it to `robots.ts`.
-- **OG images** keep being generated by `next/og` from article data. They are invalidated with the article paths.
+- **OG images** keep being generated by `next/og` from article data, read through the tagged content functions. An unknown slug calls `notFound()` instead of returning the generic card. Invalidation is covered in §8.4 step 2: tags, plus both path forms in the uz edition.
 - **JSON-LD:**
   - `NewsArticle` gets `datePublished = firstPublishedAt` and `dateModified` from the existing logic;
   - images carry `creditText`, `creator`, `copyrightNotice` and `license` from Media;
@@ -1596,13 +1736,18 @@ REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM muomalat_app;
 REVOKE DELETE, TRUNCATE ON publish_events FROM muomalat_app;
 ```
 
-**VERIFY** that Payload's insert path never needs UPDATE on `audit_log`, for example for `updatedAt`. If it does, set `timestamps: false` on the collection.
+Confirmed in Phase 0. Payload's create sends one `INSERT … RETURNING` and one `SELECT`, never an UPDATE, and sets `created_at` and `updated_at` in the INSERT. Under a role with only INSERT and SELECT on the table, `payload.create` worked alone and inside a transaction, and `payload.update` and `payload.delete` failed with "permission denied". `timestamps` stays `true`, and the REVOKE above stays. Also:
+
+- `lockDocuments: false` on `audit-log`, so Payload's document-lock table never references audit rows;
+- no array, relationship or hasMany fields (each adds a child table that needs its own INSERT grant);
+- the `GRANT … ON ALL SEQUENCES` line covers `audit_log_id_seq`;
+- the grants are re-applied after every migration, because the default privileges give UPDATE and DELETE to any table a migration re-creates.
 
 ### 9.2 Events
 
 | Area | Actions |
 |---|---|
-| Auth | `auth.login`, `auth.logout`, `auth.locked`, `auth.unlock`, `auth.password_reset_requested`, `auth.password_changed`, `auth.edge_mismatch` (Access email ≠ Payload user), `auth.login_failed` (§9.4) |
+| Auth | `auth.login`, `auth.logout`, `auth.locked`, `auth.unlock`, `auth.password_reset_requested`, `auth.password_changed`, `auth.edge_mismatch` (Access email ≠ Payload user), `auth.login_failed` (§9.4), `auth.edge_login_failed` (optional, from the Access log, §9.4) |
 | Users | `user.create`, `user.update`, `user.role_change`, `user.disable`, `user.enable` |
 | Content (all collections) | `doc.create`, `doc.update` (draft), `doc.publish_first`, `doc.publish_change` (+kind), `doc.unpublish`, `doc.trash`, `doc.restore_from_trash`, `doc.delete`, `doc.version_restore` |
 | Workflow | `workflow.transition` (from, to, comment), `workflow.approval_voided`, `article.withdraw`, `article.restore`, `correction.add`, `correction.amend`, `legal.signoff`, `legal.hold_set`, `legal.hold_cleared` |
@@ -1631,10 +1776,15 @@ REVOKE DELETE, TRUNCATE ON publish_events FROM muomalat_app;
 
 ### 9.4 Failed logins
 
-Payload 3 has no failed-login hook. The collection hook list in the 3.90.2 source has `beforeLogin` and `afterLogin` but nothing for failures. The root config does have `hooks.afterError` ([config types, v3.90.2](https://github.com/payloadcms/payload/blob/v3.90.2/packages/payload/src/config/types.ts)). **VERIFY** whether it receives the login `AuthenticationError` with the attempted email; if it does, record `auth.login_failed` there instead. Until then:
+Phase 0 found a collection-level hook that sees failed logins. `users.hooks.afterError` receives every REST login failure, and so does the root `hooks.afterError`. The admin login form posts to `/api/users/login`, so it is covered.
 
-- a worker job runs every minute and records an `auth.login_failed` row for each user whose `loginAttempts` rose or whose `lockUntil` was set;
-- Cloudflare Access logs show attempts at the edge (retained 24 h on the free plan per third-party sources; export them if needed).
+- **`auditFailedLogin`** (users `afterError`): when `req.pathname` ends with `/users/login` and `error.name` is `AuthenticationError` (wrong password or unknown email) or `LockedAuth` (account locked), it writes `auth.login_failed`. The row holds the attempted email (`req.data.email`) and the IP and country (`cf-connecting-ip`, `cf-ipcountry`).
+- **Lock detection.** The same hook reads the user's `loginAttempts` and `lockUntil` with `payload.db.findOne`. They are hidden fields, and Payload has already written the new count outside any transaction. It writes `auth.locked` when `lockUntil` has just been set; Payload sets it on the fifth failure.
+- **No account enumeration.** The hook replaces the `LockedAuth` message ("This user is locked…") with the generic login error.
+- **Every attempt.** Users `beforeOperation` (operation `login`) runs before the password check on every attempt, so the per-IP login limit (`loginRateLimit`, §12.3) runs there.
+- A Local API `payload.login` failure does not reach `afterError`. Only scripts use it.
+- §9.3's "five or more failed logins in 10 min" is computed from these rows. There is no polling job.
+- **Edge.** Cloudflare Access keeps authentication logs for 24 h on Free and 30 days on Standard ([Cloudflare](https://developers.cloudflare.com/cloudflare-one/insights/logs/)); Logpush is Enterprise-only. An optional worker job pulls `GET /accounts/{account_id}/access/logs/access_requests` hourly, with a token that can only read Access audit logs, and writes `auth.edge_login_failed` rows.
 
 ### 9.5 Retention
 
@@ -1655,7 +1805,7 @@ Phase 2 and optional. Until it ships, posting is manual, and the §12.9 account 
 | `article` | rel articles | |
 | `kind` | select: `article`, `correction_reply`, `retraction` | |
 | `status` | select: `draft`, `approved`, `queued`, `sent`, `edit_pending`, `edited`, `cancelled`, `retracted`, `failed` | |
-| `captionHtml` | textarea | Live counter of the caption **after entity parsing**: HTML tags removed and `&lt;`, `&gt;`, `&amp;` decoded, counted in UTF-16 units (JS `string.length`). Max 1024 with a photo, 4096 for text. Telegram's limit is "0-1024 characters after entities parsing" ([Bot API](https://core.telegram.org/bots/api#sendphoto)) |
+| `captionHtml` | textarea | Live counter of the caption **after entity parsing**: HTML tags removed and `&lt;`, `&gt;`, `&amp;` decoded, counted in UTF-16 units (JS `string.length`). This is a conservative bound: the Bot API server counts Unicode code points, so the counter never passes a caption Telegram rejects, but it may refuse one with emoji that Telegram would accept. Max 1024 with a photo, 4096 for text. Telegram's limit is "0-1024 characters after entities parsing" ([Bot API](https://core.telegram.org/bots/api#sendphoto)) |
 | `photo` | upload (defaults to the hero image's `og` size) | |
 | `imageFileId` | text | Telegram `file_id`, reused afterwards |
 | `silent` | checkbox | `disable_notification` |
@@ -1680,10 +1830,10 @@ Phase 2 and optional. Until it ships, posting is manual, and the §12.9 account 
    If all pass, it calls `sendPhoto` (multipart upload the first time, `file_id` afterwards), stores `message_id` and the largest `photo[].file_id`, and sets `sent`.
 4. **On a published `correction`, `clarification` or `editors_note`:**
    - create `edit_pending` with the original caption plus "\n\nTuzatish (dd.mm): {publicText}";
-   - after approval (¬author), call `editMessageCaption`;
+   - after approval (¬author), call `editMessageCaption` (a bot can edit its own channel posts at any age);
    - for kind `correction`, also send a `correction_reply` with `reply_parameters: { message_id }` and text "TUZATISH: {publicText}\n{shortUrl}", because edits do not notify subscribers.
 5. **On withdrawal:**
-   - if the post is less than 48 h old, call `deleteMessage` after editor-in-chief approval;
+   - if the post is less than 48 h old **at the moment `deleteMessage` is called**, call it after editor-in-chief approval. The approval itself can push the post past 48 h;
    - otherwise edit the caption to the retraction notice and create a task for the channel owner to delete the post by hand ([deleteMessage](https://core.telegram.org/bots/api#deletemessage)).
 6. **Failures:** status `failed`, `lastError` and an alert. There is no automatic resend after a partial failure; an editor re-queues it.
 
@@ -1729,13 +1879,18 @@ Sponsored (fixed first line, Art. 6/18):
   - `getMe`;
   - `getChat(@channel)`, storing the numeric `-100…` ID in `site-settings.telegram.channelChatId`;
   - `getChatMember(chat, botId)`.
-- **If any other right is present** (for example `can_promote_members`, `can_change_info`, `can_invite_users` or the story rights; `can_manage_chat` excepted), or one is missing: alert and pause posting.
+- **The rights check is an allow-list.** Every `can_*` key in the `getChatMember` result must be false except `can_post_messages`, `can_edit_messages`, `can_delete_messages` and `can_manage_chat`. A new right is refused by default; Bot API 10.3 (24 August 2026) added `can_send_welcome_messages`. If any other right is true, or a required one is missing: alert and pause posting.
+- **Least privilege (option; confirm in staging with I5 and I6).** `can_post_messages` alone lets the bot post, edit and delete its **own** posts. `can_edit_messages` extends editing to everyone's posts, including old manual staff posts, and `can_delete_messages` extends deletion to everyone's posts within 48 h. Both can be dropped from the allow-list.
 
 ### 10.6 Listening for channel changes
 
 - **Polling.** One worker process long-polls `getUpdates` with `allowed_updates: ["channel_post","edited_channel_post","chat_member","my_chat_member"]`. There is no webhook, so there is nothing public behind Cloudflare.
 - **Manual posts and edits** (`channel_post`, `edited_channel_post`) are recorded and matched to articles by the `muomalat.uz` URL in the caption.
 - **Admin changes.** `chat_member` or `my_chat_member` showing an admin added or removed, or the bot demoted, means **immediate alert** to the editor-in-chief and the founder (possible takeover; playbook §12.10).
+- **Delivery** (Phase 0, from the docs and the Bot API server source; not yet live-tested, test I8 in staging confirms it). `chat_member` is delivered for channels when it is listed in `allowed_updates` and the bot is an admin; `my_chat_member` is delivered by default. Limits:
+  - the server drops a `chat_member` update older than 24 h, and keeps updates for at most 24 h, so a worker outage longer than that loses admin-change alerts. An hourly `getChatAdministrators(@channel)`, compared with a stored snapshot, catches those changes;
+  - `chat_member` also fires for every ordinary subscriber who joins or leaves. Alert only when the old or new status is `administrator` or `creator`;
+  - `allowed_updates` persists between calls, and `getUpdates` does not work while a webhook is set. A `409 Conflict` from `getUpdates` (a webhook, or another poller using our token) is an immediate security alert.
 
 ### 10.7 Short links and invite links
 
@@ -1775,6 +1930,12 @@ They are not audit alerts. An email fallback covers the case where Telegram is d
   - **Production receives only the vocabulary:** rubrics and tags, plus glossary terms and institutions imported with `needsReview = true`, so an editor reviews each one before publication. Mock institutions use fictional names and must be replaced or reviewed.
 - **Preflight:** the import runs only after `npm run validate` passes on the mock data.
 - **Idempotent:** a re-run upserts by `legacyId`.
+- **Local API rules from Phase 0:**
+  - pass `_status: 'published'` explicitly when publishing; a create without it stores a draft, even with `draft: false`;
+  - write each locale in its own call: an update with `locale: 'all'` returns OK and writes nothing localized;
+  - write uz first, then reuse the returned array row ids (corrections) when writing ru and en; a row sent without its id replaces the row and drops the other locales' text;
+  - write dates as ISO strings with `Z` or an explicit offset;
+  - the import runs outside a request, so its invalidations go through the outbox (§8.4), not `after()`.
 - **Runs as the system user `importer`** (`overrideAccess: true`, `context: { trustedInternal: true, import: true }`). Hooks then skip the two-person rule but still write audit rows (`system:import`).
   - The translation hook (§6.3) also skips its "approver ≠ translator" check for imports, because step 7 sets both `translatedBy` and `reviewedBy` to the importer.
   - In production this applies only to glossary terms and institutions, which stay blocked by `needsReview` until an editor clears it. Their imported translations should go in as `in_edit`, not `approved`, so that a person approves them *(added during verification)*.
@@ -1789,7 +1950,7 @@ They are not audit alerts. An email fallback covers the case where Telegram is d
 | 4 | `data/authors.ts` | `authors` | `translations` → locales; `isTeam` for `tahririyat` and `hamkorlik`; `commercial` |
 | 5 | `data/glossary.ts` | `glossary-terms` | Pass 1 creates; pass 2 sets `related`. RichText converted with `fromMarkup` |
 | 6 | `data/institutions.ts`, `data/milestones.ts` | `institutions`, `milestones` | `articleId` resolved in step 8 |
-| 7 | `data/articles/*.ts` | `articles` | Pass 1: uz fields as drafts. Pass 2: `translations.ru/en` → locales, with `translation.status = approved` and `translatedBy` / `reviewedBy` = importer. Pass 3: `related`, `about`. Pass 4: publish with `firstPublishedAt = publishedAt` (mock), `significantUpdateAt = updatedAt`, corrections → `{ kind: 'correction', publicText: text, createdAt: date }`, `views` copied (staging only). `legacyId` = mock ID; `shortCode` generated |
+| 7 | `data/articles/*.ts` | `articles` | Pass 1: uz fields as drafts. Pass 2: `translations.ru/en` → locales, with `translation.status = approved` and `translatedBy` / `reviewedBy` = importer. Pass 3: `related`, `about`, and body links to other articles (they need the target to exist). Pass 4: publish with `firstPublishedAt = publishedAt` (mock), `significantUpdateAt = updatedAt`, corrections → `{ kind: 'correction', publicText: text, createdAt: date }`, `views` copied (staging only). `legacyId` = mock ID; `shortCode` generated |
 | 8 | — | `institutions.article`, `milestones.article` | Resolve `articleId` through the `legacyId` map |
 | 9 | `data/club.ts` | `club-events` | |
 | 10 | `data/site.ts` | `site-settings` | Legal values with their `placeholder` flags preserved; telegram handle and URL; `demo.noticeEnabled = true` |
@@ -1819,7 +1980,7 @@ For each locale (`uz`, `kr`, `ru`, `en`), build every view with the mock adapter
 - `getGlossary`, `getInstitutions`, `getMilestones`, `getClubEvents`, `getAuthors`, `getTags`, `getRubrics`;
 - `search` for 20 fixed queries.
 
-The comparison ignores `id` (compared through `legacyId`), image `src` (compared through the media map) and `views` in production. Any difference fails the job.
+The comparison ignores `id` (compared through `legacyId`), image `src` (compared through the media map), image `width` and `height` (compared as the aspect ratio, because §11.2 step 1 rasterises at 1600 px and the mock says, for example, 1200 × 800) and `views` in production. Any difference fails the job.
 
 ---
 
@@ -1838,6 +1999,9 @@ The comparison ignores `id` (compared through `legacyId`), image `src` (compared
   - `DATABASE_URL` uses the owner role;
   - the Telegram channel is wrong (§10.8);
   - `CONTENT_SOURCE=mock`.
+  - `admin.autoRefresh === true` (an idle admin tab would stay logged in for ever, §12.2);
+  - `auth.cookies.domain` is set (the token cookie must stay host-only);
+  - Payload `jobs.autoRun` is configured (jobs would run in the app process, outside any request, §8.4).
 
 ### 12.2 Payload configuration (MUST)
 
@@ -1852,11 +2016,14 @@ buildConfig({
   defaultDepth: 1,
   telemetry: false,
   upload: { limits: { fileSize: 15_000_000 } },
-  cookiePrefix: 'muomalat',                   // auth cookie is then 'muomalat-token'; VERIFY '__Host-' prefix support
+  cookiePrefix: 'muomalat',                   // auth cookie 'muomalat-token': host-only, Secure, HttpOnly, SameSite=Strict. '__Host-' is not used: it works
+                                              // for the token only with secure cookies and no domain, and it stops the admin's
+                                              // language and theme cookies from being saved (Phase 0)
   // no `jobs` key: we do not use Payload Jobs (§5.11). If Jobs are ever enabled, set jobs.access.queue/run/cancel
   // explicitly: in 3.90.2 they default to "any logged-in user" (packages/payload/src/config/defaults.ts)
   admin: { user: 'users', meta: { robots: 'noindex, nofollow' } },
-  db: postgresAdapter({ pool: { connectionString: process.env.DATABASE_URL }, push: false, migrationDir: './src/migrations' }),
+  db: postgresAdapter({ pool: { connectionString: process.env.DATABASE_URL, options: '-c TimeZone=UTC' }, push: false, migrationDir: './src/migrations' }),
+  // the session time zone is UTC whatever the server's TZ: offset-less date strings are read in the session zone (§3.1)
   // no prodMigrations: migrations run as the owner role before deploy (§15)
 })
 ```
@@ -1865,7 +2032,7 @@ Users auth:
 
 ```ts
 auth: {
-  tokenExpiration: 1800,          // 30 min idle (admin refreshes while active — VERIFY); absolute limit = Access session (8 h)
+  tokenExpiration: 1800,          // see "Session lifetime" below; absolute limit 8 h (refresh hook) and the Access session
   useSessions: true,              // revocable sessions; password change ends other sessions (≥ 3.90)
   maxLoginAttempts: 5,
   lockTime: 15 * 60 * 1000,
@@ -1874,8 +2041,22 @@ auth: {
   useAPIKey: false,               // no API keys; worker uses the Local API in-process
 },
 access: { unlock: isAdmin, admin: canUseAdmin, create: isAdmin, update: selfOrAdmin, delete: () => false, read: usersRead },
-hooks: { beforeLogin: [assertEdgeEmailMatches], afterLogin: [auditLogin, trackCountry], afterLogout: [auditLogout] },
+hooks: {
+  beforeOperation: [maxSessionAge,       // operation 'refresh': session older than 8 h → 401
+                    loginRateLimit],     // operations 'login', 'forgotPassword': per-IP limit → 429 (§12.3)
+  beforeLogin: [assertEdgeEmailMatches], afterLogin: [auditLogin, trackCountry], afterLogout: [auditLogout],
+  afterError: [auditFailedLogin],        // §9.4
+},
 ```
+
+**Session lifetime** (Phase 0):
+
+- **Renewal.** The admin renews the token only in two cases: the editor navigates or edits a form during the token's last 2 minutes, or clicks "Stay logged in" in the dialog shown 60 s before expiry. Ordinary API calls do not renew it. With `tokenExpiration: 1800`, an idle editor is logged out anywhere between about 2 and 30 minutes after their last action.
+- **Idle timeout.** An `admin.components.providers` client provider calls `useAuth().refreshCookie(true)` on key, pointer and scroll events, at most once every 5 minutes. An idle tab is then logged out after 25–30 minutes. This is proposed from the source and not yet run in a live admin.
+- `admin.autoRefresh` stays `false`. With `true`, the admin refreshes every token unconditionally, so an idle tab would stay logged in for ever (startup guard, §12.1).
+- **Absolute limit.** Payload has none: each refresh extends the session. `maxSessionAge` throws 401 when the current session's `createdAt` is older than 8 h (tested), and the admin treats that as a logout. The Access session (8 h) is the second limit.
+- **Expired sessions.** Their rows stay in `users_sessions` until that user's next login or refresh. Anything that lists active sessions filters on `expiresAt > now`.
+- **Several tabs.** Each open tab keeps its own timer. A tab that did not refresh still shows the dialog and logs out at its own expiry, losing unsaved form state, even if another tab renewed the cookie. (From the source; not tested.)
 
 **Passwords** (users `beforeValidate`):
 
@@ -1885,26 +2066,40 @@ hooks: { beforeLogin: [assertEdgeEmailMatches], afterLogin: [auditLogin, trackCo
 
 **Edge identity** (`access/edge.ts`):
 
-- verify `Cf-Access-Jwt-Assertion` with `jose.jwtVerify` against the JWKS at `https://${CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`, with `issuer: https://${CF_ACCESS_TEAM_DOMAIN}` and `audience: CF_ACCESS_AUD` ([Cloudflare](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/));
-- the lower-cased `email` claim must equal `req.user.email`;
-- cache the result in `req.context`;
+- verify `Cf-Access-Jwt-Assertion` with `jose` 5.10.0 `jwtVerify` against `createRemoteJWKSet(https://${CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs, { timeoutDuration: 5000, cooldownDuration: 5000–10000 })` ([Cloudflare](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)), with:
+  - `issuer: https://${CF_ACCESS_TEAM_DOMAIN}`;
+  - `audience: CF_ACCESS_AUD` (Cloudflare sends `aud` as an array, which jose accepts);
+  - `algorithms: ['RS256']`;
+  - `requiredClaims: ['exp', 'iat', 'email']`;
+  - `clockTolerance: 5`;
+- require `type === 'app'`. Access service tokens carry no `email` and are rejected by design;
+- a token signed with a new key is refused for at most the cooldown after the last JWKS fetch; then one refetch accepts it. If the JWKS cannot be fetched, the check fails closed and logins stop;
+- the `email` claim must equal `req.user.email`, both trimmed and lower-cased;
+- check it in `users.hooks.beforeLogin` (a 403 there leaves no session and no failed-login count) and on every request in `withEdge`, with the result cached in `req.context`;
+- it cannot be an `auth.strategies` entry: Payload catches strategy errors, so a strategy cannot refuse a request;
 - on failure: 403, and audit `auth.edge_mismatch`.
+- Prototype and tests: `.spike/auth/access-jwt.ts`, `run-access-jwt.ts` (15 cases, key rotation, JWKS outage).
 
 **Uploads.** As in §3.12: no SVG, no XML, `pasteURL: false`, no `clientUploads`, no `allowRestrictedFileTypes`.
 
-**Phase 2: Access SSO.** A custom `auth.strategies` entry maps the verified Access JWT to the active Payload user with the same email. The local strategy stays enabled only for the break-glass admin. **VERIFY** whether `disableLocalStrategy` can apply per user, or whether a strategy-level check on role is needed.
+**Phase 2: Access SSO.** A custom `auth.strategies` entry maps the verified Access JWT to the active Payload user with the same email. The local strategy stays enabled only for the break-glass admin. **VERIFY** whether `disableLocalStrategy` can apply per user, or whether a strategy-level check on role is needed. A strategy cannot refuse a request, because Payload catches and logs strategy errors (`payload/dist/auth/executeAuthStrategies.js`). The per-request JWT check therefore stays in `withEdge` in Phase 2 too.
 
 ### 12.3 Cloudflare (MUST unless marked)
+
+**Plan: Free at launch, a paid plan after launch** (§1). Every item below works on Free, except those marked as needing a paid plan.
 
 - [ ] **DNS:**
   - only tunnel CNAMEs for `muomalat.uz` and `cms.muomalat.uz`, with no A records pointing to the VPS;
   - DNSSEC enabled, with SUVAN NET submitting the DS record;
-  - CAA records for Cloudflare's CAs plus `iodef`, bound to our CA account (`accounturi`) where the CA supports it, as Google advised after the October 2026 ccTLD hijacks ([Google](https://blog.google/security/chromes-response-to-recent-cctld-registry-hijacks/)). **VERIFY** that this works with Cloudflare-managed edge certificates;
-  - CT monitoring on.
+  - CAA records for Cloudflare's CAs plus `iodef`. Binding them to a CA account (`accounturi`), as Google advised after the October 2026 ccTLD hijacks ([Google](https://blog.google/security/chromes-response-to-recent-cctld-registry-hijacks/)), is not possible with Universal SSL: Cloudflare serves its own CAA set in place of customer records (CVE-2026-14440), and it issues from its own ACME accounts. Strict binding would need Universal SSL turned off and certificates we control (Advanced Certificate Manager or custom certificates). That is a paid change, not Phase 1;
+  - CT monitoring on: Cloudflare CT Monitoring with email alerts switched on (they are off by default), plus an external CT monitor.
 - [ ] **Access application on `cms.muomalat.uz`:**
   - the policy allows only the `staff` email group;
-  - identity provider: Google Workspace with 2-step verification enforced as "security key only"; Cloudflare's email one-time PIN login is disabled;
-  - Independent MFA set to `security_key` and `biometrics` if available on our plan (**VERIFY**);
+  - identity provider: Google Workspace with 2-step verification enforced as "security key only"; Cloudflare's email one-time PIN login is disabled. Access cannot verify Google's "security key only" setting, because its IdP MFA check covers only Okta, Entra ID and generic OIDC or SAML. So "Use identity provider MFA" stays off;
+  - Independent MFA: the Cloudflare docs name no plan. Check the dashboard on our Free organisation: Zero Trust → Access controls → Access settings → "Allow multi-factor authentication (MFA)".
+    - If the setting is there: enable it; set the cms application to Custom MFA settings with `allowed_authenticators: ["security_key", "biometrics"]` (no `totp`) and an authentication duration of 8 h or less; optionally add an AAGUID allow-list.
+    - If it is missing on Free, the requirement stays and the identity provider carries it. Staff sign in to Access only through Google Workspace, whose 2-step verification is enforced as "security key only" (§12.9). Access cannot check that policy, so it is a Workspace admin-console control: only super-admins can change it, and it is checked monthly. The Payload password stays as the second login. WebAuthn inside Payload (a security key on the Payload account itself) is LATER. Check the dashboard again when the paid plan starts.
+    - Either way, enrolment follows §4.4: the first authenticator is enrolled without a second factor, in front of an admin;
   - session duration 8 h;
   - `/admin`, `/api`, `/preview` and site routes all covered.
 - [ ] **WAF custom rules on `muomalat.uz`:**
@@ -1912,21 +2107,32 @@ hooks: { beforeLogin: [assertEdgeEmailMatches], afterLogin: [auditLogin, trackCo
   - block `/api/*` except `GET /api/media/file/*`;
   - block `/preview*`, `/exit-preview*`, `/internal/*`.
 - [ ] **Both hosts:** block `/internal/*`, `/api/users/first-register` and `/admin/create-first-user`.
-- [ ] **Rate limiting.**
+- [ ] **Rule budget:** the Free plan allows 5 WAF custom rules and no regex (the `matches` operator needs Business). Combine the blocks above with `or` into at most five rules, using `starts_with()` or `wildcard`.
+- [ ] **Rate limiting.** On the Free plan the limits that matter are enforced in the app. The single Free rule adds an edge layer where it helps most.
   - Plan limits, checked 9 October ([Cloudflare](https://developers.cloudflare.com/waf/rate-limiting-rules/)):
     - the Free plan has **one** rule, counting by IP over a fixed 10-second window with a 10-second block;
     - a Free rule can match only on the path (and Verified Bot), not on method, host or headers;
-    - Pro has two rules, with windows of up to 1 minute.
-  - **Free plan (Phase 1):** one rule on the paths of the four form pages (contact, advertising, club application, digest sign-up) in every edition.
-    - It counts GET requests too, so set the limit above normal browsing, for example 10 per 10 s per IP. Tune it from Security Events.
+    - Pro has two rules, with windows of up to 1 minute and blocks of up to 1 h. Pro matches host, URI, path, full URI, query and Verified Bot, but not method or headers: method needs Business, headers need Enterprise;
+    - on Free and Pro, requests served from cache count toward the limit, and a challenge action throttles without a block duration.
+  - **In the app (MUST, Phase 1).** `src/lib/rateLimit.ts` keeps fixed-window counters in the memory of the app process; there is one app container (§15).
+    - Keys: the client IP from `cf-connecting-ip`, which Cloudflare sets because the Tunnel is the only way in; the digest sign-up also counts per email address. The per-account login limit is Payload's own lockout (below).
+    - Counters are never written to the database, so no IP address is stored (§3.14). A restart resets them, which is acceptable.
+    - Proposed limits, tuned later from the audit log and Security Events:
+      - **Login** (`loginRateLimit` in users `beforeOperation` for `login` and `forgotPassword`, §12.2): 10 attempts per 15 min per IP, then 429 with the generic login error. Per account, Payload's lockout applies: 5 failures lock the account for 15 min (`maxLoginAttempts`, `lockTime`), and `forgotPassword.minRequestInterval` spaces reset emails;
+      - **The four public forms** (contact, advertising, club application, digest sign-up; their server actions, §8.6): 5 submissions per 10 min per IP for each form. The digest sign-up also allows at most 3 confirmation emails per address in 24 h, so the form cannot flood someone's inbox. Over a limit, the action returns `rate_limited` and writes nothing;
+      - **Search** (`qidiruv`, §8.6): 30 queries per minute per IP. Over the limit, the page shows the empty state with a "try again in a minute" note and runs no query.
+    - Many mobile readers in Uzbekistan share an IP address behind carrier NAT. The per-IP limits therefore stay generous, and the strict limits are the ones that protect one person: login attempts per account and emails per address.
+  - **Free rule (launch).** The one rule covers the public paths whose requests reach the origin: the four form pages, whose server actions post to the page path, and the search page, in every edition.
+    - It counts GET requests and cached responses too, so set the limit above normal browsing, for example 10 per 10 s per IP. Tune it from Security Events.
     - The login endpoints get no edge rule, because `cms.muomalat.uz` is reachable only after Cloudflare Access.
-  - **Pro plan or Galileo (if available; VERIFY which expression fields each plan allows):**
-    - server actions: 10 per minute per IP, then a managed challenge;
+  - **After launch (paid plan: Pro, or Galileo if accepted):**
+    - server actions: 10 per minute per IP, then a managed challenge. Pro cannot match `POST` or the `Next-Action` header, so this rule is path-based, as on Free;
     - `POST /api/users/login` and `/api/users/forgot-password` on `cms.muomalat.uz`: 5 per minute per IP.
+    - The app-level limits stay. The edge rules only stop excess requests before they reach the VPS.
   - Payload has no IP rate limiting of its own. It has per-account lockout (`maxLoginAttempts`) and, since 3.90.0, a per-account forgot-password interval (`forgotPassword.minRequestInterval`, default 15 s).
 - [ ] **Cache rules:** §8.4. `cms.muomalat.uz` bypass.
 - [ ] **TLS:** Always Use HTTPS; minimum TLS 1.2; HSTS (1 year, `includeSubDomains`; preload LATER).
-- [ ] **Bot handling:** Bot Fight Mode off, or confirmed not to block the `TelegramBot` preview crawler (check Security Events).
+- [ ] **Bot handling:** Bot Fight Mode off, or confirmed not to block the `TelegramBot` preview crawler (check Security Events). WAF custom rules and Page Rules cannot bypass Bot Fight Mode, so if it blocks the crawler, the only fix is to turn it off. Its JavaScript Detections script is served from the same origin (`/cdn-cgi/challenge-platform/`) and fits `script-src 'self'`.
 - [ ] **Accounts:** at most two Cloudflare super-admins, each with security keys.
 - [ ] **API tokens:** `CF_API_TOKEN` scoped to Zone → Cache Purge on this zone only. The tunnel token is stored only in the `cloudflared` environment file.
 - [ ] P1: apply to Project Galileo, through a partner organisation or Cloudflare's form. The form asks for nonprofit status, so a commercial outlet's eligibility is unverified (CMS-RESEARCH §3.2, "Free DDoS programmes"). Google Project Shield is a fallback, not an addition: it would replace Cloudflare in front of the site.
@@ -2023,7 +2229,10 @@ const sitePolicy = [
 
 - **Read-only mode.** Either `CMS_READ_ONLY=1` (environment, survives a compromised database) or `site-settings.operations.readOnly`.
   - Effects: `withEdge` denies every create, update and delete, except an admin changing `site-settings.operations`. The worker pauses Telegram posting and the scheduler. The admin shows a red banner. The public site keeps serving from cache.
-- **Fastest lock-out:** remove everyone from the Access policy group in Cloudflare. This takes effect at once for all admin and API access.
+- **Fastest lock-out:** remove everyone from the Access policy group **and** revoke existing tokens (Access → Applications → cms → "Revoke existing tokens", or per user).
+  - Removing users from the group is not enough on its own. Access re-checks policies only when the application token expires, which can be up to the 8 h session.
+  - Revoked tokens stop working in about 20–30 s, and users cannot log in again for up to a minute ([Cloudflare](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/session-management/)).
+  - Payload's own Access-JWT check does not notice a group removal either. For a single person, also set `active = false` in Payload.
 - **Playbooks** (`docs/runbooks/`, LATER as files; Phase 1 as one page each, in Uzbek and Russian):
   - CMS account hijacked;
   - fake story published;
@@ -2040,7 +2249,7 @@ const sitePolicy = [
   - read-only mode;
   - revoking credentials (Access sessions, Payload sessions through `useSessions`, bot token `/revoke`, Cloudflare tokens);
   - rolling back through versions;
-  - capturing evidence (export the audit log; **screenshot Telegram's "Recent actions" at once**, since it is kept only about 48 h, *unverified*);
+  - capturing evidence (export the audit log; **screenshot Telegram's "Recent actions" at once**, since it is kept only about 48 h (Telegram's own announcement says 48 h; it was written for groups);
   - public notices in four languages (`site-settings.emergency`);
   - a correction-note template;
   - contacts: Cloudflare, Telegram support, UZCERT, a digital-security helpline, counsel.
@@ -2097,6 +2306,7 @@ The `retainUntil` fields are set by hooks. The worker's nightly `retention` job 
 - **Logged reads.** `pd.read` is logged for single-document reads.
 - **Not on public pages.** No personal data appears on public pages, and none goes into the public site's cache. Form responses never echo stored data.
 - **Not to the newsroom** (the Bloomberg terminal lesson). Reporters and editors cannot read subscriber or club data.
+- **No location data in images.** Staff phone photos can carry GPS coordinates, which are personal data. Every upload is re-encoded without metadata, including through the admin's crop and focal-point editor (§3.12; test K4).
 
 ### 13.6 Breach procedure
 
@@ -2143,6 +2353,8 @@ services:
     ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
 volumes: { pgdata: {} }
 ```
+
+The dev container sets `TZ: Asia/Tashkent`, so its Postgres session time zone is Tashkent by default. The Payload pool pins `TimeZone=UTC` (§12.2), so offset-less date strings are never read as Tashkent time.
 
 ### 14.2 `.env.example` (development values)
 
@@ -2224,7 +2436,9 @@ All have long random passwords printed once. Each reporter is linked to a mock a
   - prefer forward-fix migrations;
   - restore from the pre-release dump only if a migration damaged data.
 - **Staging:**
-  - a second, smaller VPS or a second compose project with its own database, Access app (`cms.staging.muomalat.uz`), Telegram test bot and test channel;
+  - a second, smaller VPS or a second compose project with its own database, Access app, Telegram test bot and test channel;
+  - staging hostnames are first-level subdomains, for example `staging.muomalat.uz` and `cms-staging.muomalat.uz`. On the Free plan Universal SSL covers only the apex and first-level subdomains, so `cms.staging.muomalat.uz` would get no edge certificate without Advanced Certificate Manager (paid);
+  - staging in the same Cloudflare account shares production's purge budget (§8.4). A separate account for staging avoids that;
   - staging holds the imported mock articles;
   - production never does.
 
@@ -2251,7 +2465,14 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 
 ### B. Workflow and the two-person rule
 
-- **B1 (I)** A reporter cannot publish through REST (`_status: 'published'`), the Payload Publish action or the transition endpoint. Each attempt is rejected with an error.
+- **B1 (I)** A reporter cannot publish or unpublish. These attempts are each rejected with an error:
+  - through REST (`PATCH {_status:'published'}`, a `POST` with `_status: 'published'`, `?publishSpecificLocale=ru`);
+  - through the Payload Publish and Unpublish calls;
+  - through a plain `PATCH {_status:'draft'}`, `?draft=false`, or a PATCH with neither `draft` nor `_status` on a live story;
+  - through `restoreVersion` without `draft: true`;
+  - through the transition endpoint.
+
+  The reporter's draft saves and autosave on a published story still succeed.
 - **B2 (I)** An editor who is an author of the story cannot approve it or first-publish it.
 - **B3 (I)** An editor who submitted the story (`submittedBy`) cannot approve it, even when not listed as an author.
 - **B4 (I)** Approve by editor A, then an edit by reporter R → status returns to `in_edit` and the approval is cleared. Publishing then fails.
@@ -2263,6 +2484,10 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **B10 (I)** `in_edit → draft` without a comment fails; with one, it notifies the author.
 - **B11 (I)** A PATCH that changes `workflowStatus` directly, without the transition endpoint, is rejected.
 - **B12 (I)** Every transition appends to `workflowHistory` and writes `workflow.transition` to the audit log.
+- **B13 (I)** A transition that does not publish (for example "Tahrirga olish") on a published story with a pending draft leaves the story published with its live content.
+- **B14 (I)** On a published story, restoring a published version without "as draft" is rejected; "Restore as draft" creates a draft and leaves the live content unchanged.
+- **B15 (I)** "Publish in <locale>" (`publishSpecificLocale`) is rejected for every role.
+- **B16 (I)** Restoring a `home-page` version that references a sponsored or unpublished article fails (HOME-1, HOME-2), and so does a global restore by a role that may not publish that global. A permitted restore writes an audit row.
 
 ### C. Changes after publication and corrections
 
@@ -2276,6 +2501,7 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **C8 (I)** Withdrawal by an editor fails; by the editor-in-chief without a public notice it fails; with a notice it succeeds. The page then renders only the notice and is gone from lists, RSS, sitemap and search.
 - **C9 (I)** A Payload Unpublish on an article published more than 15 minutes ago fails for every role. Within 15 minutes, it succeeds for the editor-in-chief with a reason.
 - **C10 (I)** Moving a published article to trash, or deleting it, fails for every role, including admin.
+- **C11 (I)** On a story published more than 15 minutes ago, a plain `PATCH {_status:'draft'}`, `?draft=false`, and a PATCH with neither `draft` nor `_status` (with a newer draft) are each rejected as unpublish attempts for every role.
 
 ### D. Sponsored content
 
@@ -2297,6 +2523,7 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **E5 (I)** The scheduler fails closed if `scheduledBy` has been disabled.
 - **E6 (I)** No Telegram post or newsletter inclusion for an embargoed story.
 - **E7 (E)** The list view shows the embargo badge with Tashkent and UTC times.
+- **E8 (E)** While an embargo is active, the edit view's browser tab title starts with "EMBARGO · ", and the list shows the badge in front of the title.
 
 ### F. Localization
 
@@ -2308,6 +2535,10 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **F6 (I)** Media alt in a ru story comes from the ru alt; in an untranslated story shown on `/ru`, it stays uz (today's rule).
 - **F7 (I)** `machine_draft → approved` without passing through `in_edit` fails.
 - **F8 (M)** All field labels and help texts are in Uzbek with the correct ʻ and ʼ characters.
+- **F9 (I)** Editing the ru tab, including through a hook that makes a nested Local API call, leaves every uz value unchanged (regression test for payloadcms#18246).
+- **F10 (I)** A ru save that drops a correction row, or sends one without its id, is rejected, and the uz `publicText` is unchanged.
+- **F11 (I)** The built-in Copy to locale is not offered. The custom copy action fills only empty fields (an empty Lexical body counts as empty), saves a draft, sets `translation.status` to `in_edit`, and never copies `translation.*`.
+- **F12 (E)** With the browser in Europe/Berlin, the embargo picker shows and saves Tashkent time (09:00 Tashkent is stored as 04:00Z).
 
 ### G. Validation
 
@@ -2321,6 +2552,7 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **G8 (I)** Warnings never block publishing and are stored with the version.
 - **G9 (I)** The SET-1 launch gate: turning off the demo notice while a legal field is still a placeholder fails.
 - **G10 (I)** A slug change after publication creates a redirect, and the old URL answers with a permanent redirect to the new one.
+- **G11 (I)** A REST write of a body that contains a Lexical `quote`, `upload` or `horizontalrule` node is rejected on every save. A body with a `javascript:` or `http:` link, a nested list or `listType: 'check'` saves as a draft with findings, and cannot be published.
 
 ### H. Delivery, revalidation, RSS, sitemap
 
@@ -2334,6 +2566,9 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **H8 (E)** `/t/<code>` answers 301 to the canonical URL with the UTM parameters. An unknown code returns 404.
 - **H9 (I)** The parity test (§11.4) passes on staging.
 - **H10 (E, Option A only)** While an editor repeatedly loads a draft preview, concurrent anonymous requests for the same article and for an un-prerendered article never receive draft content. `/uz/…` and `/ru/…` responses for the same cached list function differ (Next advisories GHSA-3w37-wq28-93x7 and GHSA-h694-7cp9-m8p3).
+- **H11 (E)** After a change to an article, its uz OG image is fresh both at `/uz/<r>/<s>/opengraph-image` and at the public path, even after either form was regenerated at runtime. `/rss.xml` is fresh as well.
+- **H12 (E)** An unknown slug returns 404 on the first request, with a browser user agent and with Googlebot's. Its `opengraph-image` returns 404 too.
+- **H13 (I)** A change made from a script or the worker (no request scope) is invalidated through the outbox and `/internal/revalidate`. A restart of the app between the change and its processing still leaves the page fresh.
 
 ### I. Telegram (Phase 2)
 
@@ -2354,24 +2589,28 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **J3 (I)** The hash chain verifies. Altering one row in the database as the owner role makes the nightly check report `ops.chain_break` and alert.
 - **J4 (I)** A role change, a new user, a login from a new country and a withdrawal each send an alert to the alerts group (mocked transport).
 - **J5 (I)** Personal-data audit rows contain field paths but no values.
-- **J6 (I)** Failed logins are recorded within 2 minutes (§9.4).
+- **J6 (I)** A failed REST login writes `auth.login_failed` at once, with the attempted email and IP. The fifth failure also writes `auth.locked`, and the locked response uses the generic message (§9.4).
 
 ### K. Security and operations (smoke tests after every deploy)
 
 - **K1 (E)** Cookies on the cms host are `Secure`, `HttpOnly` and `SameSite=Strict`.
 - **K2 (E)** A cross-origin `POST` to `/api/articles` with a valid cookie but `Origin: https://evil.example` is rejected (CSRF allow-list).
 - **K3 (E)** `/api/graphql` → 404 or disabled. `/api/users/first-register` and `/admin/create-first-user` → 404.
-- **K4 (I)** Uploading an SVG, an XML file, or a JPEG renamed `.svg` → rejected. A JPEG with GPS EXIF → the stored original has no GPS data.
+- **K4 (I)** Uploading an SVG, an XML file, or a JPEG renamed `.svg` → rejected. A JPEG with GPS EXIF, XMP and an ICC profile → no stored file (original or any size) has EXIF, XMP or ICC data, and every stored file is `image/webp`. The same holds when the editor sets only the focal point in the Edit-image drawer before the first save, and when they crop.
 - **K5 (E)** Public-host responses carry HSTS, the site CSP, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. The cms host carries `X-Robots-Tag: noindex`.
 - **K6 (M)** No VPS port is open from the internet (external `nmap` of the VPS address shows nothing, or only SSH restricted to known addresses).
 - **K7 (I)** The startup guard exits in production on each unsafe setting in §12.1.
 - **K8 (I)** Read-only mode (`CMS_READ_ONLY=1`) rejects every write, pauses the scheduler and Telegram, and the public site still serves pages.
 - **K9 (I)** After `maxLoginAttempts` (5) wrong passwords the account is locked for 15 minutes, and a further attempt with the right password is refused. Only an admin can unlock it: a reporter or editor calling unlock gets 403 (the 3.90 default would allow any staff user).
 - **K10 (I)** A 14-character password and a known-breached password are both rejected.
-- **K11 (M)** Cloudflare Access refuses a login that offers only an authenticator-app code where security keys are required (if Independent MFA is available on our plan).
+- **K11 (M)** A staff login that offers only an authenticator-app code is refused. With Independent MFA on our plan, Access refuses it. Without it, Google's "security key only" enforcement refuses it at the identity provider (§12.3).
 - **K12 (M)** A restore drill from last night's backup to a scratch VM succeeds, with RTO and RPO recorded.
 - **K13 (I)** A slug like `../x` or `x' OR 1=1` in the article route → `notFound()` without any database query (spy on the adapter).
 - **K14 (CI)** `npm audit --omit=dev` reports no high or critical issues. The `payload` and `@payloadcms/*` versions are identical and ≥ 3.90.2.
+- **K15 (I)** A token refresh for a session older than 8 h returns 401. (E) An admin tab left idle for 30 minutes is logged out.
+- **K16 (M)** Lock-out drill: after a user is removed from the Access group and their tokens are revoked, they lose admin and API access within about a minute.
+- **K17 (I)** The transition endpoint called with a valid cookie but `Origin: https://evil.example` returns 401, and nothing changes.
+- **K18 (I)** App-level rate limits (§12.3): the eleventh login attempt from one IP within 15 minutes gets 429 before the password is checked; the sixth submission of one form from one IP within 10 minutes returns `rate_limited` and stores nothing; a fourth digest confirmation email to one address within 24 h is not sent.
 
 ### L. Personal data
 
@@ -2398,9 +2637,9 @@ The estimates are our own inference, for one experienced developer.
 
 | Phase | Scope | Rough size |
 |---|---|---|
-| **0. Spike** | Payload in this app at `/admin` on the cms host; resolve every §18 VERIFY item; choose caching Option A or B; Lexical serializer prototype on 3 mock articles; check the Access JWT; draft the startup guard | 1 week |
-| **1. Core** | All collections and globals (§3); roles and access (§4); workflow, two-person rule, corrections, sponsored guard, embargo, scheduler (§5); localization gating (§6); `rules.ts` and the hooks (§7); async adapter, caching, revalidation, Cloudflare purge, redirects, short links (§8); audit log with alerts (§9); import and parity (§11); security P0 (§12); personal data and forms (§13); deployment and backups (§14–15); acceptance groups A–H and J–M | 6–8 weeks |
-| **2. Distribution and polish** | Telegram (§10, group I); Access SSO strategy (§12.2); requests-register dashboard; analytics feed for `views`; transliteration dictionary in `editorial-rules`; news sitemap; Uzbek admin pack; WAL archiving | 3–4 weeks |
+| **0. Spike** (done 9 October 2026; results in [PHASE0-FINDINGS.md](./PHASE0-FINDINGS.md)) | Payload in this app at `/admin` on the cms host; resolve every §18 VERIFY item (three checks remain open, §18); choose caching Option A or B (Option B chosen, §8.2); Lexical serializer prototype on 3 mock articles (it ran on all 35); check the Access JWT; draft the startup guard | 1 week |
+| **1. Core** | All collections and globals (§3); roles and access (§4); workflow, two-person rule, corrections, sponsored guard, embargo, scheduler (§5); localization gating (§6); `rules.ts` and the hooks (§7); async adapter, caching, revalidation, Cloudflare purge, redirects, short links (§8); audit log with alerts (§9); import and parity (§11); security P0 (§12); Uzbek admin pack (§6.6); personal data and forms (§13); deployment and backups (§14–15); acceptance groups A–H and J–M | 6–8 weeks |
+| **2. Distribution and polish** | Telegram (§10, group I); Access SSO strategy (§12.2); requests-register dashboard; analytics feed for `views`; transliteration dictionary in `editorial-rules`; news sitemap; WAL archiving | 3–4 weeks |
 | **3. Later** | Planning calendar and daily budget digest; live-updates block (`LiveBlogPosting`); Postgres full-text search; conflict-of-interest dashboard; Turnstile; SRI-based CSP; Payload 4 migration once 4.0 is stable | — |
 
 **Go-live gate.** All acceptance tests in groups A–H and J–M pass. The legal questions in CMS-RESEARCH §4.5 are answered by counsel. The registration certificate is issued, and the legal placeholders are replaced (SET-1).
@@ -2409,31 +2648,59 @@ The estimates are our own inference, for one experienced developer.
 
 ## 18. Items to verify in Phase 0
 
-1. The `update` access that returns `{ _status: { equals: 'draft' } }`: does it hide Publish and Unpublish without blocking draft saves of published documents? How does it interact with our transition endpoint?
-2. In `beforeChange`, how to tell a "save draft" on a published document from "unpublish" (hook args or `req.query.draft`)?
-3. Values set in a collection `beforeChange` hook persist. `req.context` cannot be set from an HTTP request. `req.payloadAPI` values in the admin's server components, in REST, and in our Local API calls.
-4. Does the admin refresh the token on activity, so that `tokenExpiration` acts as an idle timeout? Do `cookiePrefix` values with `__Host-` work?
-5. Payload `required` on localized fields: is it validated per saved locale? Do drafts skip validation by default (`versions.drafts.validate`)?
-6. Localized fields inside non-localized arrays (`corrections[].publicText`) and localized groups (`translation`) on Postgres with drafts.
-7. `formatOptions` re-encodes the original upload and strips EXIF and GPS.
-8. Does the Payload admin work with `cacheComponents: true` and `partialPrefetching: true`? If not, use Option B.
-9. `revalidatePath` with internal `/uz/...` paths under the `proxy.ts` rewrite, and for `opengraph-image` sub-routes. Do `revalidateTag` and `revalidatePath` work inside `after()` from a Payload REST handler?
-10. Date-field timezone support and the admin `timezones` configuration (Asia/Tashkent).
-11. Virtual fields (for the embargo title prefix) and custom list cells.
-12. The globals versions key (`versions.max`) and drafts on globals.
-13. The join field on `articles.mediaRefs`; `filterOptions` on relationships with `_status`.
-14. A custom endpoint passes `context` to `payload.update` and inherits CSRF and cookie auth.
-15. Lexical: pasting from Google Docs drops disabled formats; internal links to `glossary-terms` resolve at the depth used; inline blocks serialize as specified.
-16. Copy-to-locale in the admin, or whether a custom action is needed. A `CopyLocaleData` admin element exists in the 3.90.2 source (`packages/ui/src/elements/CopyLocaleData`). Check that it copies blocks and rich text the way translators need.
-17. Whether root `hooks.afterError` sees failed logins (§9.4), or the polling job is needed. There is no collection-level failed-login hook in 3.90.2.
-18. Payload's insert into `audit_log` works with no UPDATE privilege (otherwise set `timestamps: false`).
-19. Custom admin languages (`uz`) through `i18n`.
-20. Cloudflare:
-    - Independent MFA on our plan (launched 15 April 2026; the docs name no plan);
-    - Access log retention;
-    - the Data Privacy Framework entry on the official list (Cloudflare says it is certified);
-    - CAA `accounturi` with Cloudflare-managed certificates.
+Phase 0 results are in [PHASE0-FINDINGS.md](./PHASE0-FINDINGS.md). Below, "findings item N" is a row of its §2 table and "findings §1.x" one of its decisions; other § numbers are sections of this document. Items 1–19 and 22 are resolved, as are the item 20 entries on rate limits, purge, log retention, the DPF list and CAA. Still open:
+- item 20, Independent MFA on our plan (a dashboard check, §12.3);
+- item 21, `chat_member` delivery for channels (staging test I8), plus a live edit of an old bot post (I5);
+- item 11, the custom list cell rendered in a live admin.
 
-    Resolved during verification: Free has one rate-limiting rule (path-only, 10 s window), and prefix purge is available on Free at 5 requests a minute (§12.3, §8.4).
+Also open, though not §18 items: whether Cloudflare Free honours an origin `s-maxage` shorter than its 2-hour Edge TTL minimum, and which RSC responses Next marks cacheable under Option B (both §8.4). Phase 0 also confirmed two checks outside this list: there is no route conflict between `[lang]` and the admin (§2.2), and the Access JWT check with `jose` works (§12.2).
+
+1. The `update` access that returns `{ _status: { equals: 'draft' } }`: does it hide Publish and Unpublish without blocking draft saves of published documents? How does it interact with our transition endpoint?
+   Result: **differs** (findings §1.2 and item 1). It does the opposite on both counts. Replaced by the three publish locks (§4.3).
+2. In `beforeChange`, how to tell a "save draft" on a published document from "unpublish" (hook args or `req.query.draft`)?
+   Result: **resolved** (findings item 2). Publish is `data._status === 'published'`. Save draft and unpublish differ only in the draft argument, which the articles `beforeOperation` hook copies into `req.context.draftArg` (§4.3, §5.8).
+3. Values set in a collection `beforeChange` hook persist. `req.context` cannot be set from an HTTP request. `req.payloadAPI` values in the admin's server components, in REST, and in our Local API calls.
+   Result: **confirmed** (findings item 3). One rule follows: `req.payloadAPI` is not a trust signal (§3.1, §4.3).
+4. Does the admin refresh the token on activity, so that `tokenExpiration` acts as an idle timeout? Do `cookiePrefix` values with `__Host-` work?
+   Result: **partly** (findings item 4 and §1.6). The idle cut-off falls anywhere between about 2 and 30 minutes; an activity provider and an 8 h refresh hook fix that. `__Host-` breaks the admin's language and theme cookies, so `cookiePrefix` stays `muomalat` (§12.2).
+5. Payload `required` on localized fields: is it validated per saved locale? Do drafts skip validation by default (`versions.drafts.validate`)?
+   Result: **confirmed** (findings item 5). `required` is checked only in the locale being saved, and drafts skip all field validation (§3.1, §6.2).
+6. Localized fields inside non-localized arrays (`corrections[].publicText`) and localized groups (`translation`) on Postgres with drafts.
+   Result: **partly** (findings item 6). It works per locale, with rules for array row ids and a workaround for bug payloadcms#18246 (§4.3, §6.2).
+7. `formatOptions` re-encodes the original upload and strips EXIF and GPS.
+   Result: **partly** (findings item 7 and §1.8). Only on a plain upload. The crop and focal-point paths need the Media `beforeOperation` re-encode (§3.12).
+8. Does the Payload admin work with `cacheComponents: true` and `partialPrefetching: true`? If not, use Option B.
+   Result: **Option B chosen** (findings §1.1 and item 8). Option A failed at runtime in ways the build does not catch (§8.2).
+9. `revalidatePath` with internal `/uz/...` paths under the `proxy.ts` rewrite, and for `opengraph-image` sub-routes. Do `revalidateTag` and `revalidatePath` work inside `after()` from a Payload REST handler?
+   Result: **partly** (findings item 9). Pages take the internal path; uz route handlers need both forms. `after()` works from Payload hooks and custom endpoints (§8.4).
+10. Date-field timezone support and the admin `timezones` configuration (Asia/Tashkent).
+    Result: **partly** (findings item 10 and §1.8). `timezone: true` goes on every date-time an editor enters, and the database session is pinned to UTC (§3.1, §12.2).
+11. Virtual fields (for the embargo title prefix) and custom list cells.
+    Result: **partly; one check open** (findings item 11). A virtual field cannot be the title, so the edit-view banner sets the tab title (§5.10). The custom Cell type-checks but has not been rendered in a live admin.
+12. The globals versions key (`versions.max`) and drafts on globals.
+    Result: **differs** (findings item 12). The key is `versions.max`, and global version restore bypasses our hooks (§3.16).
+13. The join field on `articles.mediaRefs`; `filterOptions` on relationships with `_status`.
+    Result: **partly** (findings item 13). The join works on the top-level field only. `filterOptions` must not filter on `_status` (§3.3, §3.12, §3.16).
+14. A custom endpoint passes `context` to `payload.update` and inherits CSRF and cookie auth.
+    Result: **confirmed** (findings item 14), with rules for `req.user`, body parsing and transactions in the endpoint (§5.2).
+15. Lexical: pasting from Google Docs drops disabled formats; internal links to `glossary-terms` resolve at the depth used; inline blocks serialize as specified.
+    Result: **partly** (findings item 15 and §1.7). The editor's limits hold only in the admin client, so the server enforces them. Links resolve at depth 1, and inline blocks round-trip without loss (§3.4, §6.5).
+16. Copy-to-locale in the admin, or whether a custom action is needed. A `CopyLocaleData` admin element exists in the 3.90.2 source (`packages/ui/src/elements/CopyLocaleData`). Check that it copies blocks and rich text the way translators need.
+    Result: **resolved** (findings item 16). The built-in publishes at once and copies the translation status, so it is disabled and a custom action replaces it (§3.3).
+17. Whether root `hooks.afterError` sees failed logins (§9.4), or the polling job is needed. There is no collection-level failed-login hook in 3.90.2.
+    Result: **differs** (findings item 17 and §1.4). `users.hooks.afterError` sees failed logins, so there is no polling job (§9.4).
+18. Payload's insert into `audit_log` works with no UPDATE privilege (otherwise set `timestamps: false`).
+    Result: **confirmed** (findings item 18 and §1.3). `timestamps` stays `true` (§9.1).
+19. Custom admin languages (`uz`) through `i18n`.
+    Result: **confirmed** (findings item 19 and §1.6). The `uz` pack ships in Phase 1 (§6.6).
+20. Cloudflare:
+    - Independent MFA on our plan (launched 15 April 2026; the docs name no plan). Result: **open** (findings item 20a). It needs a dashboard check; the fallback if Free lacks it is in §12.3;
+    - Access log retention. Result: **confirmed** (findings item 20d): 24 h on Free (§9.4);
+    - the Data Privacy Framework entry on the official list (Cloudflare says it is certified). Result: **confirmed** (findings item 20e): "Active – re-certification under review" on 9 October 2026. Whether it satisfies resolution 415 is for counsel;
+    - CAA `accounturi` with Cloudflare-managed certificates. Result: **differs** (findings item 20f): not enforceable under Universal SSL (§12.3).
+
+    Resolved during verification: Free has one rate-limiting rule (path-only, 10 s window), and prefix purge is available on Free at 5 requests a minute (§12.3, §8.4). Phase 0 confirmed both (findings items 20b and 20c) and found two more Free limits: five WAF custom rules with no regex, and purge budgets shared across the account (§8.4, §12.3).
 21. Telegram: editing bot-sent channel posts older than 48 h. For `chat_member` updates, `allowed_updates` must list `chat_member` explicitly, because it is excluded by default ([getUpdates](https://core.telegram.org/bots/api#getupdates)). Check that it is delivered for channels.
+    Result: **partly; checks open** (findings items 21a–21c). A bot can edit its own channel posts at any age (from the docs and source; test I5). `chat_member` delivery for channels is expected but not live-tested (test I8). Bot API 10.3 added `can_send_welcome_messages` (§10.5, §10.6).
 22. `payload.update({ data: { _status: 'published' }, draft: false })` on a document with a newer draft publishes the draft's content, not the last published version (§5.11 scheduler; also the transition endpoint).
+    Result: **confirmed** (findings item 22), by two groups (§5.11).

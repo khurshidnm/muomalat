@@ -12,54 +12,7 @@
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "supportedTimezones".
  */
-export type SupportedTimezones =
-  | 'Pacific/Midway'
-  | 'Pacific/Niue'
-  | 'Pacific/Honolulu'
-  | 'Pacific/Rarotonga'
-  | 'America/Anchorage'
-  | 'Pacific/Gambier'
-  | 'America/Los_Angeles'
-  | 'America/Tijuana'
-  | 'America/Denver'
-  | 'America/Phoenix'
-  | 'America/Chicago'
-  | 'America/Guatemala'
-  | 'America/New_York'
-  | 'America/Bogota'
-  | 'America/Caracas'
-  | 'America/Santiago'
-  | 'America/Buenos_Aires'
-  | 'America/Sao_Paulo'
-  | 'Atlantic/South_Georgia'
-  | 'Atlantic/Azores'
-  | 'Atlantic/Cape_Verde'
-  | 'Europe/London'
-  | 'Europe/Berlin'
-  | 'Africa/Lagos'
-  | 'Europe/Athens'
-  | 'Africa/Cairo'
-  | 'Europe/Moscow'
-  | 'Asia/Riyadh'
-  | 'Asia/Dubai'
-  | 'Asia/Baku'
-  | 'Asia/Karachi'
-  | 'Asia/Tashkent'
-  | 'Asia/Calcutta'
-  | 'Asia/Dhaka'
-  | 'Asia/Almaty'
-  | 'Asia/Jakarta'
-  | 'Asia/Bangkok'
-  | 'Asia/Shanghai'
-  | 'Asia/Singapore'
-  | 'Asia/Tokyo'
-  | 'Asia/Seoul'
-  | 'Australia/Brisbane'
-  | 'Australia/Sydney'
-  | 'Pacific/Guam'
-  | 'Pacific/Noumea'
-  | 'Pacific/Auckland'
-  | 'Pacific/Fiji';
+export type SupportedTimezones = 'Asia/Tashkent';
 
 export interface Config {
   auth: {
@@ -67,28 +20,86 @@ export interface Config {
   };
   blocks: {};
   collections: {
-    users: User;
+    articles: Article;
+    authors: Author;
+    rubrics: Rubric;
+    tags: Tag;
     media: Media;
+    'glossary-terms': GlossaryTerm;
+    institutions: Institution;
+    milestones: Milestone;
+    'club-events': ClubEvent;
+    requests: Request;
+    'telegram-posts': TelegramPost;
+    'club-applications': ClubApplication;
+    'digest-subscribers': DigestSubscriber;
+    'contact-messages': ContactMessage;
+    'advertising-requests': AdvertisingRequest;
+    users: User;
+    'audit-log': AuditLog;
+    'publish-events': PublishEvent;
+    redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
+    'payload-query-presets': PayloadQueryPreset;
   };
-  collectionsJoins: {};
+  collectionsJoins: {
+    articles: {
+      telegramPosts: 'telegram-posts';
+    };
+    media: {
+      usedIn: 'articles';
+    };
+    users: {
+      author: 'authors';
+    };
+  };
   collectionsSelect: {
-    users: UsersSelect<false> | UsersSelect<true>;
+    articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    authors: AuthorsSelect<false> | AuthorsSelect<true>;
+    rubrics: RubricsSelect<false> | RubricsSelect<true>;
+    tags: TagsSelect<false> | TagsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'glossary-terms': GlossaryTermsSelect<false> | GlossaryTermsSelect<true>;
+    institutions: InstitutionsSelect<false> | InstitutionsSelect<true>;
+    milestones: MilestonesSelect<false> | MilestonesSelect<true>;
+    'club-events': ClubEventsSelect<false> | ClubEventsSelect<true>;
+    requests: RequestsSelect<false> | RequestsSelect<true>;
+    'telegram-posts': TelegramPostsSelect<false> | TelegramPostsSelect<true>;
+    'club-applications': ClubApplicationsSelect<false> | ClubApplicationsSelect<true>;
+    'digest-subscribers': DigestSubscribersSelect<false> | DigestSubscribersSelect<true>;
+    'contact-messages': ContactMessagesSelect<false> | ContactMessagesSelect<true>;
+    'advertising-requests': AdvertisingRequestsSelect<false> | AdvertisingRequestsSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
+    'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
+    'publish-events': PublishEventsSelect<false> | PublishEventsSelect<true>;
+    redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
+    'payload-query-presets': PayloadQueryPresetsSelect<false> | PayloadQueryPresetsSelect<true>;
   };
   db: {
     defaultIDType: number;
   };
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('uz' | 'ru' | 'en') | ('uz' | 'ru' | 'en')[];
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'home-page': HomePage;
+    navigation: Navigation;
+    'ad-slots': AdSlot;
+    'site-settings': SiteSetting;
+    'editorial-rules': EditorialRule;
+  };
+  globalsSelect: {
+    'home-page': HomePageSelect<false> | HomePageSelect<true>;
+    navigation: NavigationSelect<false> | NavigationSelect<true>;
+    'ad-slots': AdSlotsSelect<false> | AdSlotsSelect<true>;
+    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'editorial-rules': EditorialRulesSelect<false> | EditorialRulesSelect<true>;
+  };
   locale: 'uz' | 'ru' | 'en';
   widgets: {
     collections: CollectionsWidget;
@@ -119,6 +130,437 @@ export interface UserAuthOperations {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles".
+ */
+export interface Article {
+  id: number;
+  rubric: number | Rubric;
+  /**
+   * Oʻzbekcha sarlavhadan avtomatik yasaladi. Birinchi chop etishdan keyin oʻzgarmaydi; oʻzgartirish faqat muharrir orqali, eski manzil yoʻnaltiriladi.
+   */
+  slug: string;
+  /**
+   * Homiylik materialida faqat tijorat imzosi; tahririyat materialida tijorat imzosi boʻlmaydi.
+   */
+  authors: (number | Author)[];
+  /**
+   * Faqat ish jarayoni tugmalari orqali oʻzgaradi.
+   */
+  workflowStatus: 'idea' | 'draft' | 'in_edit' | 'ready' | 'scheduled' | 'published' | 'hold' | 'withdrawn';
+  /**
+   * «Gʻoya» va «Qoralama» bosqichlarida maqola uchun javob beradi.
+   */
+  assignee?: (number | null) | User;
+  /**
+   * «Tahrirga olish» bilan belgilanadi; qayta ishlashga qaytarilganda tozalanadi.
+   */
+  deskEditor?: (number | null) | User;
+  dueAt?: string | null;
+  dueAt_tz?: SupportedTimezones;
+  priority?: ('normal' | 'high' | 'breaking') | null;
+  /**
+   * Tezkor yoʻl: faqat «Yangiliklar», rasmiy manba havolasi, 400 soʻzgacha, embargo va yuridik koʻriksiz. Chop etilgach 30 daqiqa ichida ikkinchi oʻqish talab qilinadi.
+   */
+  urgent?: boolean | null;
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  /**
+   * Faqat oddiy matn. 80 belgidan oshsa ogohlantirish, 140 dan oshsa chop etilmaydi.
+   */
+  title?: string | null;
+  /**
+   * Rubrika nomi oʻrniga sarlavha ustida koʻrsatiladi, masalan «Litsenziyalash». 40 belgigacha.
+   */
+  kicker?: string | null;
+  /**
+   * Sarlavha ostidagi bir-ikki gap. 300 belgidan oshsa ogohlantirish, 500 dan oshsa chop etilmaydi.
+   */
+  lead?: string | null;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Rasmda oʻzbekcha muqobil matn, muallif va huquq toifasi boʻlishi shart.
+   */
+  image?: (number | null) | Media;
+  /**
+   * Shu maqola uchun; boʻsh qolsa rasm kutubxonasidagi izoh koʻrsatiladi.
+   */
+  imageCaption?: string | null;
+  /**
+   * Kamida bitta mavzu tanlang.
+   */
+  tags?: (number | Tag)[] | null;
+  /**
+   * Matndagi lugʻat havolalari va atama kartochkalari saqlashda avtomatik qoʻshiladi.
+   */
+  terms?: (number | GlossaryTerm)[] | null;
+  /**
+   * Maqola asosan qaysi tashkilot haqida.
+   */
+  about?: (number | null) | Institution;
+  mentions?: (number | Institution)[] | null;
+  /**
+   * 4 tagacha. Homiylik materiallari, olib tashlangan va hali chop etilmagan maqolalar tanlanmaydi.
+   */
+  related?: (number | Article)[] | null;
+  /**
+   * «Intervyu» rubrikasi uchun shart.
+   */
+  interviewee?: {
+    name?: string | null;
+    /**
+     * Kichik harf bilan, masalan «islom oynasi rahbari».
+     */
+    role?: string | null;
+    organisation?: string | null;
+    portrait?: (number | null) | Media;
+  };
+  /**
+   * Maqola ostidagi «Manbalar» roʻyxati. Kamida bitta manba.
+   */
+  sources?:
+    | {
+        title: string;
+        publisher: string;
+        url?: string | null;
+        /**
+         * YYYY-MM-DD, masalan 2026-10-08.
+         */
+        date?: string | null;
+        type?: ('document' | 'report' | 'interview' | 'press' | 'data') | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Homiylik materialida eʼtiborga olinmaydi.
+   */
+  featured?: boolean | null;
+  /**
+   * Birinchi chop etishda tizim belgilaydi; faqat bosh muharrir tuzata oladi.
+   */
+  publishedAt?: string | null;
+  publishedAt_tz?: SupportedTimezones;
+  /**
+   * Hech qachon oʻzgarmaydi (JSON-LD datePublished).
+   */
+  firstPublishedAt?: string | null;
+  firstPublishedAt_tz?: SupportedTimezones;
+  /**
+   * Yangilanish yoki tuzatish chop etilganda belgilanadi.
+   */
+  significantUpdateAt?: string | null;
+  significantUpdateAt_tz?: SupportedTimezones;
+  /**
+   * Toshkent vaqti. «Tayyor» holatdan rejalashtiriladi; embargo tugashidan oldin boʻlmasin.
+   */
+  scheduledAt?: string | null;
+  scheduledAt_tz?: SupportedTimezones;
+  /**
+   * Embargo amalda boʻlsa maqola chop etilmaydi va Telegramga yuborilmaydi.
+   */
+  embargo?: {
+    /**
+     * Toshkent vaqti. «Yarim tun» noaniq: 00:00 oʻrniga 00:01 ni tanlang.
+     */
+    until?: string | null;
+    until_tz?: SupportedTimezones;
+    /**
+     * Tugash vaqti bilan birga belgilanmaydi.
+     */
+    indefinite?: boolean | null;
+    /**
+     * Embargo qoʻygan tashkilot yoki shaxs; embargo boʻlsa shart.
+     */
+    source?: string | null;
+    note?: string | null;
+  };
+  submittedBy?: (number | null) | User;
+  submittedAt?: string | null;
+  approvedBy?: (number | null) | User;
+  approvedAt?: string | null;
+  approvedContentHash?: string | null;
+  publishedBy?: (number | null) | User;
+  scheduledBy?: (number | null) | User;
+  scheduleError?: string | null;
+  /**
+   * Shoshilinch chop etilgan yoki muallif-muharrir yangilagan maqolani muallif boʻlmagan muharrir oʻqib chiqadi.
+   */
+  secondRead?: {
+    required?: boolean | null;
+    dueAt?: string | null;
+    dueAt_tz?: SupportedTimezones;
+    doneBy?: (number | null) | User;
+    doneAt?: string | null;
+    outcome?: ('ok' | 'minor_fix' | 'correction') | null;
+  };
+  /**
+   * Chop etilgan maqoladagi oʻzgarishni chop etishda toʻldiriladi; chop etilgach tozalanadi, versiya va jurnalda qoladi.
+   */
+  changeNote?: {
+    kind?: ('minor' | 'update' | 'correction' | 'clarification' | 'editors_note') | null;
+    reason?: string | null;
+    /**
+     * Faqat bosh muharrir, sababi bilan: masalan, faqat havola ichidagi raqam oʻzgargan boʻlsa.
+     */
+    numbersOverride?: boolean | null;
+  };
+  workflowHistory?:
+    | {
+        from?: ('idea' | 'draft' | 'in_edit' | 'ready' | 'scheduled' | 'published' | 'hold' | 'withdrawn') | null;
+        to?: ('idea' | 'draft' | 'in_edit' | 'ready' | 'scheduled' | 'published' | 'hold' | 'withdrawn') | null;
+        by?: (number | null) | User;
+        at?: string | null;
+        comment?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Faqat bosh muharrir. Sahifada sarlavha, sana va izoh qoladi; matn, rasm va roʻyxatlardan olib tashlanadi.
+   */
+  withdrawal?: {
+    at?: string | null;
+    by?: (number | null) | User;
+    publicNotice?: string | null;
+    internalReason?: string | null;
+    hideTitle?: boolean | null;
+    request?: (number | null) | Request;
+  };
+  /**
+   * Faqat qoʻshiladi: kiritilgan tuzatish oʻchirilmaydi va oʻzgartirilmaydi. Har bir yozuv maqola oxirida va tuzatishlar sahifasida chiqadi.
+   */
+  corrections?:
+    | {
+        kind?: ('correction' | 'clarification' | 'editors_note') | null;
+        /**
+         * Nima notoʻgʻri boʻlgani va toʻgʻrisi qanday ekanini aniq yozing: «Tuzatildi: 3-xatboshida 4,5 mlrd emas, 5,4 mlrd soʻm». Tuhmat boʻlishi mumkin boʻlgan xatoni aynan takrorlamang.
+         */
+        publicText?: string | null;
+        /**
+         * Masalan «3-xatboshi» yoki «jadval».
+         */
+        location?: string | null;
+        internalReason?: string | null;
+        createdAt?: string | null;
+        createdBy?: (number | null) | User;
+        approvedBy?: (number | null) | User;
+        versionId?: string | null;
+        request?: (number | null) | Request;
+        telegramAction?: ('none' | 'caption_edited' | 'reply_posted') | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Tijorat boʻlimi va bosh muharrir toʻldiradi; muharrirlar faqat koʻradi.
+   */
+  sponsored?: {
+    /**
+     * Tijorat boʻlimi yaratganda avtomatik belgilanadi. Chop etilgandan keyin olib tashlanmaydi.
+     */
+    enabled?: boolean | null;
+    partner?: string | null;
+    advertiserLegalName?: string | null;
+    /**
+     * «Umumiy»dan boshqa toifalar uchun litsenziya, xavf haqida ogohlantirish va asosiy shartlar shart.
+     */
+    category?:
+      ('general' | 'financial_service' | 'bank_deposit' | 'investment_securities' | 'insurance_takaful') | null;
+    licenceNumber?: string | null;
+    licenceIssuer?: string | null;
+    riskWarning?: string | null;
+    keyTerms?: string | null;
+    /**
+     * Material kimning buyurtmasi bilan va kim tomonidan tayyorlanganini aytadi.
+     */
+    disclosure?: string | null;
+    contractRef?: string | null;
+    campaignStart?: string | null;
+    campaignStart_tz?: SupportedTimezones;
+    campaignEnd?: string | null;
+    campaignEnd_tz?: SupportedTimezones;
+    approvedBy?: (number | null) | User;
+    approvedAt?: string | null;
+    /**
+     * Oxirgi chop etishdan 3 yil (Art. 15); shu sanagacha oʻchirilmaydi.
+     */
+    retainUntil?: string | null;
+  };
+  /**
+   * Har bir til uchun alohida. Rus va ingliz matni faqat «Tasdiqlangan» holatda saytda koʻrinadi.
+   */
+  translation?: {
+    status?: ('missing' | 'machine_draft' | 'in_edit' | 'approved' | 'outdated') | null;
+    /**
+     * Shu tildagi tarjima uchun masʼul; muharrir tayinlaydi.
+     */
+    assignee?: (number | null) | User;
+    translatedBy?: (number | null) | User;
+    reviewedBy?: (number | null) | User;
+    approvedAt?: string | null;
+    contentHash?: string | null;
+    machine?: {
+      used?: boolean | null;
+      engine?: string | null;
+    };
+  };
+  /**
+   * Kirill varianti oʻzbekcha matndan avtomatik yasaladi. Bu yerda faqat qoʻlda tuzatilgan variant yoziladi; u kirill harflarida boʻlishi shart.
+   */
+  kr?: {
+    title?: string | null;
+    lead?: string | null;
+    kicker?: string | null;
+    checked?: boolean | null;
+    checkedBy?: (number | null) | User;
+    checkedAt?: string | null;
+  };
+  /**
+   * Qidiruv natijalari va ijtimoiy tarmoqlardagi koʻrinish. Boʻsh maydonlar asosiy matndan olinadi.
+   */
+  meta?: {
+    /**
+     * Boʻsh qolsa sarlavha ishlatiladi. 70 belgidan oshmasin.
+     */
+    title?: string | null;
+    /**
+     * Boʻsh qolsa lid (qisqa tavsif) ishlatiladi. 160 belgidan oshmasin.
+     */
+    description?: string | null;
+    /**
+     * Boʻsh qolsa asosiy rasm ishlatiladi.
+     */
+    image?: (number | null) | Media;
+  };
+  noindex?: boolean | null;
+  /**
+   * muomalat.uz/t/<kod> qisqa havolasi uchun.
+   */
+  shortCode?: string | null;
+  /**
+   * Chop etilgandan keyin oʻzgargan manzillar; ulardan yangi manzilga yoʻnaltiriladi.
+   */
+  slugHistory?:
+    | {
+        slug?: string | null;
+        rubric?: string | null;
+        changedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  telegram?: {
+    autopost?: boolean | null;
+    /**
+     * Boʻsh qolsa post sarlavha va liddan yasaladi.
+     */
+    captionOverride?: string | null;
+    silent?: boolean | null;
+  };
+  /**
+   * Shu maqola boʻyicha kanalga yuborilgan va navbatdagi postlar.
+   */
+  telegramPosts?: {
+    docs?: (number | TelegramPost)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Savol va eslatmalar. Saytda hech qachon koʻrsatilmaydi.
+   */
+  editorNotes?: string | null;
+  /**
+   * Maxfiy manbalarning ismini yozmang — faqat shartli nom. Faqat mualliflar va bosh muharrir koʻradi.
+   */
+  sourceNotes?: string | null;
+  /**
+   * «Kerak»ni har kim belgilaydi; «Bajarildi»ni faqat bosh muharrir.
+   */
+  needsLegal?: ('na' | 'required' | 'complete') | null;
+  /**
+   * Maqolaga rasm topish yoki tayyorlash kerakmi.
+   */
+  needsPicture?: ('na' | 'required' | 'complete') | null;
+  legalSignOff?: {
+    by?: (number | null) | User;
+    at?: string | null;
+    note?: string | null;
+  };
+  /**
+   * Qoralamani maqolaga aloqasi yoʻq muxbirlardan yashiradi; chop etishni bosh muharrir tasdiqlaydi.
+   */
+  legallySensitive?: boolean | null;
+  /**
+   * Chop etishni bosh muharrir tasdiqlaydi.
+   */
+  singleAnonymousSource?: boolean | null;
+  supervisor?: (number | null) | User;
+  /**
+   * Saytda bu maqola yonida homiylik materiali yoki reklama joyi chiqmaydi.
+   */
+  inappropriateForSponsorship?: boolean | null;
+  ageMark?: ('inherit' | '0+' | '7+' | '12+' | '16+' | '18+') | null;
+  /**
+   * Faqat bosh muharrir. Belgilanganda maqola oʻchirilmaydi va boshqalar tahrir qila olmaydi.
+   */
+  legalHold?: boolean | null;
+  validationWarnings?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Analitika tizimi toʻldiradi.
+   */
+  views?: number | null;
+  _authorUsers?: (number | User)[] | null;
+  mediaRefs?: (number | Media)[] | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rubrics".
+ */
+export interface Rubric {
+  id: number;
+  /**
+   * Yaratilgandan keyin oʻzgarmaydi.
+   */
+  slug: 'yangiliklar' | 'tahlil' | 'intervyu' | 'izoh' | 'dunyo';
+  /**
+   * Menyu va roʻyxatlardagi oʻrni.
+   */
+  order: number;
+  name?: string | null;
+  /**
+   * Bitta gap: rubrika sahifasida va metamaʼlumotlarda.
+   */
+  description?: string | null;
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -129,8 +571,49 @@ export interface User {
    * Oʻchirilgan hisob tizimga kira olmaydi. Hisoblar oʻchirib tashlanmaydi.
    */
   active?: boolean | null;
+  /**
+   * Bu hisobga bogʻlangan muallif. Bogʻlashni administrator muallif profilida qiladi.
+   */
+  author?: {
+    docs?: (number | Author)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
   preferredContentLocale?: ('uz' | 'ru' | 'en') | null;
+  /**
+   * Siz bilan bogʻliq tashkilotlar: ulush, ish joyi, oila. Faqat siz, bosh muharrir va administrator koʻradi. Shu tashkilot haqidagi maqolada ogohlantirish chiqadi.
+   */
+  declaredInterests?:
+    | {
+        institution: number | Institution;
+        nature: 'shares' | 'employment' | 'family' | 'other';
+        since?: string | null;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Ixtiyoriy. Shaxsiy ogohlantirishlar uchun.
+   */
+  telegramUserId?: string | null;
   offboardedAt?: string | null;
+  lastLoginAt?: string | null;
+  /**
+   * cf-ipcountry sarlavhasidan.
+   */
+  lastLoginCountry?: string | null;
+  /**
+   * Kirish boʻlgan mamlakatlar (ISO kodlari). Yangi mamlakatdan kirish ogohlantirish beradi.
+   */
+  knownCountries?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -153,14 +636,117 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "authors".
+ */
+export interface Author {
+  id: number;
+  /**
+   * Muallif sahifasining manzili, masalan «aziza-rahimova».
+   */
+  slug: string;
+  /**
+   * Shaxs ismi barcha tillarda bir xil yoziladi; rus va ingliz tilidagi nom faqat jamoa imzolari uchun.
+   */
+  name?: string | null;
+  role?: string | null;
+  bio?: string | null;
+  /**
+   * Hamkorlik materiallari imzosi: saytda jurnalist imzosi kabi koʻrsatilmaydi.
+   */
+  commercial?: boolean | null;
+  /**
+   * Tahririyat yoki boʻlim nomidan; JSON-LD da Person emas, Organization.
+   */
+  isTeam?: boolean | null;
+  email?: string | null;
+  telegram?: string | null;
+  portrait?: (number | null) | Media;
+  /**
+   * Faol boʻlmagan muallif tanlov roʻyxatlarida koʻrinmaydi; sahifasi saqlanadi.
+   */
+  active?: boolean | null;
+  /**
+   * Imzoni xodim hisobiga bogʻlaydi: ikki kishi qoidasi va kirish huquqlari shunga tayanadi. Faqat administrator belgilaydi.
+   */
+  user?: (number | null) | User;
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
   id: number;
+  /**
+   * Rasmda nima muhimligini yozing. Diagramma rasmi uchun raqamlar jadvalda boʻladi. Oʻzbekchasi shart, agar rasm bezak uchun boʻlmasa.
+   */
   alt?: string | null;
+  /**
+   * Rasm hech qanday maʼlumot bermasa belgilang: saytda alt="" bilan chiqadi va muqobil matn talab qilinmaydi.
+   */
   decorative?: boolean | null;
+  /**
+   * Standart izoh; maqola yoki rasm bloki oʻz izohini bera oladi.
+   */
   caption?: string | null;
+  /**
+   * Masalan «Foto: Muomalat» yoki «Illyustratsiya: Muomalat». Oʻzbekchasi chop etish uchun shart.
+   */
   credit?: string | null;
+  /**
+   * Fotograf yoki rassom ismi.
+   */
+  creator?: string | null;
+  /**
+   * «Nomaʼlum» toifadagi rasm chop etilmaydi.
+   */
+  rightsCategory:
+    | 'staff'
+    | 'commissioned'
+    | 'agency'
+    | 'official_handout'
+    | 'partner_supplied'
+    | 'creative_commons'
+    | 'public_domain'
+    | 'screengrab'
+    | 'social_media'
+    | 'unknown';
+  /**
+   * Creative Commons uchun shart, masalan https://creativecommons.org/licenses/by/4.0/.
+   */
+  licenceUrl?: string | null;
+  /**
+   * Masalan «© Muomalat, 2026». JSON-LD copyrightNotice sifatida chiqadi.
+   */
+  copyrightNotice?: string | null;
+  /**
+   * Shu sanadan keyin rasm maqolalarda ishlatilmaydi.
+   */
+  usableUntil?: string | null;
+  /**
+   * Masalan «faqat shu maqola uchun» yoki «Telegramda ishlatilmasin».
+   */
+  restrictions?: string | null;
+  /**
+   * Litsenziya yoki ruxsatnomaga havola yoxud uning raqami.
+   */
+  evidence?: string | null;
+  /**
+   * Tijorat boʻlimi yuklagan rasmlarda avtomatik belgilanadi; bunday rasm tahririyat maqolalarida ishlatilmaydi.
+   */
+  sponsoredOnly?: boolean | null;
+  /**
+   * Bu rasm ishlatilgan maqolalar, chop etilmagan qoralamalar bilan birga. Rasmni oʻchirishdan oldin tekshiring.
+   */
+  usedIn?: {
+    docs?: (number | Article)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -209,6 +795,888 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "institutions".
+ */
+export interface Institution {
+  id: number;
+  /**
+   * Tashkilotning rasmiy nomi; bu maydonda haqiqiy nomlar yoziladi.
+   */
+  name: string;
+  type: 'bank' | 'window' | 'microfinance' | 'leasing' | 'takaful';
+  /**
+   * Islom oynasi uchun shart: oyna ochilgan anʼanaviy bank.
+   */
+  parent?: string | null;
+  city: string;
+  status: 'granted' | 'review' | 'applied' | 'announced';
+  /**
+   * YYYY-MM-DD; kelajakdagi sana boʻlmaydi.
+   */
+  statusDate: string;
+  /**
+   * Regulyator xabari yoki reyestrga havola. «Litsenziya berilgan» holatda boʻsh qolsa ogohlantiriladi.
+   */
+  statusSource?: string | null;
+  licenceNumber?: string | null;
+  /**
+   * Holat yoki sana oʻzgarib chop etilganda avvalgi qiymatlar avtomatik qoʻshiladi.
+   */
+  statusHistory?:
+    | {
+        status?: ('granted' | 'review' | 'applied' | 'announced') | null;
+        date?: string | null;
+        source?: string | null;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Har bir mahsulotni alohida kiriting, masalan «Murobaha (KOʻB uchun)».
+   */
+  products?: string[] | null;
+  note?: string | null;
+  /**
+   * Shu tashkilot haqidagi asosiy maqola.
+   */
+  article?: (number | null) | Article;
+  /**
+   * Import qilingan yozuv muharrir tekshirib, belgini olib tashlamaguncha chop etilmaydi.
+   */
+  needsReview?: boolean | null;
+  /**
+   * Har bir til uchun alohida. Rus va ingliz matni faqat «Tasdiqlangan» holatda saytda koʻrinadi.
+   */
+  translation?: {
+    status?: ('missing' | 'machine_draft' | 'in_edit' | 'approved' | 'outdated') | null;
+    /**
+     * Shu tildagi tarjima uchun masʼul; muharrir tayinlaydi.
+     */
+    assignee?: (number | null) | User;
+    translatedBy?: (number | null) | User;
+    reviewedBy?: (number | null) | User;
+    approvedAt?: string | null;
+    contentHash?: string | null;
+    machine?: {
+      used?: boolean | null;
+      engine?: string | null;
+    };
+  };
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags".
+ */
+export interface Tag {
+  id: number;
+  /**
+   * Mavzu sahifasining manzili, masalan «islom-oynasi».
+   */
+  slug: string;
+  /**
+   * Rus va ingliz tilidagi nom ixtiyoriy; kirill varianti oʻzbekchadan yasaladi.
+   */
+  label?: string | null;
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "glossary-terms".
+ */
+export interface GlossaryTerm {
+  id: number;
+  /**
+   * Atama sahifasining manzili, masalan «murobaha».
+   */
+  slug: string;
+  /**
+   * Import qilingan atama muharrir tekshirib, belgini olib tashlamaguncha chop etilmaydi.
+   */
+  needsReview?: boolean | null;
+  category: 'shartnoma' | 'tamoyil' | 'institut' | 'bozor' | 'standart';
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  /**
+   * Oʻzbekcha (lotin) yozilishi; barcha tillarda bir xil.
+   */
+  term: string;
+  aliases?: {
+    ru?: string | null;
+    en?: string | null;
+    /**
+     * Faqat lotin transliteratsiyasi; arab yozuvi ishlatilmaydi.
+     */
+    ar?: string | null;
+    other?: string[] | null;
+  };
+  /**
+   * Bitta gap: roʻyxatlar va kartochkalarda.
+   */
+  short?: string | null;
+  definition?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Bitta xatboshi.
+   */
+  origin?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  practice?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  steps?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Raqamlar bilan ishlangan misol; ixtiyoriy.
+   */
+  example?: {
+    title?: string | null;
+    /**
+     * Bitta xatboshi.
+     */
+    text?: {
+      root: {
+        type: string;
+        children: {
+          type: any;
+          version: number;
+          [k: string]: unknown;
+        }[];
+        direction: ('ltr' | 'rtl') | null;
+        format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+        indent: number;
+        version: number;
+      };
+      [k: string]: unknown;
+    } | null;
+  };
+  related?: (number | GlossaryTerm)[] | null;
+  /**
+   * Har bir til uchun alohida. Rus va ingliz matni faqat «Tasdiqlangan» holatda saytda koʻrinadi.
+   */
+  translation?: {
+    status?: ('missing' | 'machine_draft' | 'in_edit' | 'approved' | 'outdated') | null;
+    /**
+     * Shu tildagi tarjima uchun masʼul; muharrir tayinlaydi.
+     */
+    assignee?: (number | null) | User;
+    translatedBy?: (number | null) | User;
+    reviewedBy?: (number | null) | User;
+    approvedAt?: string | null;
+    contentHash?: string | null;
+    machine?: {
+      used?: boolean | null;
+      engine?: string | null;
+    };
+  };
+  /**
+   * Qidiruv natijalari va ijtimoiy tarmoqlardagi koʻrinish. Boʻsh maydonlar asosiy matndan olinadi.
+   */
+  seo?: {
+    /**
+     * Boʻsh qolsa sarlavha ishlatiladi. 70 belgidan oshmasin.
+     */
+    title?: string | null;
+    /**
+     * Boʻsh qolsa lid (qisqa tavsif) ishlatiladi. 160 belgidan oshmasin.
+     */
+    description?: string | null;
+    /**
+     * Boʻsh qolsa asosiy rasm ishlatiladi.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Xatolar, raddiya, javob va olib tashlash talablari reyestri (OAV toʻgʻrisidagi qonun, 34-modda).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "requests".
+ */
+export interface Request {
+  id: number;
+  /**
+   * Muxbir faqat «Xato haqida xabar» kirita oladi.
+   */
+  kind: 'error_report' | 'refutation' | 'reply' | 'removal' | 'other';
+  article?: (number | null) | Article;
+  /**
+   * Shaxsiy maʼlumot: saqlash muddati tugagach oʻchiriladi.
+   */
+  requesterName?: string | null;
+  requesterContact?: string | null;
+  receivedAt: string;
+  receivedAt_tz: SupportedTimezones;
+  channel?: ('site_form' | 'email' | 'phone' | 'post' | 'telegram' | 'staff') | null;
+  summary: string;
+  /**
+   * Hujjatlarga havola yoki raqamlar (masalan, kiruvchi xat raqami).
+   */
+  documents?: string | null;
+  /**
+   * Keyingi qadam egasi. Raddiya, javob va olib tashlashda bosh muharrir; xato haqida xabarda muharrir oladi.
+   */
+  assignedTo?: (number | null) | User;
+  /**
+   * Raddiya va javob: 1 oy; xato haqida xabar: 3 kun; olib tashlash: 14 kun.
+   */
+  dueAt?: string | null;
+  status: 'new' | 'triage' | 'in_progress' | 'decided' | 'closed';
+  /**
+   * Raddiya, javob va olib tashlash boʻyicha qarorni faqat bosh muharrir qabul qiladi.
+   */
+  decision?:
+    | (
+        | 'no_change'
+        | 'correction'
+        | 'refutation_published'
+        | 'reply_published'
+        | 'anonymised'
+        | 'noindex'
+        | 'withdrawn'
+        | 'declined'
+      )
+    | null;
+  decidedBy?: (number | null) | User;
+  decidedAt?: string | null;
+  response?: string | null;
+  /**
+   * Qarordan keyin 3 yil (taklif; huquqshunos tasdiqlaydi).
+   */
+  retainUntil?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Kanalga yuboriladigan postlar. Har bir postni muallif boʻlmagan muharrir tasdiqlaydi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "telegram-posts".
+ */
+export interface TelegramPost {
+  id: number;
+  article?: (number | null) | Article;
+  kind: 'article' | 'correction_reply' | 'retraction';
+  /**
+   * Faqat tasdiqlash va bekor qilish tugmalari orqali oʻzgaradi.
+   */
+  status: 'draft' | 'approved' | 'queued' | 'sent' | 'edit_pending' | 'edited' | 'cancelled' | 'retracted' | 'failed';
+  /**
+   * Faqat <b>, <i>, <a>. Teglarsiz uzunlik: rasm bilan 1024, matn bilan 4096 belgigacha (UTF-16 hisobi; Telegram chegarasidan qatʼiyroq).
+   */
+  captionHtml?: string | null;
+  /**
+   * Boʻsh boʻlsa, asosiy rasmning og oʻlchami ishlatiladi.
+   */
+  photo?: (number | null) | Media;
+  imageFileId?: string | null;
+  silent?: boolean | null;
+  /**
+   * Maqoladan nusxa; reklama shablonini majburiy qiladi.
+   */
+  sponsored?: boolean | null;
+  requestedBy?: (number | null) | User;
+  approvedBy?: (number | null) | User;
+  /**
+   * Tasdiqdan keyin kamida kechikish muddati oʻtadi (odatda 3 daqiqa).
+   */
+  sendAt?: string | null;
+  sendAt_tz?: SupportedTimezones;
+  chatId?: string | null;
+  messageId?: string | null;
+  sentAt?: string | null;
+  /**
+   * Tuzatish javob qilib yuboriladigan kanal xabarining message_id raqami.
+   */
+  replyTo?: string | null;
+  /**
+   * Yuborilgan va tahrirlangan har bir matn.
+   */
+  history?:
+    | {
+        at?: string | null;
+        action?: string | null;
+        captionHtml?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  lastError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "milestones".
+ */
+export interface Milestone {
+  id: number;
+  /**
+   * Kun nomaʼlum boʻlsa faqat oy: 2026-06.
+   */
+  date: string;
+  title?: string | null;
+  text?: string | null;
+  status: 'done' | 'upcoming';
+  article?: (number | null) | Article;
+  /**
+   * Har bir til uchun alohida. Rus va ingliz matni faqat «Tasdiqlangan» holatda saytda koʻrinadi.
+   */
+  translation?: {
+    status?: ('missing' | 'machine_draft' | 'in_edit' | 'approved' | 'outdated') | null;
+    /**
+     * Shu tildagi tarjima uchun masʼul; muharrir tayinlaydi.
+     */
+    assignee?: (number | null) | User;
+    translatedBy?: (number | null) | User;
+    reviewedBy?: (number | null) | User;
+    approvedAt?: string | null;
+    contentHash?: string | null;
+    machine?: {
+      used?: boolean | null;
+      engine?: string | null;
+    };
+  };
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "club-events".
+ */
+export interface ClubEvent {
+  id: number;
+  /**
+   * Uchrashuv sahifasining manzili, masalan «oktabr-2026-ijora-uskuna».
+   */
+  slug: string;
+  number: number;
+  lastEditedBy?: (number | null) | User;
+  legacyId?: string | null;
+  title?: string | null;
+  /**
+   * Qisqa mavzu satri.
+   */
+  theme?: string | null;
+  startsAt: string;
+  startsAt_tz: SupportedTimezones;
+  /**
+   * Boshlanishidan keyin boʻlishi kerak.
+   */
+  endsAt: string;
+  endsAt_tz: SupportedTimezones;
+  venue: {
+    name: string;
+    address: string;
+    city: string;
+  };
+  summary?: string | null;
+  image?: (number | null) | Media;
+  /**
+   * Shu uchrashuv uchun; boʻsh qolsa rasm kutubxonasidagi izoh koʻrsatiladi.
+   */
+  imageCaption?: string | null;
+  capacity?: number | null;
+  registrationOpen?: boolean | null;
+  registrationClosesAt?: string | null;
+  registrationClosesAt_tz?: SupportedTimezones;
+  agenda?:
+    | {
+        time: string;
+        title?: string | null;
+        speaker?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  speakers?:
+    | {
+        name: string;
+        role: string;
+        portrait?: (number | null) | Media;
+        id?: string | null;
+      }[]
+    | null;
+  report?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  takeaways?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Har bir til uchun alohida. Rus va ingliz matni faqat «Tasdiqlangan» holatda saytda koʻrinadi.
+   */
+  translation?: {
+    status?: ('missing' | 'machine_draft' | 'in_edit' | 'approved' | 'outdated') | null;
+    /**
+     * Shu tildagi tarjima uchun masʼul; muharrir tayinlaydi.
+     */
+    assignee?: (number | null) | User;
+    translatedBy?: (number | null) | User;
+    reviewedBy?: (number | null) | User;
+    approvedAt?: string | null;
+    contentHash?: string | null;
+    machine?: {
+      used?: boolean | null;
+      engine?: string | null;
+    };
+  };
+  /**
+   * Qidiruv natijalari va ijtimoiy tarmoqlardagi koʻrinish. Boʻsh maydonlar asosiy matndan olinadi.
+   */
+  seo?: {
+    /**
+     * Boʻsh qolsa sarlavha ishlatiladi. 70 belgidan oshmasin.
+     */
+    title?: string | null;
+    /**
+     * Boʻsh qolsa lid (qisqa tavsif) ishlatiladi. 160 belgidan oshmasin.
+     */
+    description?: string | null;
+    /**
+     * Boʻsh qolsa asosiy rasm ishlatiladi.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Klubga aʼzolik va uchrashuvga yozilish arizalari. Faqat tijorat boʻlimi, bosh muharrir va administrator koʻradi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "club-applications".
+ */
+export interface ClubApplication {
+  id: number;
+  name: string;
+  company: string;
+  sector: 'savdo' | 'ishlab-chiqarish' | 'qurilish' | 'qishloq-xojaligi' | 'xizmatlar' | 'it' | 'boshqa';
+  size: '1-10' | '11-50' | '51-250' | '250+';
+  phone: string;
+  email?: string | null;
+  interests?: ('murobaha' | 'ijora' | 'mushoraka' | 'takaful' | 'boshqa')[] | null;
+  message?: string | null;
+  attend?: boolean | null;
+  /**
+   * Ariza qaysi uchrashuvga yozilish bilan yuborilgan boʻlsa.
+   */
+  event?: (number | null) | ClubEvent;
+  status: 'new' | 'contacted' | 'accepted' | 'declined' | 'attended';
+  assignedTo?: (number | null) | User;
+  /**
+   * Faqat xodimlar uchun. Yuboruvchiga koʻrsatilmaydi.
+   */
+  internalNotes?: string | null;
+  /**
+   * Shakl yuborilgan sahifa va til.
+   */
+  source?: {
+    path?: string | null;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+  };
+  /**
+   * Shaklda berilgan rozilik. Oʻzgartirib boʻlmaydi.
+   */
+  consent: {
+    given: boolean;
+    /**
+     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     */
+    textVersion: string;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+    at: string;
+  };
+  /**
+   * Shu sanadan keyin yozuv oʻchiriladi yoki anonimlashtiriladi (§13.1).
+   */
+  retainUntil?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Haftalik dayjest obunachilari. Faqat administrator koʻradi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "digest-subscribers".
+ */
+export interface DigestSubscriber {
+  id: number;
+  email: string;
+  locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+  /**
+   * Obuna boʻlingan shakl, masalan home-digest.
+   */
+  placement?: string | null;
+  confirmTokenHash?: string | null;
+  confirmedAt?: string | null;
+  unsubscribedAt?: string | null;
+  status: 'pending' | 'confirmed' | 'unsubscribed';
+  assignedTo?: (number | null) | User;
+  /**
+   * Faqat xodimlar uchun. Yuboruvchiga koʻrsatilmaydi.
+   */
+  internalNotes?: string | null;
+  /**
+   * Shakl yuborilgan sahifa va til.
+   */
+  source?: {
+    path?: string | null;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+  };
+  /**
+   * Shaklda berilgan rozilik. Oʻzgartirib boʻlmaydi.
+   */
+  consent: {
+    given: boolean;
+    /**
+     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     */
+    textVersion: string;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+    at: string;
+  };
+  /**
+   * Shu sanadan keyin yozuv oʻchiriladi yoki anonimlashtiriladi (§13.1).
+   */
+  retainUntil?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Aloqa shaklidan kelgan xabarlar. Har bir boʻlim faqat oʻz mavzularini koʻradi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-messages".
+ */
+export interface ContactMessage {
+  id: number;
+  /**
+   * Mavzuni faqat bosh muharrir va administrator oʻzgartira oladi.
+   */
+  topic: 'tahririyat' | 'tuzatish' | 'reklama' | 'klub' | 'boshqa';
+  name: string;
+  email: string;
+  url?: string | null;
+  message: string;
+  /**
+   * Havola muomalat.uz maqolasiga olib borsa, avtomatik topiladi.
+   */
+  article?: (number | null) | Article;
+  status: 'new' | 'in_progress' | 'closed';
+  assignedTo?: (number | null) | User;
+  /**
+   * Faqat xodimlar uchun. Yuboruvchiga koʻrsatilmaydi.
+   */
+  internalNotes?: string | null;
+  /**
+   * Shakl yuborilgan sahifa va til.
+   */
+  source?: {
+    path?: string | null;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+  };
+  /**
+   * Shaklda berilgan rozilik. Oʻzgartirib boʻlmaydi.
+   */
+  consent: {
+    given: boolean;
+    /**
+     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     */
+    textVersion: string;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+    at: string;
+  };
+  /**
+   * Shu sanadan keyin yozuv oʻchiriladi yoki anonimlashtiriladi (§13.1).
+   */
+  retainUntil?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Reklama beruvchilarning soʻrovlari. Tijorat boʻlimi ishlaydi; bosh muharrir va administrator koʻradi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "advertising-requests".
+ */
+export interface AdvertisingRequest {
+  id: number;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  format: 'banner' | 'sponsored' | 'telegram' | 'digest' | 'club' | 'several';
+  budget?: ('upTo10' | 'upTo30' | 'upTo100' | 'over100' | 'unknown') | null;
+  message: string;
+  /**
+   * Belgilansa, yozuv 3 yil saqlanadi (Reklama toʻgʻrisidagi qonun, 15-modda).
+   */
+  contract?: boolean | null;
+  status: 'new' | 'in_progress' | 'won' | 'lost';
+  assignedTo?: (number | null) | User;
+  /**
+   * Faqat xodimlar uchun. Yuboruvchiga koʻrsatilmaydi.
+   */
+  internalNotes?: string | null;
+  /**
+   * Shakl yuborilgan sahifa va til.
+   */
+  source?: {
+    path?: string | null;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+  };
+  /**
+   * Shaklda berilgan rozilik. Oʻzgartirib boʻlmaydi.
+   */
+  consent: {
+    given: boolean;
+    /**
+     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     */
+    textVersion: string;
+    locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
+    at: string;
+  };
+  /**
+   * Shu sanadan keyin yozuv oʻchiriladi yoki anonimlashtiriladi (§13.1).
+   */
+  retainUntil?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Oʻzgarmas jurnal: yozuvlarni hech kim tahrirlay yoki oʻchira olmaydi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log".
+ */
+export interface AuditLog {
+  id: number;
+  at?: string | null;
+  /**
+   * Ichki chaqiruvlarda boʻsh; actorEmail «system:worker» yoki «system:import» boʻladi.
+   */
+  actorId?: number | null;
+  actorEmail?: string | null;
+  actorRole?: string | null;
+  action: string;
+  collection?: string | null;
+  docId?: string | null;
+  /**
+   * Yozilgan paytdagi sarlavha. Shaxsiy maʼlumotlar hujjatlarida boʻsh.
+   */
+  docTitle?: string | null;
+  locale?: string | null;
+  versionId?: string | null;
+  summary?: string | null;
+  /**
+   * Faqat maydon yoʻllari, qiymatlarsiz.
+   */
+  changedPaths?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * 90 kundan keyin /24 gacha qisqartiriladi.
+   */
+  ip?: string | null;
+  country?: string | null;
+  userAgent?: string | null;
+  requestId?: string | null;
+  prevHash?: string | null;
+  /**
+   * sha256(prevHash + canonicalJSON(yozuv)); zanjir har tunda tekshiriladi.
+   */
+  hash?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Nashrdan keyingi ishlar navbati: kesh yangilash, Cloudflare tozalash, Telegram.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "publish-events".
+ */
+export interface PublishEvent {
+  id: number;
+  at: string;
+  collection: string;
+  docId?: string | null;
+  kind:
+    | 'publish_first'
+    | 'publish_change'
+    | 'unpublish'
+    | 'withdraw'
+    | 'restore'
+    | 'delete'
+    | 'global_change'
+    | 'schedule_run';
+  /**
+   * Nashr qilingan maqoladagi oʻzgarish turi (§5.6).
+   */
+  changeKind?: ('minor' | 'update' | 'correction' | 'clarification' | 'editors_note') | null;
+  actorId?: number | null;
+  /**
+   * Kesh teglari, ichki yoʻllar va tozalanadigan URL manzillar (§8.5).
+   */
+  targets?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  status: 'pending' | 'done' | 'failed';
+  attempts?: number | null;
+  lastError?: string | null;
+  processedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Eski manzildan yangisiga 301 yoʻnaltirish. Chop etilgan maqola manzili oʻzgarganda avtomatik yaratiladi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects".
+ */
+export interface Redirect {
+  id: number;
+  /**
+   * Eski manzil, til prefiksi bilan: /tahlil/eski-slug, /ru/tahlil/eski-slug. Domen yozilmaydi.
+   */
+  from: string;
+  to?: {
+    type?: ('reference' | 'custom') | null;
+    reference?:
+      | ({
+          relationTo: 'articles';
+          value: number | Article;
+        } | null)
+      | ({
+          relationTo: 'glossary-terms';
+          value: number | GlossaryTerm;
+        } | null)
+      | ({
+          relationTo: 'club-events';
+          value: number | ClubEvent;
+        } | null)
+      | ({
+          relationTo: 'authors';
+          value: number | Author;
+        } | null)
+      | ({
+          relationTo: 'tags';
+          value: number | Tag;
+        } | null);
+    url?: string | null;
+  };
+  /**
+   * 301: doimiy yoʻnaltirish. Qidiruv tizimlari eski manzilni yangisiga almashtiradi.
+   */
+  type: '301';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -232,12 +1700,72 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: 'users';
-        value: number | User;
+        relationTo: 'articles';
+        value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'authors';
+        value: number | Author;
+      } | null)
+    | ({
+        relationTo: 'rubrics';
+        value: number | Rubric;
+      } | null)
+    | ({
+        relationTo: 'tags';
+        value: number | Tag;
       } | null)
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'glossary-terms';
+        value: number | GlossaryTerm;
+      } | null)
+    | ({
+        relationTo: 'institutions';
+        value: number | Institution;
+      } | null)
+    | ({
+        relationTo: 'milestones';
+        value: number | Milestone;
+      } | null)
+    | ({
+        relationTo: 'club-events';
+        value: number | ClubEvent;
+      } | null)
+    | ({
+        relationTo: 'requests';
+        value: number | Request;
+      } | null)
+    | ({
+        relationTo: 'telegram-posts';
+        value: number | TelegramPost;
+      } | null)
+    | ({
+        relationTo: 'club-applications';
+        value: number | ClubApplication;
+      } | null)
+    | ({
+        relationTo: 'digest-subscribers';
+        value: number | DigestSubscriber;
+      } | null)
+    | ({
+        relationTo: 'contact-messages';
+        value: number | ContactMessage;
+      } | null)
+    | ({
+        relationTo: 'advertising-requests';
+        value: number | AdvertisingRequest;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
+      } | null)
+    | ({
+        relationTo: 'redirects';
+        value: number | Redirect;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -283,31 +1811,324 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users_select".
+ * via the `definition` "payload-query-presets".
  */
-export interface UsersSelect<T extends boolean = true> {
-  name?: T;
-  role?: T;
-  active?: T;
-  preferredContentLocale?: T;
-  offboardedAt?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  email?: T;
-  resetPasswordToken?: T;
-  resetPasswordExpiration?: T;
-  salt?: T;
-  hash?: T;
-  resetPasswordRequestedAt?: T;
-  loginAttempts?: T;
-  lockUntil?: T;
-  sessions?:
+export interface PayloadQueryPreset {
+  id: number;
+  title: string;
+  isShared?: boolean | null;
+  access?: {
+    read?: {
+      constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
+      users?: (number | User)[] | null;
+    };
+    update?: {
+      constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
+      users?: (number | User)[] | null;
+    };
+    delete?: {
+      constraint?: ('everyone' | 'onlyMe' | 'specificUsers') | null;
+      users?: (number | User)[] | null;
+    };
+  };
+  where?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  columns?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  groupBy?: string | null;
+  relatedCollection: 'articles';
+  /**
+   * This is a temporary field used to determine if updating the preset would remove the user's access to it. When `true`, this record will be deleted after running the preset's `validate` function.
+   */
+  isTemp?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles_select".
+ */
+export interface ArticlesSelect<T extends boolean = true> {
+  rubric?: T;
+  slug?: T;
+  authors?: T;
+  workflowStatus?: T;
+  assignee?: T;
+  deskEditor?: T;
+  dueAt?: T;
+  dueAt_tz?: T;
+  priority?: T;
+  urgent?: T;
+  lastEditedBy?: T;
+  legacyId?: T;
+  title?: T;
+  kicker?: T;
+  lead?: T;
+  body?: T;
+  image?: T;
+  imageCaption?: T;
+  tags?: T;
+  terms?: T;
+  about?: T;
+  mentions?: T;
+  related?: T;
+  interviewee?:
     | T
     | {
-        id?: T;
-        createdAt?: T;
-        expiresAt?: T;
+        name?: T;
+        role?: T;
+        organisation?: T;
+        portrait?: T;
       };
+  sources?:
+    | T
+    | {
+        title?: T;
+        publisher?: T;
+        url?: T;
+        date?: T;
+        type?: T;
+        id?: T;
+      };
+  featured?: T;
+  publishedAt?: T;
+  publishedAt_tz?: T;
+  firstPublishedAt?: T;
+  firstPublishedAt_tz?: T;
+  significantUpdateAt?: T;
+  significantUpdateAt_tz?: T;
+  scheduledAt?: T;
+  scheduledAt_tz?: T;
+  embargo?:
+    | T
+    | {
+        until?: T;
+        until_tz?: T;
+        indefinite?: T;
+        source?: T;
+        note?: T;
+      };
+  submittedBy?: T;
+  submittedAt?: T;
+  approvedBy?: T;
+  approvedAt?: T;
+  approvedContentHash?: T;
+  publishedBy?: T;
+  scheduledBy?: T;
+  scheduleError?: T;
+  secondRead?:
+    | T
+    | {
+        required?: T;
+        dueAt?: T;
+        dueAt_tz?: T;
+        doneBy?: T;
+        doneAt?: T;
+        outcome?: T;
+      };
+  changeNote?:
+    | T
+    | {
+        kind?: T;
+        reason?: T;
+        numbersOverride?: T;
+      };
+  workflowHistory?:
+    | T
+    | {
+        from?: T;
+        to?: T;
+        by?: T;
+        at?: T;
+        comment?: T;
+        id?: T;
+      };
+  withdrawal?:
+    | T
+    | {
+        at?: T;
+        by?: T;
+        publicNotice?: T;
+        internalReason?: T;
+        hideTitle?: T;
+        request?: T;
+      };
+  corrections?:
+    | T
+    | {
+        kind?: T;
+        publicText?: T;
+        location?: T;
+        internalReason?: T;
+        createdAt?: T;
+        createdBy?: T;
+        approvedBy?: T;
+        versionId?: T;
+        request?: T;
+        telegramAction?: T;
+        id?: T;
+      };
+  sponsored?:
+    | T
+    | {
+        enabled?: T;
+        partner?: T;
+        advertiserLegalName?: T;
+        category?: T;
+        licenceNumber?: T;
+        licenceIssuer?: T;
+        riskWarning?: T;
+        keyTerms?: T;
+        disclosure?: T;
+        contractRef?: T;
+        campaignStart?: T;
+        campaignStart_tz?: T;
+        campaignEnd?: T;
+        campaignEnd_tz?: T;
+        approvedBy?: T;
+        approvedAt?: T;
+        retainUntil?: T;
+      };
+  translation?:
+    | T
+    | {
+        status?: T;
+        assignee?: T;
+        translatedBy?: T;
+        reviewedBy?: T;
+        approvedAt?: T;
+        contentHash?: T;
+        machine?:
+          | T
+          | {
+              used?: T;
+              engine?: T;
+            };
+      };
+  kr?:
+    | T
+    | {
+        title?: T;
+        lead?: T;
+        kicker?: T;
+        checked?: T;
+        checkedBy?: T;
+        checkedAt?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  noindex?: T;
+  shortCode?: T;
+  slugHistory?:
+    | T
+    | {
+        slug?: T;
+        rubric?: T;
+        changedAt?: T;
+        id?: T;
+      };
+  telegram?:
+    | T
+    | {
+        autopost?: T;
+        captionOverride?: T;
+        silent?: T;
+      };
+  telegramPosts?: T;
+  editorNotes?: T;
+  sourceNotes?: T;
+  needsLegal?: T;
+  needsPicture?: T;
+  legalSignOff?:
+    | T
+    | {
+        by?: T;
+        at?: T;
+        note?: T;
+      };
+  legallySensitive?: T;
+  singleAnonymousSource?: T;
+  supervisor?: T;
+  inappropriateForSponsorship?: T;
+  ageMark?: T;
+  legalHold?: T;
+  validationWarnings?: T;
+  views?: T;
+  _authorUsers?: T;
+  mediaRefs?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "authors_select".
+ */
+export interface AuthorsSelect<T extends boolean = true> {
+  slug?: T;
+  name?: T;
+  role?: T;
+  bio?: T;
+  commercial?: T;
+  isTeam?: T;
+  email?: T;
+  telegram?: T;
+  portrait?: T;
+  active?: T;
+  user?: T;
+  lastEditedBy?: T;
+  legacyId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rubrics_select".
+ */
+export interface RubricsSelect<T extends boolean = true> {
+  slug?: T;
+  order?: T;
+  name?: T;
+  description?: T;
+  lastEditedBy?: T;
+  legacyId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags_select".
+ */
+export interface TagsSelect<T extends boolean = true> {
+  slug?: T;
+  label?: T;
+  lastEditedBy?: T;
+  legacyId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -318,6 +2139,15 @@ export interface MediaSelect<T extends boolean = true> {
   decorative?: T;
   caption?: T;
   credit?: T;
+  creator?: T;
+  rightsCategory?: T;
+  licenceUrl?: T;
+  copyrightNotice?: T;
+  usableUntil?: T;
+  restrictions?: T;
+  evidence?: T;
+  sponsoredOnly?: T;
+  usedIn?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -376,6 +2206,527 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "glossary-terms_select".
+ */
+export interface GlossaryTermsSelect<T extends boolean = true> {
+  slug?: T;
+  needsReview?: T;
+  category?: T;
+  lastEditedBy?: T;
+  legacyId?: T;
+  term?: T;
+  aliases?:
+    | T
+    | {
+        ru?: T;
+        en?: T;
+        ar?: T;
+        other?: T;
+      };
+  short?: T;
+  definition?: T;
+  origin?: T;
+  practice?: T;
+  steps?:
+    | T
+    | {
+        text?: T;
+        id?: T;
+      };
+  example?:
+    | T
+    | {
+        title?: T;
+        text?: T;
+      };
+  related?: T;
+  translation?:
+    | T
+    | {
+        status?: T;
+        assignee?: T;
+        translatedBy?: T;
+        reviewedBy?: T;
+        approvedAt?: T;
+        contentHash?: T;
+        machine?:
+          | T
+          | {
+              used?: T;
+              engine?: T;
+            };
+      };
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "institutions_select".
+ */
+export interface InstitutionsSelect<T extends boolean = true> {
+  name?: T;
+  type?: T;
+  parent?: T;
+  city?: T;
+  status?: T;
+  statusDate?: T;
+  statusSource?: T;
+  licenceNumber?: T;
+  statusHistory?:
+    | T
+    | {
+        status?: T;
+        date?: T;
+        source?: T;
+        note?: T;
+        id?: T;
+      };
+  products?: T;
+  note?: T;
+  article?: T;
+  needsReview?: T;
+  translation?:
+    | T
+    | {
+        status?: T;
+        assignee?: T;
+        translatedBy?: T;
+        reviewedBy?: T;
+        approvedAt?: T;
+        contentHash?: T;
+        machine?:
+          | T
+          | {
+              used?: T;
+              engine?: T;
+            };
+      };
+  lastEditedBy?: T;
+  legacyId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "milestones_select".
+ */
+export interface MilestonesSelect<T extends boolean = true> {
+  date?: T;
+  title?: T;
+  text?: T;
+  status?: T;
+  article?: T;
+  translation?:
+    | T
+    | {
+        status?: T;
+        assignee?: T;
+        translatedBy?: T;
+        reviewedBy?: T;
+        approvedAt?: T;
+        contentHash?: T;
+        machine?:
+          | T
+          | {
+              used?: T;
+              engine?: T;
+            };
+      };
+  lastEditedBy?: T;
+  legacyId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "club-events_select".
+ */
+export interface ClubEventsSelect<T extends boolean = true> {
+  slug?: T;
+  number?: T;
+  lastEditedBy?: T;
+  legacyId?: T;
+  title?: T;
+  theme?: T;
+  startsAt?: T;
+  startsAt_tz?: T;
+  endsAt?: T;
+  endsAt_tz?: T;
+  venue?:
+    | T
+    | {
+        name?: T;
+        address?: T;
+        city?: T;
+      };
+  summary?: T;
+  image?: T;
+  imageCaption?: T;
+  capacity?: T;
+  registrationOpen?: T;
+  registrationClosesAt?: T;
+  registrationClosesAt_tz?: T;
+  agenda?:
+    | T
+    | {
+        time?: T;
+        title?: T;
+        speaker?: T;
+        id?: T;
+      };
+  speakers?:
+    | T
+    | {
+        name?: T;
+        role?: T;
+        portrait?: T;
+        id?: T;
+      };
+  report?: T;
+  takeaways?:
+    | T
+    | {
+        text?: T;
+        id?: T;
+      };
+  translation?:
+    | T
+    | {
+        status?: T;
+        assignee?: T;
+        translatedBy?: T;
+        reviewedBy?: T;
+        approvedAt?: T;
+        contentHash?: T;
+        machine?:
+          | T
+          | {
+              used?: T;
+              engine?: T;
+            };
+      };
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "requests_select".
+ */
+export interface RequestsSelect<T extends boolean = true> {
+  kind?: T;
+  article?: T;
+  requesterName?: T;
+  requesterContact?: T;
+  receivedAt?: T;
+  receivedAt_tz?: T;
+  channel?: T;
+  summary?: T;
+  documents?: T;
+  assignedTo?: T;
+  dueAt?: T;
+  status?: T;
+  decision?: T;
+  decidedBy?: T;
+  decidedAt?: T;
+  response?: T;
+  retainUntil?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "telegram-posts_select".
+ */
+export interface TelegramPostsSelect<T extends boolean = true> {
+  article?: T;
+  kind?: T;
+  status?: T;
+  captionHtml?: T;
+  photo?: T;
+  imageFileId?: T;
+  silent?: T;
+  sponsored?: T;
+  requestedBy?: T;
+  approvedBy?: T;
+  sendAt?: T;
+  sendAt_tz?: T;
+  chatId?: T;
+  messageId?: T;
+  sentAt?: T;
+  replyTo?: T;
+  history?:
+    | T
+    | {
+        at?: T;
+        action?: T;
+        captionHtml?: T;
+        id?: T;
+      };
+  lastError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "club-applications_select".
+ */
+export interface ClubApplicationsSelect<T extends boolean = true> {
+  name?: T;
+  company?: T;
+  sector?: T;
+  size?: T;
+  phone?: T;
+  email?: T;
+  interests?: T;
+  message?: T;
+  attend?: T;
+  event?: T;
+  status?: T;
+  assignedTo?: T;
+  internalNotes?: T;
+  source?:
+    | T
+    | {
+        path?: T;
+        locale?: T;
+      };
+  consent?:
+    | T
+    | {
+        given?: T;
+        textVersion?: T;
+        locale?: T;
+        at?: T;
+      };
+  retainUntil?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "digest-subscribers_select".
+ */
+export interface DigestSubscribersSelect<T extends boolean = true> {
+  email?: T;
+  locale?: T;
+  placement?: T;
+  confirmTokenHash?: T;
+  confirmedAt?: T;
+  unsubscribedAt?: T;
+  status?: T;
+  assignedTo?: T;
+  internalNotes?: T;
+  source?:
+    | T
+    | {
+        path?: T;
+        locale?: T;
+      };
+  consent?:
+    | T
+    | {
+        given?: T;
+        textVersion?: T;
+        locale?: T;
+        at?: T;
+      };
+  retainUntil?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-messages_select".
+ */
+export interface ContactMessagesSelect<T extends boolean = true> {
+  topic?: T;
+  name?: T;
+  email?: T;
+  url?: T;
+  message?: T;
+  article?: T;
+  status?: T;
+  assignedTo?: T;
+  internalNotes?: T;
+  source?:
+    | T
+    | {
+        path?: T;
+        locale?: T;
+      };
+  consent?:
+    | T
+    | {
+        given?: T;
+        textVersion?: T;
+        locale?: T;
+        at?: T;
+      };
+  retainUntil?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "advertising-requests_select".
+ */
+export interface AdvertisingRequestsSelect<T extends boolean = true> {
+  name?: T;
+  company?: T;
+  email?: T;
+  phone?: T;
+  format?: T;
+  budget?: T;
+  message?: T;
+  contract?: T;
+  status?: T;
+  assignedTo?: T;
+  internalNotes?: T;
+  source?:
+    | T
+    | {
+        path?: T;
+        locale?: T;
+      };
+  consent?:
+    | T
+    | {
+        given?: T;
+        textVersion?: T;
+        locale?: T;
+        at?: T;
+      };
+  retainUntil?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users_select".
+ */
+export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  role?: T;
+  active?: T;
+  author?: T;
+  preferredContentLocale?: T;
+  declaredInterests?:
+    | T
+    | {
+        institution?: T;
+        nature?: T;
+        since?: T;
+        note?: T;
+        id?: T;
+      };
+  telegramUserId?: T;
+  offboardedAt?: T;
+  lastLoginAt?: T;
+  lastLoginCountry?: T;
+  knownCountries?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  resetPasswordRequestedAt?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log_select".
+ */
+export interface AuditLogSelect<T extends boolean = true> {
+  at?: T;
+  actorId?: T;
+  actorEmail?: T;
+  actorRole?: T;
+  action?: T;
+  collection?: T;
+  docId?: T;
+  docTitle?: T;
+  locale?: T;
+  versionId?: T;
+  summary?: T;
+  changedPaths?: T;
+  before?: T;
+  after?: T;
+  ip?: T;
+  country?: T;
+  userAgent?: T;
+  requestId?: T;
+  prevHash?: T;
+  hash?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "publish-events_select".
+ */
+export interface PublishEventsSelect<T extends boolean = true> {
+  at?: T;
+  collection?: T;
+  docId?: T;
+  kind?: T;
+  changeKind?: T;
+  actorId?: T;
+  targets?: T;
+  status?: T;
+  attempts?: T;
+  lastError?: T;
+  processedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects_select".
+ */
+export interface RedirectsSelect<T extends boolean = true> {
+  from?: T;
+  to?:
+    | T
+    | {
+        type?: T;
+        reference?: T;
+        url?: T;
+      };
+  type?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -413,6 +2764,823 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-query-presets_select".
+ */
+export interface PayloadQueryPresetsSelect<T extends boolean = true> {
+  title?: T;
+  isShared?: T;
+  access?:
+    | T
+    | {
+        read?:
+          | T
+          | {
+              constraint?: T;
+              users?: T;
+            };
+        update?:
+          | T
+          | {
+              constraint?: T;
+              users?: T;
+            };
+        delete?:
+          | T
+          | {
+              constraint?: T;
+              users?: T;
+            };
+      };
+  where?: T;
+  columns?: T;
+  groupBy?: T;
+  relatedCollection?: T;
+  isTemp?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * Bosh sahifa tanlovi. Boʻsh joylar avtomatik toʻldiriladi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home-page".
+ */
+export interface HomePage {
+  id: number;
+  /**
+   * Reklama (hamkorlik) materiali yetakchi boʻla olmaydi. Boʻsh boʻlsa, eng yangi tanlangan maqola chiqadi.
+   */
+  lead?: (number | null) | Article;
+  secondary?: (number | Article)[] | null;
+  /**
+   * Belgilangan muddatgacha yuqorida turadi.
+   */
+  pinned?:
+    | {
+        article: number | Article;
+        until?: string | null;
+        until_tz?: SupportedTimezones;
+        id?: string | null;
+      }[]
+    | null;
+  breaking?: {
+    enabled?: boolean | null;
+    text?: string | null;
+    article?: (number | null) | Article;
+    until?: string | null;
+    until_tz?: SupportedTimezones;
+  };
+  /**
+   * Faqat «Intervyu» rubrikasidagi maqola.
+   */
+  interviewFeature?: (number | null) | Article;
+  /**
+   * Faqat bosh muharrir tanlaydi. Faqat reklama (hamkorlik) materiali.
+   */
+  sponsoredTeaser?: (number | null) | Article;
+  /**
+   * Analitika ishga tushguncha. Boʻsh boʻlsa, reklamasiz eng yangi maqolalar.
+   */
+  mostReadOverride?: (number | Article)[] | null;
+  launchedBy?: (number | null) | User;
+  launchedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Sayt menyulari. Tartib roʻyxatdagi tartib boʻyicha.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "navigation".
+ */
+export interface Navigation {
+  id: number;
+  header?:
+    | {
+        kind: 'rubric' | 'page' | 'custom';
+        rubric?: (number | null) | Rubric;
+        page?: ('lugat' | 'xarita' | 'klub' | 'dayjest' | 'about' | 'advertise' | 'contact') | null;
+        /**
+         * Saytdagi sahifa yoʻli, til prefiksisiz: /mavzu/ijora, /biz-haqimizda#tuzatishlar.
+         */
+        path?: string | null;
+        /**
+         * Ixtiyoriy. Boʻsh boʻlsa, sayt matnlaridagi standart nom ishlatiladi.
+         */
+        label?: string | null;
+        visible?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Har bir qator — bitta ustun.
+   */
+  footer?:
+    | {
+        title?: string | null;
+        items?:
+          | {
+              kind: 'rubric' | 'page' | 'custom';
+              rubric?: (number | null) | Rubric;
+              page?: ('lugat' | 'xarita' | 'klub' | 'dayjest' | 'about' | 'advertise' | 'contact') | null;
+              /**
+               * Saytdagi sahifa yoʻli, til prefiksisiz: /mavzu/ijora, /biz-haqimizda#tuzatishlar.
+               */
+              path?: string | null;
+              /**
+               * Ixtiyoriy. Boʻsh boʻlsa, sayt matnlaridagi standart nom ishlatiladi.
+               */
+              label?: string | null;
+              visible?: boolean | null;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Saytdagi reklama bloklari. Faqat rasm: HTML, skript va tashqi kodlar qoʻyilmaydi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ad-slots".
+ */
+export interface AdSlot {
+  id: number;
+  slots?:
+    | {
+        slotId:
+          | 'home-mid'
+          | 'home-mid-mobile'
+          | 'article-rail'
+          | 'rubric-yangiliklar-rail'
+          | 'rubric-tahlil-rail'
+          | 'rubric-intervyu-rail'
+          | 'rubric-izoh-rail'
+          | 'rubric-dunyo-rail'
+          | 'tag-rail'
+          | 'author-rail';
+        format: 'leaderboard' | 'mpu' | 'inline';
+        enabled?: boolean | null;
+        /**
+         * Faqat tijorat boʻlimi yuklagan (sponsoredOnly) rasm.
+         */
+        creative?: (number | null) | Media;
+        /**
+         * Rasmdagi matn oʻzbekcha boʻlmasa, majburiy (Reklama toʻgʻrisidagi qonun, 6-modda).
+         */
+        creativeUz?: (number | null) | Media;
+        creativeAlt?: string | null;
+        linkUrl?: string | null;
+        advertiserName?: string | null;
+        category?:
+          ('general' | 'financial_service' | 'bank_deposit' | 'investment_securities' | 'insurance_takaful') | null;
+        licenceNumber?: string | null;
+        /**
+         * Rasm ostida koʻrsatiladi (Reklama toʻgʻrisidagi qonun, 42-modda).
+         */
+        riskWarning?: string | null;
+        startsAt?: string | null;
+        startsAt_tz?: SupportedTimezones;
+        endsAt?: string | null;
+        endsAt_tz?: SupportedTimezones;
+        /**
+         * Ichki; saytda koʻrinmaydi.
+         */
+        contractRef?: string | null;
+        ageMark?: ('0+' | '7+' | '12+' | '16+' | '18+') | null;
+        id?: string | null;
+      }[]
+    | null;
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Saytning umumiy, huquqiy va texnik sozlamalari.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings".
+ */
+export interface SiteSetting {
+  id: number;
+  name: string;
+  domain: string;
+  email?: string | null;
+  foundedYear?: number | null;
+  /**
+   * OAV toʻgʻrisidagi qonun, 27¹-modda. Faqat bosh muharrir oʻzgartiradi. Har qanday oʻzgarish haqida bir oy ichida roʻyxatga olgan organga xabar beriladi (20-modda).
+   */
+  legal?: {
+    registrationNumber?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    /**
+     * KK.OO.YYYY
+     */
+    registrationDate?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    registrar?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    founder?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    /**
+     * Familiya, ism, otasining ismi.
+     */
+    editorInChief?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    address?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    /**
+     * Pochta indeksi yoki obuna indeksi: qaysi biri talab qilinishini huquqshunos aniqlaydi.
+     */
+    postalIndex?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    email?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    phone?: {
+      value?: string | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    ageMark?: {
+      value?: ('0+' | '7+' | '12+' | '16+' | '18+') | null;
+      /**
+       * Belgilangan qator saytda namuna sifatida koʻrsatiladi.
+       */
+      placeholder?: boolean | null;
+    };
+    meta?: {
+      lastChangedAt?: string | null;
+    };
+  };
+  demo?: {
+    /**
+     * Oʻchirish uchun avval barcha chiqish maʼlumotlari haqiqiy boʻlishi kerak (namuna belgisi olib tashlangan).
+     */
+    noticeEnabled?: boolean | null;
+    noticeText?: string | null;
+  };
+  /**
+   * Oʻzbekchada «Reklama», ruschada «Реклама», inglizchada «Advertisement» soʻzi boʻlishi shart.
+   */
+  labels?: {
+    sponsored?: string | null;
+    advert?: string | null;
+  };
+  telegram: {
+    channelHandle?: string | null;
+    channelUrl?: string | null;
+    /**
+     * Bot tekshiruvi yozadi (-100… raqami).
+     */
+    channelChatId?: string | null;
+    /**
+     * Masalan, @muomalat_bot.
+     */
+    feedbackBot?: string | null;
+    /**
+     * Kanal egasi Telegram ilovasida yaratadi; bot taklif havolasi yarata olmaydi.
+     */
+    inviteLinks?:
+      | {
+          placement: 'sticky' | 'article_footer' | 'club' | 'digest' | 'in_app';
+          url: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Favqulodda oʻchirish tugmasi. Bosh muharrir ham oʻchira oladi.
+     */
+    postingEnabled?: boolean | null;
+    delayMinutes: number;
+  };
+  policies?: {
+    correctionsPolicyUrl?: string | null;
+    privacyPolicyUrl?: string | null;
+    /**
+     * Shaxsga doir maʼlumotlar toʻgʻrisidagi qonun, 31-modda.
+     */
+    personalDataOfficer?: {
+      name?: string | null;
+      email?: string | null;
+    };
+    /**
+     * /.well-known/security.txt uchun: mailto: yoki https:// havola. Faqat administrator.
+     */
+    securityContact?: string | null;
+  };
+  /**
+   * Barcha sahifalar tepasida koʻrinadigan qisqa eʼlon.
+   */
+  emergency?: {
+    enabled?: boolean | null;
+    text?: string | null;
+    link?: string | null;
+    level?: ('info' | 'warning') | null;
+  };
+  operations?: {
+    /**
+     * Yoqilsa, CMSda hech kim hech narsani oʻzgartira olmaydi (administratorning shu boʻlimidan tashqari). Hodisa paytida ishlatiladi.
+     */
+    readOnly?: boolean | null;
+    /**
+     * Ish vaqtidan tashqari birinchi nashr ogohlantirish beradi.
+     */
+    officeHours?: {
+      start?: string | null;
+      end?: string | null;
+    };
+    /**
+     * Muhim hodisalar e-pochta orqali yuboriladi (Telegram guruhiga qoʻshimcha).
+     */
+    alertRecipients?:
+      | {
+          name: string;
+          email: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Kod ichidagi qoidalarga qoʻshimchalar. Faqat bosh muharrir oʻzgartiradi; kod qoidasini bu yerdan oʻchirib boʻlmaydi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "editorial-rules".
+ */
+export interface EditorialRule {
+  id: number;
+  /**
+   * Diniy atamalar (TXT-3): nashr qilinmaydi. Koddagi roʻyxatga qoʻshiladi.
+   */
+  bannedTerms?:
+    | {
+        pattern: string;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Hukmga oʻxshash iboralar: ogohlantirish beradi, muharrir koʻrib chiqadi.
+   */
+  reviewTerms?:
+    | {
+        pattern: string;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Matnda uchrasa, «Haqida/Eslatilgan» maydoniga belgilash taklif qilinadi (TXT-5).
+   */
+  realOrgNames?:
+    | {
+        name: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Masalan: som → soʻm (TXT-10).
+   */
+  houseSpellings?:
+    | {
+        wrong: string;
+        right: string;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Kafolatlangan daromad vaʼdasi kabi iboralar, masalan «kafolatlangan daromad», «гарантированн\w+ доход», «guaranteed return».
+   */
+  expectedReturnPhrases?:
+    | {
+        locale: 'uz' | 'ru' | 'en';
+        pattern: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Shoshilinch yoʻl (§5.4) uchun: manba havolasi shu domenlardan birida boʻlishi kerak.
+   */
+  officialSourceDomains?:
+    | {
+        domain: string;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  translitExceptions?:
+    | {
+        latin: string;
+        cyrillic: string;
+        /**
+         * Soʻz oxirida yumshatish belgisi qoʻyiladi.
+         */
+        softEnd?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Lotin harflarida qoladigan qisqartmalar, masalan AAOIFI.
+   */
+  translitKeep?:
+    | {
+        term: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Belgilar soni. Ogohlantirish chegarasi xato chegarasidan kichik boʻlishi kerak.
+   */
+  limits: {
+    titleWarn: number;
+    titleMax: number;
+    leadWarn: number;
+    leadMax: number;
+    telegramCaption: number;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home-page_select".
+ */
+export interface HomePageSelect<T extends boolean = true> {
+  lead?: T;
+  secondary?: T;
+  pinned?:
+    | T
+    | {
+        article?: T;
+        until?: T;
+        until_tz?: T;
+        id?: T;
+      };
+  breaking?:
+    | T
+    | {
+        enabled?: T;
+        text?: T;
+        article?: T;
+        until?: T;
+        until_tz?: T;
+      };
+  interviewFeature?: T;
+  sponsoredTeaser?: T;
+  mostReadOverride?: T;
+  launchedBy?: T;
+  launchedAt?: T;
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "navigation_select".
+ */
+export interface NavigationSelect<T extends boolean = true> {
+  header?:
+    | T
+    | {
+        kind?: T;
+        rubric?: T;
+        page?: T;
+        path?: T;
+        label?: T;
+        visible?: T;
+        id?: T;
+      };
+  footer?:
+    | T
+    | {
+        title?: T;
+        items?:
+          | T
+          | {
+              kind?: T;
+              rubric?: T;
+              page?: T;
+              path?: T;
+              label?: T;
+              visible?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ad-slots_select".
+ */
+export interface AdSlotsSelect<T extends boolean = true> {
+  slots?:
+    | T
+    | {
+        slotId?: T;
+        format?: T;
+        enabled?: T;
+        creative?: T;
+        creativeUz?: T;
+        creativeAlt?: T;
+        linkUrl?: T;
+        advertiserName?: T;
+        category?: T;
+        licenceNumber?: T;
+        riskWarning?: T;
+        startsAt?: T;
+        startsAt_tz?: T;
+        endsAt?: T;
+        endsAt_tz?: T;
+        contractRef?: T;
+        ageMark?: T;
+        id?: T;
+      };
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings_select".
+ */
+export interface SiteSettingsSelect<T extends boolean = true> {
+  name?: T;
+  domain?: T;
+  email?: T;
+  foundedYear?: T;
+  legal?:
+    | T
+    | {
+        registrationNumber?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        registrationDate?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        registrar?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        founder?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        editorInChief?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        address?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        postalIndex?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        email?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        phone?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        ageMark?:
+          | T
+          | {
+              value?: T;
+              placeholder?: T;
+            };
+        meta?:
+          | T
+          | {
+              lastChangedAt?: T;
+            };
+      };
+  demo?:
+    | T
+    | {
+        noticeEnabled?: T;
+        noticeText?: T;
+      };
+  labels?:
+    | T
+    | {
+        sponsored?: T;
+        advert?: T;
+      };
+  telegram?:
+    | T
+    | {
+        channelHandle?: T;
+        channelUrl?: T;
+        channelChatId?: T;
+        feedbackBot?: T;
+        inviteLinks?:
+          | T
+          | {
+              placement?: T;
+              url?: T;
+              id?: T;
+            };
+        postingEnabled?: T;
+        delayMinutes?: T;
+      };
+  policies?:
+    | T
+    | {
+        correctionsPolicyUrl?: T;
+        privacyPolicyUrl?: T;
+        personalDataOfficer?:
+          | T
+          | {
+              name?: T;
+              email?: T;
+            };
+        securityContact?: T;
+      };
+  emergency?:
+    | T
+    | {
+        enabled?: T;
+        text?: T;
+        link?: T;
+        level?: T;
+      };
+  operations?:
+    | T
+    | {
+        readOnly?: T;
+        officeHours?:
+          | T
+          | {
+              start?: T;
+              end?: T;
+            };
+        alertRecipients?:
+          | T
+          | {
+              name?: T;
+              email?: T;
+              id?: T;
+            };
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "editorial-rules_select".
+ */
+export interface EditorialRulesSelect<T extends boolean = true> {
+  bannedTerms?:
+    | T
+    | {
+        pattern?: T;
+        note?: T;
+        id?: T;
+      };
+  reviewTerms?:
+    | T
+    | {
+        pattern?: T;
+        note?: T;
+        id?: T;
+      };
+  realOrgNames?:
+    | T
+    | {
+        name?: T;
+        id?: T;
+      };
+  houseSpellings?:
+    | T
+    | {
+        wrong?: T;
+        right?: T;
+        note?: T;
+        id?: T;
+      };
+  expectedReturnPhrases?:
+    | T
+    | {
+        locale?: T;
+        pattern?: T;
+        id?: T;
+      };
+  officialSourceDomains?:
+    | T
+    | {
+        domain?: T;
+        note?: T;
+        id?: T;
+      };
+  translitExceptions?:
+    | T
+    | {
+        latin?: T;
+        cyrillic?: T;
+        softEnd?: T;
+        id?: T;
+      };
+  translitKeep?:
+    | T
+    | {
+        term?: T;
+        id?: T;
+      };
+  limits?:
+    | T
+    | {
+        titleWarn?: T;
+        titleMax?: T;
+        leadWarn?: T;
+        leadMax?: T;
+        telegramCaption?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
