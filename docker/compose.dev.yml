@@ -1,0 +1,32 @@
+# Local development services. Ports are bound to 127.0.0.1 only.
+#   docker compose -f docker/compose.dev.yml up -d
+# Roles (docker/postgres/init/01-roles.sql):
+#   muomalat_owner  schema owner; runs migrations (DATABASE_URL_MIGRATE)
+#   muomalat_app    data only, no DDL; used by the app and worker (DATABASE_URL)
+name: muomalat-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: muomalat
+      POSTGRES_USER: muomalat_owner
+      POSTGRES_PASSWORD: dev-owner-password
+      APP_DB_PASSWORD: dev-app-password
+      TZ: Asia/Tashkent
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U muomalat_owner -d muomalat"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.29@sha256:757f22b56c1da03570afdb3d259effe5091018008a81bbedc8158cee7e16fdbc
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+
+volumes:
+  pgdata: {}

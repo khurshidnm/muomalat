@@ -1,3 +1,4 @@
+import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
@@ -7,8 +8,9 @@ const nextConfig: NextConfig = {
   turbopack: { root: process.cwd() },
   images: {
     formats: ['image/avif', 'image/webp'],
-    // Editorial imagery is served as local SVG placeholders today; a CMS will
-    // supply raster photos later and go through the optimiser.
+    // Editorial illustrations are local SVGs; CMS uploads are raster images
+    // served by Payload. Any other local path is refused by the optimiser.
+    localPatterns: [{ pathname: '/images/**' }, { pathname: '/api/media/file/**' }],
     dangerouslyAllowSVG: false,
   },
   // Files in /public have no content hash, so Next serves them with max-age=0
@@ -23,4 +25,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withPayload(nextConfig, { devBundleServerPackages: false })

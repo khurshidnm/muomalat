@@ -20,6 +20,7 @@ __pycache__/
 .vercel
 
 # local databases and uploads
+/.data
 /media
 *.sqlite
 *.sqlite3
