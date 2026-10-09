@@ -124,7 +124,8 @@ describe('globals that belong to one role', () => {
     const payload = await testPayload()
     const sp = (await makeStory([await byline('RT WR2 Sponsor', { commercial: true })], { sponsored: { enabled: true, partner: 'X', disclosure: 'Reklama', contractRef: 'C' } }, true)).id as number
     const ed = (await makeStory([otherByline], {}, true)).id as number
-    await payload.updateGlobal({ slug: 'home-page', overrideAccess: true, data: { sponsoredTeaser: null } as never })
+    // Also empties the lead and secondary slots: an earlier file may have left a refused one in the draft, which this write would validate.
+    await payload.updateGlobal({ slug: 'home-page', overrideAccess: true, data: { sponsoredTeaser: null, lead: null, secondary: [] } as never })
     // An editor may update home-page, but sponsoredTeaser has field access eic-only.
     await rest('POST', '/api/globals/home-page?locale=uz', { cookie: c.editor, body: { lead: ed, sponsoredTeaser: sp } })
     const home = (await payload.findGlobal({ slug: 'home-page', depth: 0, overrideAccess: true })) as Doc

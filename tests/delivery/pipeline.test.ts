@@ -303,6 +303,8 @@ describe('other collections and globals (§8.5)', () => {
     // Other files publish home-page too: count only this editor's rows (publish-events keeps the actor).
     const editor = await staff('editor', 'delivery-home')
     const mine = async () => events(payload, { and: [{ collection: { equals: 'home-page' } }, { actorId: { equals: editor.id } }] })
+    // Start from an empty draft: an earlier file may have left a refused slot in it, and publishing validates all of it.
+    await payload.updateGlobal({ slug: 'home-page', data: { lead: null, secondary: [], _status: 'draft' } as never, draft: true, overrideAccess: true })
     const before = (await mine()).length
     await payload.updateGlobal({ slug: 'home-page', data: { _status: 'draft' }, draft: true, user: editor, overrideAccess: true })
     expect((await mine()).length).toBe(before)

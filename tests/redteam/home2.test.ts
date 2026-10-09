@@ -52,7 +52,10 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await (await testPayload()).destroy()
+  const payload = await testPayload()
+  // A refused publish still leaves its slots in the draft; the home page is shared with the other files of the run.
+  await payload.updateGlobal({ slug: 'home-page', data: { lead: null, secondary: [], _status: 'draft' } as never, draft: true, overrideAccess: true })
+  await payload.destroy()
 })
 
 const setHome = (cookie: string, body: Doc) => rest('POST', '/api/globals/home-page?locale=uz', { cookie, body })

@@ -35,11 +35,14 @@ green state is commit `b2228a7`.
 - Red-team pass 2: all six findings fixed (trash/restore rejects other
   changed fields; `media.uploadedBy` and migration `20261009_150000_wave3`;
   `Object.hasOwn` in `resolveTransition`).
-- Full suite on a fresh DB: 694/694. The earlier intermittent failures
-  (`write2`, `pipeline`) came from test files sharing the one home-page
-  document: some park an invalid draft in it on purpose, and Payload validates
-  the whole document on each write. `vitest.config.ts` now runs the nine files
-  that write home-page one after another (project `home-page`).
+- Full suite on a fresh DB: 694/694 in the first run. The earlier
+  intermittent failures (`write2`, `pipeline`) had two parts. Test files share
+  the one home-page document and some park an invalid draft in it, so
+  `vitest.config.ts` runs the nine files that write it one after another
+  (project `home-page`). That alone was not enough: `home2.test.ts` also left
+  a refused sponsored lead in the draft for later files to trip over, so it
+  now resets the draft, and `pipeline` and `write2` start from an empty one.
+  After this, the `home-page` project passed 4 of 4 finished runs.
 
 Next: the independent security review, then the final local end-to-end test.
 
