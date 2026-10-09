@@ -19,7 +19,10 @@
     "admin:create": "tsx --env-file=.env scripts/create-first-admin.ts",
     "db:migrate": "DB_ROLE=owner payload migrate",
     "db:migrate:create": "DB_ROLE=owner payload migrate:create",
-    "db:migrate:status": "DB_ROLE=owner payload migrate:status"
+    "db:migrate:status": "DB_ROLE=owner payload migrate:status",
+    "worker": "tsx --env-file=.env src/worker/index.ts",
+    "test": "vitest run",
+    "test:db": "scripts/test-db.sh"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.90.2",
