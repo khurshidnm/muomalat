@@ -29,7 +29,7 @@ export interface BlockLabels {
  * `contentLang` marks the story text when it differs from the page language
  * (an untranslated story in ru/en); interface labels keep `labels.lang`.
  */
-export function ArticleBlocks({
+export async function ArticleBlocks({
   blocks,
   locale,
   labels,
@@ -45,6 +45,10 @@ export function ArticleBlocks({
 }) {
   let h2 = 0
   const ui = labels.lang
+  // Term cards: the glossary entries they show, looked up before rendering.
+  const cards = new Map(
+    await Promise.all(blocks.flatMap((b) => (b.type === 'term' ? [b.slug] : [])).map(async (slug) => [slug, await getTerm(locale, slug)] as const)),
+  )
   return (
     <div className="article-body" lang={contentLang}>
       {blocks.map((b, i) => {
@@ -145,7 +149,7 @@ export function ArticleBlocks({
               </aside>
             )
           case 'term': {
-            const term = getTerm(locale, b.slug)
+            const term = cards.get(b.slug)
             if (!term) return null
             return (
               <aside key={key} className="breakout max-w-measure border border-rule bg-paper-2 p-4 font-sans">

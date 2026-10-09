@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { isLocale, locales, type Locale } from '@/i18n/config'
+import { isLocale, locales, localePath, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { listingMessages } from '@/i18n/messages/listing'
-import { getArticles, getArticlesByTag, getLatest, getMostRead, getTag, getTags } from '@/content'
+import { getArticles, getArticlesByTag, getLatest, getMostRead, getTag, getTags, isSlug, resolveMissing } from '@/content'
 import { href, paths } from '@/lib/routes'
 import { jsonLd, pageMetadata } from '@/lib/seo'
 import { TagList } from '@/components/article/EndMatter'
@@ -16,24 +16,25 @@ import { listingLd } from '@/components/listing/ld'
 
 type Params = { params: Promise<{ lang: string; tag: string }> }
 
-export const dynamicParams = false
+/** Seconds; a new story on the topic reaches the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
-export function generateStaticParams() {
-  return locales.flatMap((lang) => getTags(lang).map((t) => ({ lang, tag: t.slug })))
+export async function generateStaticParams() {
+  return (await Promise.all(locales.map(async (lang) => (await getTags(lang)).map((t) => ({ lang, tag: t.slug }))))).flat()
 }
 
-function load(lang: string, slug: string) {
-  if (!isLocale(lang)) return undefined
-  const tag = getTag(lang, slug)
+async function load(lang: string, slug: string) {
+  if (!isLocale(lang) || !isSlug(slug)) return undefined
+  const tag = await getTag(lang, slug)
   return tag ? { locale: lang as Locale, tag } : undefined
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { lang, tag: slug } = await params
-  const p = load(lang, slug)
+  const p = await load(lang, slug)
   if (!p) return {}
   const m = pick(listingMessages, p.locale)
-  const count = getArticlesByTag(p.locale, slug).length
+  const count = (await getArticlesByTag(p.locale, slug)).length
   return pageMetadata({
     locale: p.locale,
     path: paths.tag(slug),
@@ -46,13 +47,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function TagPage({ params }: Params) {
   const { lang, tag: slug } = await params
-  const p = load(lang, slug)
-  if (!p) notFound()
+  const p = await load(lang, slug)
+  if (!p) {
+    if (isLocale(lang) && isSlug(slug)) await resolveMissing(localePath(lang, paths.tag(slug)))
+    notFound()
+  }
   const { locale, tag } = p
   const t = pick(commonMessages, locale)
   const m = pick(listingMessages, locale)
-  const items = getArticlesByTag(locale, slug)
-  const related = relatedTags(locale, slug, items)
+  const items = await getArticlesByTag(locale, slug)
+  const related = await relatedTags(locale, slug, items)
   const ownMostRead = mostReadWithin(items, 5)
   const scoped = ownMostRead.length >= 3
   const description = m.tag.description(tag.label)
@@ -70,8 +74,10 @@ export default async function TagPage({ params }: Params) {
   })
 
   // Topics that do have stories, for the empty state.
-  const all = getArticles(locale)
-  const otherTopics = getTags(locale).filter((x) => x.slug !== slug && all.some((a) => a.tags.includes(x.slug)))
+  const all = await getArticles(locale)
+  const otherTopics = (await getTags(locale)).filter((x) => x.slug !== slug && all.some((a) => a.tags.includes(x.slug)))
+  const siteMostRead = scoped ? ownMostRead : await getMostRead(locale, 5)
+  const latest = await getLatest(locale, 5)
 
   return (
     <>
@@ -95,11 +101,11 @@ export default async function TagPage({ params }: Params) {
         locale={locale}
         articles={items}
         kicker="rubric"
-        mostRead={scoped ? ownMostRead : getMostRead(locale, 5)}
+        mostRead={siteMostRead}
         mostReadScope={scoped ? m.mostReadScope.tag(tag.label) : m.mostReadScope.site}
         idPrefix={`tag-${slug}`}
         empty={
-          <EmptyState locale={locale} title={m.empty.title} text={m.empty.tag} latest={getLatest(locale, 5)} id={`tag-${slug}-empty`}>
+          <EmptyState locale={locale} title={m.empty.title} text={m.empty.tag} latest={latest} id={`tag-${slug}-empty`}>
             {otherTopics.length ? (
               <div className="mt-5">
                 <TagList tags={otherTopics} locale={locale} label={m.empty.otherTopics} />

@@ -7,7 +7,7 @@ import { eventHost, type EventView } from './event'
  * Speakers with square portraits. `list` stacks portrait + name rows (rails,
  * phones); `grid` turns into three columns of larger portraits from `sm`.
  */
-export function Speakers({
+export async function Speakers({
   event,
   locale,
   layout = 'list',
@@ -21,7 +21,7 @@ export function Speakers({
   hostLabel?: string
   className?: string
 }) {
-  const host = hostLabel ? eventHost(event, locale) : undefined
+  const host = hostLabel ? await eventHost(event, locale) : undefined
   const grid = layout === 'grid'
   return (
     <div className={className}>

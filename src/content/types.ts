@@ -27,6 +27,12 @@ export interface ImageRef {
    * story); Uzbek content keeps the Uzbek alt so it matches its lang="uz".
    */
   translations?: Partial<Record<'ru' | 'en', { alt: string; credit?: string }>>
+  /** CMS media only (CMS-SPEC §3.17): JSON-LD image licence fields. */
+  creator?: string
+  copyrightNotice?: string
+  licenseUrl?: string
+  /** Decorative image: rendered with alt="" (CMS-SPEC §3.12). */
+  decorative?: boolean
 }
 
 export interface Rubric {
@@ -51,6 +57,8 @@ export interface Author {
   portrait?: ImageRef
   /** Byline in the ru/en editions. `name` only for team bylines; personal names stay as written. */
   translations?: Partial<Record<'ru' | 'en', { name?: string; role: string; bio: string }>>
+  /** Team byline (CMS): JSON-LD Organization instead of Person. */
+  isTeam?: boolean
 }
 
 export interface Tag {
@@ -134,12 +142,20 @@ export interface Correction {
   /** ISO datetime the correction was made. */
   date: string
   text: string
+  /** CMS only (CMS-SPEC §3.17). */
+  kind?: 'correction' | 'clarification' | 'editors_note'
+  id?: string
 }
 
 export interface Sponsorship {
   /** Generic partner description, e.g. "Lizing kompaniyasi" (never a real brand in mocks). */
   partner: string
   disclosure: string
+  /** CMS only (CMS-SPEC §3.17); the licence and the two texts are rendered by SponsorDisclosure. */
+  category?: 'general' | 'financial_service' | 'bank_deposit' | 'investment_securities' | 'insurance_takaful'
+  licenceNumber?: string
+  riskWarning?: string
+  keyTerms?: string
 }
 
 export interface Interviewee {
@@ -190,6 +206,23 @@ export interface Article {
   /** Mock analytics used for "Koʻp oʻqilgan". */
   views: number
   translations?: Partial<Record<'ru' | 'en', ArticleTranslation>>
+  // ── CMS only (CMS-SPEC §3.17); absent in the mock data ──
+  /** First publication; JSON-LD datePublished. */
+  firstPublishedAt?: string
+  /** Withdrawn story (§5.8): its page shows only the notice; it is left out of every list. */
+  withdrawn?: { at: string; notice: string; hideTitle?: boolean }
+  noindex?: boolean
+  ageMark?: '0+' | '7+' | '12+' | '16+' | '18+'
+  /** Institution ids. */
+  about?: string
+  mentions?: string[]
+  inappropriateForSponsorship?: boolean
+  shortCode?: string
+  /**
+   * A ru/en story shown in an outdated translation (§6.3): the date the Uzbek
+   * original was updated. The page says the translation lags behind.
+   */
+  originalUpdatedAt?: string
 }
 
 export type GlossaryCategory = 'shartnoma' | 'tamoyil' | 'institut' | 'bozor' | 'standart'
@@ -234,6 +267,10 @@ export interface Institution {
   note?: string
   /** Article covering this institution. */
   articleId?: string
+  /** CMS only (CMS-SPEC §3.17). */
+  statusSource?: string
+  licenceNumber?: string
+  statusHistory?: { status: LicenceStatus; date: string; source?: string }[]
 }
 
 export interface Milestone {
@@ -270,4 +307,7 @@ export interface ClubEvent {
   report?: RichText[]
   takeaways?: string[]
   image?: ImageRef
+  /** CMS only (CMS-SPEC §3.11, §3.17). */
+  registrationOpen?: boolean
+  registrationClosesAt?: string
 }

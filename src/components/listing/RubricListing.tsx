@@ -21,18 +21,20 @@ export function rubricParams() {
 }
 
 /** Every { lang, rubric, page } for pages 2…n that actually have stories. */
-export function rubricPageParams() {
-  return locales.flatMap((lang) =>
-    rubricSlugs.flatMap((rubric) => {
-      const total = pageCount(getArticlesByRubric(lang, rubric).length)
-      return Array.from({ length: Math.max(0, total - 1) }, (_, i) => ({ lang, rubric, page: String(i + 2) }))
-    }),
-  )
+export async function rubricPageParams() {
+  const out: { lang: Locale; rubric: RubricSlug; page: string }[] = []
+  for (const lang of locales) {
+    for (const rubric of rubricSlugs) {
+      const total = pageCount((await getArticlesByRubric(lang, rubric)).length)
+      for (let page = 2; page <= total; page++) out.push({ lang, rubric, page: String(page) })
+    }
+  }
+  return out
 }
 
 /** True when `page` exists for the rubric (page 1 always exists, even when empty). */
-export function rubricPageExists(locale: Locale, rubric: RubricSlug, page: number): boolean {
-  return page >= 1 && page <= pageCount(getArticlesByRubric(locale, rubric).length)
+export async function rubricPageExists(locale: Locale, rubric: RubricSlug, page: number): Promise<boolean> {
+  return page >= 1 && page <= pageCount((await getArticlesByRubric(locale, rubric)).length)
 }
 
 export function rubricMetadata(locale: Locale, rubric: RubricSlug, page: number): Metadata {
@@ -48,10 +50,11 @@ export function rubricMetadata(locale: Locale, rubric: RubricSlug, page: number)
 }
 
 /** Rubric front (page 1) and its later pages: one template for all five rubrics. */
-export function RubricListing({ locale, rubric, page }: { locale: Locale; rubric: RubricSlug; page: number }) {
+export async function RubricListing({ locale, rubric, page }: { locale: Locale; rubric: RubricSlug; page: number }) {
   const t = pick(commonMessages, locale)
   const m = pick(listingMessages, locale)
-  const all = getArticlesByRubric(locale, rubric)
+  const all = await getArticlesByRubric(locale, rubric)
+  const latest = await getLatest(locale, 5)
   const total = pageCount(all.length)
   const items = pageSlice(all, page)
   const name = t.rubrics[rubric].name
@@ -101,7 +104,7 @@ export function RubricListing({ locale, rubric, page }: { locale: Locale; rubric
           total > 1 ? <Pagination locale={locale} page={page} total={total} pathFor={(n) => rubricPagePath(rubric, n)} /> : undefined
         }
         empty={
-          <EmptyState locale={locale} title={m.empty.title} text={m.empty.rubric} latest={getLatest(locale, 5)} id={`rubric-${rubric}-empty`}>
+          <EmptyState locale={locale} title={m.empty.title} text={m.empty.rubric} latest={latest} id={`rubric-${rubric}-empty`}>
             <p className="mt-6 text-ui">
               <Link href={href(locale, paths.home())} className="text-link">
                 {t.actions.backHome}

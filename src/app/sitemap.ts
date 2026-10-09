@@ -1,21 +1,18 @@
 import type { MetadataRoute } from 'next'
 import { locales, localeMeta, localePath, type ContentLang, type Locale } from '@/i18n/config'
 import {
-  CONTENT_NOW,
-  getArticle,
+  contentNow,
   getArticles,
   getArticlesByAuthor,
   getArticlesByRubric,
   getArticlesByTag,
   getArticlesByTerm,
   getAuthors,
-  getClubEvent,
   getClubEvents,
   getGlossary,
   getInstitutions,
   getMilestones,
   getTags,
-  getTerm,
   rubricSlugs,
   type ArticleView,
 } from '@/content'
@@ -42,21 +39,24 @@ import { pageCount, pageSlice, rubricPagePath } from '@/components/listing/pagin
  * - Rubric archive pages (/{rubric}/sahifa/{n}) are listed once a rubric
  *   outgrows one page (PAGE_SIZE from the listing helpers).
  * - Search (/qidiruv) is never listed: its pages are noindex, follow.
+ * - Withdrawn and noindex stories are left out (CMS-SPEC §8.7).
  */
+
+/** Seconds; a publication refreshes the sitemap sooner through tags and its path (CMS-SPEC §8.4). */
+export const revalidate = 3600
 
 type Entry = MetadataRoute.Sitemap[number]
 type Freq = NonNullable<Entry['changeFrequency']>
 
-const NOW = Date.parse(CONTENT_NOW)
 const DAY = 86_400_000
 
 /** Latest of the given ISO dates that is not in the future (relative to the content clock). */
-function latest(dates: (string | undefined)[]): string | undefined {
+function latest(dates: (string | undefined)[], now: number): string | undefined {
   let best: string | undefined
   for (const d of dates) {
     if (!d) continue
     const t = Date.parse(normalizeDate(d))
-    if (Number.isNaN(t) || t > NOW) continue
+    if (Number.isNaN(t) || t > now) continue
     if (!best || t > Date.parse(normalizeDate(best))) best = d
   }
   return best ? normalizeDate(best) : undefined
@@ -67,8 +67,8 @@ function normalizeDate(d: string): string {
   return /^\d{4}-\d{2}$/.test(d) ? `${d}-01` : d
 }
 
-function newestStory(articles: ArticleView[]): string | undefined {
-  return latest(articles.map(articleModified))
+function newestStory(articles: ArticleView[], now: number): string | undefined {
+  return latest(articles.map(articleModified), now)
 }
 
 interface EntryOpts {
@@ -105,25 +105,32 @@ function ownEditions(get: (l: Locale) => { contentLang: ContentLang } | undefine
   return locales.filter((l) => get(l)?.contentLang === localeMeta[l].htmlLang)
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const articles = getArticles('uz')
+/** One list per edition, keyed by `key`, for ownEditions. */
+async function byEdition<T>(load: (l: Locale) => Promise<T[]>, key: (x: T) => string): Promise<Record<Locale, Map<string, T>>> {
+  const lists = await Promise.all(locales.map(async (l) => [l, new Map((await load(l)).map((x) => [key(x), x]))] as const))
+  return Object.fromEntries(lists) as Record<Locale, Map<string, T>>
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const now = Date.parse(contentNow())
+  const articles = (await getArticles('uz')).filter((a) => !a.noindex)
   const out: Entry[] = []
   const add = (path: string, opts: EntryOpts) => out.push(...entries(path, opts))
 
   // Front page and rubrics
-  add(paths.home(), { lastModified: newestStory(articles), changeFrequency: 'hourly', priority: 1 })
+  add(paths.home(), { lastModified: newestStory(articles, now), changeFrequency: 'hourly', priority: 1 })
   for (const rubric of rubricSlugs) {
-    const list = getArticlesByRubric('uz', rubric)
+    const list = await getArticlesByRubric('uz', rubric)
     if (!list.length) continue
     add(paths.rubric(rubric), {
-      lastModified: newestStory(list),
+      lastModified: newestStory(list, now),
       changeFrequency: rubric === 'yangiliklar' ? 'hourly' : 'daily',
       priority: 0.8,
     })
     // Archive pages /{rubric}/sahifa/{n}: they shift as new stories push older ones down.
     for (let page = 2; page <= pageCount(list.length); page++) {
       add(rubricPagePath(rubric, page), {
-        lastModified: newestStory(pageSlice(list, page)),
+        lastModified: newestStory(pageSlice(list, page), now),
         changeFrequency: 'daily',
         priority: 0.3,
       })
@@ -131,56 +138,65 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
 
   // Stories
+  const storyEditions = await byEdition(getArticles, (a) => a.id)
   for (const a of articles) {
     const modified = articleModified(a)
-    const fresh = NOW - Date.parse(modified) < 2 * DAY
+    const fresh = now - Date.parse(modified) < 2 * DAY
     add(paths.article(a), {
-      lastModified: latest([modified]),
+      lastModified: latest([modified], now),
       changeFrequency: fresh ? 'daily' : 'monthly',
       priority: a.sponsored ? 0.4 : 0.7,
-      languages: ownEditions((l) => getArticle(l, a.rubric, a.slug)),
+      languages: ownEditions((l) => storyEditions[l].get(a.id)),
       images: a.image ? [a.image.src] : undefined,
     })
   }
 
   // Glossary
   add(paths.glossary(), { changeFrequency: 'weekly', priority: 0.7 })
-  for (const term of getGlossary('uz')) {
+  const termEditions = await byEdition(getGlossary, (t) => t.slug)
+  for (const term of await getGlossary('uz')) {
     add(paths.term(term.slug), {
-      lastModified: newestStory(getArticlesByTerm('uz', term.slug)),
+      lastModified: newestStory(await getArticlesByTerm('uz', term.slug), now),
       changeFrequency: 'monthly',
       priority: 0.6,
-      languages: ownEditions((l) => getTerm(l, term.slug)),
+      languages: ownEditions((l) => termEditions[l].get(term.slug)),
     })
   }
 
   // Market map: latest licence status change or completed milestone
   add(paths.market(), {
-    lastModified: latest([
-      ...getInstitutions('uz').map((i) => i.statusDate),
-      ...getMilestones('uz')
-        .filter((m) => m.status === 'done')
-        .map((m) => m.date),
-    ]),
+    lastModified: latest(
+      [
+        ...(await getInstitutions('uz')).map((i) => i.statusDate),
+        ...(await getMilestones('uz'))
+          .filter((m) => m.status === 'done')
+          .map((m) => m.date),
+      ],
+      now,
+    ),
     changeFrequency: 'weekly',
     priority: 0.7,
   })
 
   // Club: the index changes when a meeting ends (report) or is announced
-  const events = getClubEvents('uz')
+  const events = await getClubEvents('uz')
+  const eventEditions = await byEdition(getClubEvents, (e) => e.slug)
   add(paths.club(), {
-    lastModified: latest(events.filter((e) => e.status === 'past').map((e) => e.endsAt)),
+    lastModified: latest(
+      events.filter((e) => e.status === 'past').map((e) => e.endsAt),
+      now,
+    ),
     changeFrequency: 'weekly',
     priority: 0.6,
   })
   for (const e of events) {
     const past = e.status === 'past'
     add(paths.clubEvent(e.slug), {
-      lastModified: past ? latest([e.endsAt]) : undefined,
+      lastModified: past ? latest([e.endsAt], now) : undefined,
       changeFrequency: past ? 'yearly' : 'weekly',
       priority: past ? 0.4 : 0.6,
-      // Meetings are written in Uzbek: ru/en pages canonicalise to uz, as on the event page.
-      languages: ownEditions((l) => getClubEvent(l, e.slug)),
+      // Meetings are written in Uzbek unless a translation is approved: ru/en pages showing Uzbek canonicalise to uz.
+      languages: ownEditions((l) => eventEditions[l].get(e.slug)),
       images: e.image ? [e.image.src] : undefined,
     })
   }
@@ -193,15 +209,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   add(paths.privacy(), { changeFrequency: 'yearly', priority: 0.2 })
 
   // Topic and author listings (only those with at least one story; empty ones are noindex)
-  for (const tag of getTags('uz')) {
-    const list = getArticlesByTag('uz', tag.slug)
+  for (const tag of await getTags('uz')) {
+    const list = await getArticlesByTag('uz', tag.slug)
     if (!list.length) continue
-    add(paths.tag(tag.slug), { lastModified: newestStory(list), changeFrequency: 'daily', priority: 0.4 })
+    add(paths.tag(tag.slug), { lastModified: newestStory(list, now), changeFrequency: 'daily', priority: 0.4 })
   }
-  for (const author of getAuthors('uz')) {
-    const list = getArticlesByAuthor('uz', author.slug)
+  for (const author of await getAuthors('uz')) {
+    const list = await getArticlesByAuthor('uz', author.slug)
     if (!list.length) continue
-    add(paths.author(author.slug), { lastModified: newestStory(list), changeFrequency: 'weekly', priority: 0.3 })
+    add(paths.author(author.slug), { lastModified: newestStory(list, now), changeFrequency: 'weekly', priority: 0.3 })
   }
 
   return out

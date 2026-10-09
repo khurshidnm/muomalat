@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { localeMeta, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
-import { CONTENT_NOW, type ArticleView } from '@/content'
+import { contentNow, type ArticleView } from '@/content'
 import { formatDate, tashkentDay } from '@/lib/format'
 import { href } from '@/lib/routes'
 import { keepNumberWords } from '@/components/ui/InlineText'
@@ -118,7 +118,7 @@ export function GridItem({
 /** "Bugun", "Kecha", "6-oktabr" (or with the year when it differs). */
 function dayLabel(day: string, locale: Locale): string {
   const t = pick(commonMessages, locale)
-  const today = tashkentDay(CONTENT_NOW)
+  const today = tashkentDay(contentNow())
   const yesterday = tashkentDay(new Date(Date.parse(`${today}T12:00:00+05:00`) - 86_400_000).toISOString())
   if (day === today) return t.labels.today
   if (day === yesterday) return t.labels.yesterday

@@ -8,10 +8,10 @@ import { eventHost, slotIso, type EventView } from './event'
  * Talks get a filled diamond, breaks (registration, Q&A) an outlined one —
  * the speaker line carries the same distinction in text.
  */
-export function Agenda({ event, locale, className = '' }: { event: EventView; locale: Locale; className?: string }) {
+export async function Agenda({ event, locale, className = '' }: { event: EventView; locale: Locale; className?: string }) {
   // Speaker roles are part of the meeting (its language); the host's comes from the translated author profile.
   const roles = new Map<string, { role: string; lang?: string }>(event.speakers.map((s) => [s.name, { role: s.role }]))
-  const host = eventHost(event, locale)
+  const host = await eventHost(event, locale)
   if (host?.role) roles.set(host.name, { role: host.role, lang: host.lang })
   const ui = localeMeta[locale].htmlLang
   return (

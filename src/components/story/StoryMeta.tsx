@@ -1,11 +1,11 @@
 import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
-import { CONTENT_NOW, getAuthor, type ArticleView } from '@/content'
+import { contentNow, getAuthor, type ArticleView } from '@/content'
 import { smartDate } from '@/lib/format'
 
 /** "Aziza Rahimova · 14:05 · 4 daqiqa" — compact metadata under a headline. */
-export function StoryMeta({
+export async function StoryMeta({
   article,
   locale,
   show = ['time'],
@@ -19,7 +19,7 @@ export function StoryMeta({
   const t = pick(commonMessages, locale)
   const parts: React.ReactNode[] = []
   if (show.includes('author')) {
-    const authors = article.authors.map((s) => getAuthor(locale, s)).filter((a) => !!a)
+    const authors = (await Promise.all(article.authors.map((s) => getAuthor(locale, s)))).filter((a) => !!a)
     if (authors.length) {
       parts.push(
         <span key="a" lang={authors[0].contentLang} className="text-ink-2">
@@ -29,7 +29,7 @@ export function StoryMeta({
     }
   }
   if (show.includes('time')) {
-    const d = smartDate(article.publishedAt, locale, t.labels, CONTENT_NOW)
+    const d = smartDate(article.publishedAt, locale, t.labels, contentNow())
     parts.push(
       <time key="t" dateTime={article.publishedAt} className="figures whitespace-nowrap">
         {d.text}

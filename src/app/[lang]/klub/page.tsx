@@ -25,6 +25,8 @@ import { daysUntil, eventDate, eventLd } from '@/components/club/event'
 
 // Only the four editions from the layout exist; anything else is a 404.
 export const dynamicParams = false
+/** Seconds; meeting changes reach the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
 type Params = { params: Promise<{ lang: string }> }
 
@@ -44,9 +46,9 @@ export default async function ClubPage({ params }: Params) {
   const locale: Locale = lang
   const t = pick(commonMessages, locale)
   const m = pick(clubMessages, locale)
-  const next = getNextClubEvent(locale)
-  const past = getPastClubEvents(locale)
-  const all = getClubEvents(locale)
+  const next = await getNextClubEvent(locale)
+  const past = await getPastClubEvents(locale)
+  const all = await getClubEvents(locale)
   // Place and size of the meetings, for the Format column: "Toshkent · bir uchrashuvda 60–80 oʻrin".
   const capacities = all.map((e) => e.capacity).filter((n): n is number => !!n)
   const minSeats = capacities.length ? Math.min(...capacities) : 0

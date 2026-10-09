@@ -6,6 +6,7 @@ import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { homeMessages } from '@/i18n/messages/home'
 import {
+  getArticleById,
   getArticles,
   getArticlesByRubric,
   getLatest,
@@ -35,6 +36,8 @@ import { InterviewFeature } from '@/components/blocks/InterviewFeature'
 
 // Only the four editions from the layout exist; anything else is a 404.
 export const dynamicParams = false
+/** Seconds; content changes reach the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 300
 
 type Params = { params: Promise<{ lang: string }> }
 
@@ -72,23 +75,25 @@ export default async function HomePage({ params }: Params) {
   const t = pick(commonMessages, locale)
   const h = pick(homeMessages, locale)
 
-  const all = getArticles(locale)
+  const all = await getArticles(locale)
   const pick_ = slotPicker()
-  const lead = pick_.use(getLeadStory(locale))
+  const lead = pick_.use(await getLeadStory(locale))
   const secondary = [
     ...pick_.take(all, 1, (a) => !!a.featured),
     ...pick_.take(all, 1, (a) => a.rubric === 'yangiliklar'),
     ...pick_.take(all, 1, (a) => a.rubric === 'dunyo' || a.rubric === 'intervyu'),
   ]
-  const latest = getLatest(locale, 9, [lead?.id, ...secondary.map((a) => a.id)].filter((x): x is string => !!x))
-  const analysis = pick_.take(getArticlesByRubric(locale, 'tahlil'), 4)
-  const interviews = pick_.take(getArticlesByRubric(locale, 'intervyu'), 3)
-  const explainers = pick_.take(getArticlesByRubric(locale, 'izoh'), 3)
-  const world = pick_.take(getArticlesByRubric(locale, 'dunyo'), 4)
+  const latest = await getLatest(locale, 9, [lead?.id, ...secondary.map((a) => a.id)].filter((x): x is string => !!x))
+  const analysis = pick_.take(await getArticlesByRubric(locale, 'tahlil'), 4)
+  const interviews = pick_.take(await getArticlesByRubric(locale, 'intervyu'), 3)
+  const explainers = pick_.take(await getArticlesByRubric(locale, 'izoh'), 3)
+  const world = pick_.take(await getArticlesByRubric(locale, 'dunyo'), 4)
+  // The feature quotes the interview: lists carry no body, so read that story in full.
+  const interviewFeature = interviews[0] ? ((await getArticleById(locale, interviews[0].id)) ?? interviews[0]) : undefined
   const sponsored = all.find((a) => a.sponsored)
-  const mostRead = getMostRead(locale, 5)
-  const term = getTermOfDay(locale)
-  const nextEvent = getNextClubEvent(locale)
+  const mostRead = await getMostRead(locale, 5)
+  const term = await getTermOfDay(locale)
+  const nextEvent = await getNextClubEvent(locale)
 
   const ld = {
     '@context': 'https://schema.org',
@@ -185,7 +190,7 @@ export default async function HomePage({ params }: Params) {
           <section aria-labelledby="home-interviews" className="lg:col-span-8">
             <SectionHeader id="home-interviews" title={h.interviews} href={href(locale, paths.rubric('intervyu'))} linkLabel={t.actions.all} />
             <div className="mt-5">
-              <InterviewFeature article={interviews[0]} locale={locale} />
+              <InterviewFeature article={interviewFeature ?? interviews[0]} locale={locale} />
             </div>
             {interviews.length > 1 ? (
               <ul className="mt-7 grid gap-5 border-t border-rule pt-5 sm:grid-cols-2 sm:gap-6">

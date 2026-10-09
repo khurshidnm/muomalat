@@ -13,13 +13,13 @@ const POPULAR_TERMS = ['murobaha', 'sukuk', 'ijora', 'takaful', 'islom-oynasi', 
 /** Topical searches that are not glossary headwords (Uzbek Latin source). */
 const POPULAR_TOPICS = ['litsenziya', 'lizing']
 
-function popularTerms(locale: Locale) {
-  return POPULAR_TERMS.map((s) => getTerm(locale, s)).filter((x) => !!x)
+async function popularTerms(locale: Locale) {
+  return (await Promise.all(POPULAR_TERMS.map((s) => getTerm(locale, s)))).filter((x) => !!x)
 }
 
 /** Popular searches as links to /qidiruv?q=… (term headwords in the edition's script). */
-export function PopularSearches({ locale, className = '' }: { locale: Locale; className?: string }) {
-  const terms = popularTerms(locale).map((t) => ({ q: t.term, lang: t.contentLang }))
+export async function PopularSearches({ locale, className = '' }: { locale: Locale; className?: string }) {
+  const terms = (await popularTerms(locale)).map((t) => ({ q: t.term, lang: t.contentLang }))
   const topics = POPULAR_TOPICS.map((q) => (locale === 'kr' ? { q: toCyrillic(q), lang: 'uz-Cyrl' } : { q, lang: 'uz' }))
   return (
     <ul className={`flex flex-wrap gap-2 ${className}`}>
@@ -40,10 +40,11 @@ export function PopularSearches({ locale, className = '' }: { locale: Locale; cl
 }
 
 /** The same entries as glossary links (dotted brass term links). */
-export function PopularTerms({ locale, className = '' }: { locale: Locale; className?: string }) {
+export async function PopularTerms({ locale, className = '' }: { locale: Locale; className?: string }) {
+  const terms = await popularTerms(locale)
   return (
     <ul className={`flex flex-wrap gap-x-5 gap-y-2.5 ${className}`}>
-      {popularTerms(locale).map((t) => (
+      {terms.map((t) => (
         <li key={t.slug} lang={t.contentLang}>
           <Link href={href(locale, paths.term(t.slug))} className="term-link font-serif text-lead">
             {t.term}
