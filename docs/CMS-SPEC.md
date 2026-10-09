@@ -1,7 +1,7 @@
 # Muomalat CMS: implementation specification
 
 Payload CMS 3 embedded in this Next.js app at `/admin`, on PostgreSQL.
-Version 1.0, 9 October 2026. Why each decision was made is in [CMS-RESEARCH.md](./CMS-RESEARCH.md). This document says what to build.
+Version 1.1, 9 October 2026. Why each decision was made is in [CMS-RESEARCH.md](./CMS-RESEARCH.md). This document says what to build. Version 1.1 applies the corrections from an independent verification pass (CMS-RESEARCH, "Verification notes").
 
 **Conventions**
 
@@ -35,7 +35,7 @@ Version 1.0, 9 October 2026. Why each decision was made is in [CMS-RESEARCH.md](
 | Caching | Content layer becomes async. Phase 0 chooses Option A (Next Cache Components, `'use cache'` with `cacheTag`) or Option B (`unstable_cache` with ISR). Tag names are the same in both. Cache invalidation runs after commit. A purge of Cloudflare by URL and prefix follows |
 | Background work | A `worker` container that runs the same image: scheduler, outbox (purge, warm-up, Telegram), retention, alerts |
 | Audit | An append-only `audit-log` collection with a hash chain. The database role has no UPDATE or DELETE on it. Critical events are forwarded at once to a private Telegram alerts group; a nightly export goes to immutable storage |
-| Telegram | Phase 2. Every post is approved by a non-author editor and leaves through a cancellable 3-minute delay. Bot rights are exactly post, edit and delete |
+| Telegram | Phase 2. Every post is approved by a non-author editor and leaves through a cancellable 3-minute delay. Bot rights are post, edit and delete only, plus `can_manage_chat`, which Telegram implies for every admin |
 | Personal data | Four collections with consent records, retention jobs, role-limited reads and a deletion route. They are isolated behind one interface so they can be moved to an Uzbek host if needed |
 
 ---
@@ -133,7 +133,7 @@ Notes on routing:
 | `/t/<code>` | 301 to the article | 301 |
 | `/robots.txt` | Normal | `Disallow: /` |
 
-`proxy.ts` repeats every host rule. It is never the only check: Next 16 has had four Proxy-bypass CVEs in 2026 (see CMS-RESEARCH §3).
+`proxy.ts` repeats every host rule. It is never the only check: Next.js published five Middleware/Proxy-bypass advisories in 2026 (CVE-2026-44573, -44574, -44575, -45109 and -64642; [advisories](https://github.com/vercel/next.js/security/advisories)).
 
 ### 2.4 Packages
 
@@ -214,7 +214,7 @@ Also add `"@payload-config": ["./src/payload.config.ts"]` to `tsconfig.json` pat
 | `consent` | `given` (checkbox, must be true), `textVersion` (text, e.g. `club-2026-10-v1`), `locale` (uz/kr/ru/en), `at` (date) | Personal-data collections |
 | `rights` | See Media (§3.12) | Media |
 | `seo` [L] | `title` (text, warning above 70), `description` (textarea, warning above 160), `image` (upload) | Articles, GlossaryTerms, ClubEvents |
-| `translation` [L] (localized group) | `status` (select: `missing` default, `machine_draft`, `in_edit`, `approved`, `outdated`), `translatedBy` (rel users), `reviewedBy` (rel users), `approvedAt` (date), `contentHash` (text, hidden), `machine` (group: `used` checkbox, `engine` text) | Articles, GlossaryTerms, ClubEvents, Institutions (note), Milestones |
+| `translation` [L] (localized group) | `status` (select: `missing` default, `machine_draft`, `in_edit`, `approved`, `outdated`), `assignee` (rel users; the translator who owns the work, set by an editor), `translatedBy` (rel users), `reviewedBy` (rel users), `approvedAt` (date), `contentHash` (text, hidden), `machine` (group: `used` checkbox, `engine` text) | Articles, GlossaryTerms, ClubEvents, Institutions (note), Milestones |
 
 ### 3.3 Articles (`articles`)
 
@@ -250,7 +250,8 @@ Admin group "Tahririyat", labels "Maqola" / "Maqolalar".
 | `authors` | relationship → `authors`, hasMany, min 1 | yes | Sponsored ⇒ commercial authors only; editorial ⇒ no commercial author | `authors` (slugs) |
 | `workflowStatus` | select (§5.1) | system | Changed only through transitions (§5.2) | — |
 | `WorkflowActions` | ui (custom component) | — | Buttons for the transitions allowed to this user | — |
-| `assignee` | relationship → `users` | for `idea` | | — |
+| `assignee` | relationship → `users` | for `idea` | The writer who owns the story in `idea` and `draft` | — |
+| `deskEditor` | relationship → `users` | — | System. Set by the "Tahrirga olish" (take for editing) transition (§5.2): the editor who owns the story in `in_edit`. Cleared on `in_edit → draft`. Named `deskEditor` so it is not confused with the rich-text `editor` option | — |
 | `dueAt` | date (day and time) | — | | — |
 | `priority` | select: `normal`, `high`, `breaking` | — | | — |
 | `urgent` | checkbox "Shoshilinch" | — | Fast path (§5.4) | — |
@@ -612,6 +613,7 @@ A contact message with topic `tuzatish` (correction) automatically creates a `re
 | `kind` | select: `error_report`, `refutation`, `reply`, `removal`, `other` | |
 | `article` | rel articles | |
 | `requesterName`, `requesterContact` | text | Personal data; deleted when `retainUntil` passes |
+| `assignedTo` | rel users | Owner of the next step. Defaults to the editor-in-chief for `refutation`, `reply` and `removal`, and is empty (edit queue) for `error_report` until an editor takes it |
 | `receivedAt` | date, req | |
 | `channel` | select: site_form, email, phone, post, telegram, staff | |
 | `summary` | textarea, req | |
@@ -643,7 +645,7 @@ All globals keep versions (`versions.max: 0`; **VERIFY** the key name for global
 | Group | Fields | Write access |
 |---|---|---|
 | Identity | `name`, `domain`, `email`, `foundedYear` | admin |
-| `legal` (Media Law Art. 27¹) | `registrationNumber`, `registrationDate`, `registrar` (issuing body), `founder`, `editorInChief` (full name with patronymic), `address`, `postalIndex` ("index"), `email`, `phone` (optional), `ageMark` (select). Each is `{ value, placeholder: boolean }`, rendered through `<Placeholder>` while `placeholder` is true | editor-in-chief |
+| `legal` (Media Law Art. 27¹) | `registrationNumber`, `registrationDate`, `registrar` (issuing body), `founder`, `editorInChief` (full name with patronymic), `address`, `postalIndex` ("index" in Art. 27¹; whether it means the postal code or a subscription index is for counsel, CMS-RESEARCH §4.1), `email`, `phone` (optional), `ageMark` (select). Each is `{ value, placeholder: boolean }`, rendered through `<Placeholder>` while `placeholder` is true | editor-in-chief |
 | `legal.meta` | `lastChangedAt` | System only. After any change to `legal`, alert: "Report the change to the registering body within one month (Art. 20)" |
 | `demo` | `noticeEnabled` (checkbox), `noticeText` [L] | admin, editor-in-chief |
 | `labels` | `sponsored` [L] (default "Reklama · Hamkorlik materiali" / "Реклама · Партнёрский материал" / "Advertisement · Partner content"), `advert` [L] (default "Reklama" / "Реклама" / "Advertisement") | editor-in-chief. Validation SP-7: uz must contain "Reklama", ru "Реклама", en "Advertisement" |
@@ -728,7 +730,15 @@ export interface Article {
 }
 export interface Author { /* … */ isTeam?: boolean }   // NEW
 export interface Institution { /* … */ statusSource?: string; licenceNumber?: string; statusHistory?: { status: LicenceStatus; date: string; source?: string }[] } // NEW
+export interface ImageRef {
+  // …existing fields…
+  creator?: string; copyrightNotice?: string; licenseUrl?: string   // NEW: JSON-LD image licence fields (§8.7), from Media
+  decorative?: boolean                                               // NEW: renders alt="" (§3.12)
+}
+export interface ClubEvent { /* … */ registrationOpen?: boolean; registrationClosesAt?: string } // NEW (§3.11)
 ```
+
+Added during verification: without the `ImageRef` and `ClubEvent` fields, §3.11, §3.12 and §8.7 have nowhere to put their data in the view.
 
 `ClubEvent.status` stays in the type but is computed. `Article.views` stays and becomes read-only in the CMS.
 
@@ -765,14 +775,16 @@ Legend:
 | Create | ✓ editorial | ✓ | ✓ | ✓ sponsored only (forced) | — |
 | Read published | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Read drafts | own; others unless embargoed or `legallySensitive` | all | all | own sponsored | — |
-| Update draft (`idea`, `draft`) | own | ✓ | ✓ | own sponsored | — |
-| Update in `in_edit` / `ready` | — (read-only) | ✓ | ✓ | sponsored in `in_edit` | — |
+| Update draft (`idea`, `draft`) | own | ✓ editorial | ✓ | own sponsored | — |
+| Update in `in_edit` / `ready` | — (read-only) | ✓ editorial | ✓ | sponsored in `in_edit` | — |
+| Update a sponsored article (any state) | — | — (read only; SP-11) | ✓ | before approval only | — |
+| Edit the ru/en fields of a story (translator) | if `translation.<locale>.assignee` is self; that locale's fields only | ✓ | ✓ | sponsored only | — |
 | Transition `draft → in_edit` (submit) | own | ✓ | ✓ | sponsored → editor-in-chief queue | — |
 | Approve (`in_edit → ready`) | — | ¬author | ¬author | — | — |
 | First publish | — | ¬author, approved, not in an editor-in-chief tier (§5.5) | ¬author, approved; required for §5.5 tiers and all sponsored | — | — |
 | Urgent fast path (§5.4) | — | ✓ (may be author) | ✓ | — | — |
 | Schedule / unschedule | — | ✓ | ✓ | — | — |
-| Publish change: `minor` | — | ✓ (may be author) | ✓ | sponsored: draft only | — |
+| Publish change: `minor` | — | ✓ (may be author; not sponsored) | ✓ | sponsored: draft only | — |
 | Publish change: `update` | — | ¬author, or author with second read | ✓ | — | — |
 | Publish change: `correction` | propose (`requests`) | ¬author | ✓ | — | — |
 | Publish change: `clarification`, `editors_note` | — | — | ✓ | — | — |
@@ -784,7 +796,14 @@ Legend:
 | Read versions | own | ✓ | ✓ | own sponsored | — |
 | Restore a version (creates a draft) | — | ✓ | ✓ | — | — |
 | Move to trash (never-published only) | own `idea` / `draft` | ✓ | ✓ | own sponsored draft | — |
-| Delete permanently | — | — | — | — | never-published, not retained, not on legal hold |
+| Delete permanently from trash | — | — | never-published, not retained, not on legal hold | — | — |
+
+Corrected during verification: an earlier draft gave permanent deletion to admin, but admin cannot read drafts (A6), so it could not see the Trash view. Deleting editorial content is an editorial decision, so it goes to the editor-in-chief.
+
+Implementation notes:
+
+- Trash and permanent deletion share `access.delete`. A trash call passes `data.deletedAt`; a permanent delete passes no `data` ([Payload trash](https://payloadcms.com/docs/trash/overview)).
+- The translator row is enforced in `hooks/translation.ts`. The hook rejects any change to `uz` values or non-localized fields from a reporter saving in `ru` or `en`.
 
 **Other collections**
 
@@ -813,7 +832,7 @@ Legend:
 
 | Global | Reporter | Editor | Editor-in-chief | Commercial | Admin |
 |---|---|---|---|---|---|
-| `site-settings` | R (public fields) | `emergency` | `legal`, `labels`, `policies`, `demo`, `emergency`, `operations`, `telegram.postingEnabled` | R | identity, `telegram`, `operations`, `policies.securityContact`, `demo` |
+| `site-settings` | R (public fields) | `emergency` | `legal`, `labels`, `policies`, `demo`, `emergency`, `operations`, `telegram.postingEnabled` | R | identity, `telegram`, `operations`, `policies.securityContact`, `demo`, `emergency` (as §3.16) |
 | `navigation` | R | R | update | R | update |
 | `ad-slots` | — | R | R; unpublish (veto) | update, publish | R |
 | `home-page` | R | update, publish | update, publish | R | R |
@@ -858,7 +877,7 @@ export const articlesRead: Access = withEdge(({ req }) => {
 
 Rules:
 
-- **Anonymous REST and GraphQL reads are denied on every collection.** The public site reads only through the server-side Local API, with **`overrideAccess: false` passed explicitly** and no user. It therefore gets published documents only. Internal fields carry a field-level `read` that requires `req.user`.
+- **Anonymous REST and GraphQL reads are denied on every collection except `media`.** Media `read` is public so that `GET /api/media/file/*` works (§3.12). Its metadata routes are blocked at the edge on the public host (§2.3). The public site reads only through the server-side Local API, with **`overrideAccess: false` passed explicitly** and no user. It therefore gets published documents only. Internal fields carry a field-level `read` that requires `req.user`.
 - **Every Local API call passes `overrideAccess` explicitly**, which prepares for the Payload 4 default flip. A lint rule (a custom ESLint `no-restricted-syntax` rule, or a grep in CI) fails the build when a `payload.find`, `create`, `update` or `delete` call has no `overrideAccess` key.
 - **The publish permission is double-locked:**
   - `update` access returns `{ _status: { equals: 'draft' } }` for reporters and commercial. This is the documented pattern that hides Publish in the UI (**VERIFY** side effects).
@@ -897,16 +916,20 @@ Rules:
 
 ### 5.1 States (`workflowStatus`)
 
-| State | Label | Payload `_status` | Who can edit content |
-|---|---|---|---|
-| `idea` | Gʻoya | draft | Authors, assignee, editors |
-| `draft` | Qoralama | draft | Authors, assignee, editors |
-| `in_edit` | Tahrirda | draft | Editors, editor-in-chief |
-| `ready` | Tayyor | draft | Editors, editor-in-chief (an edit by anyone other than the approver voids the approval) |
-| `scheduled` | Rejalashtirilgan | draft | As `ready` |
-| `published` | Chop etilgan | published | Editors and editor-in-chief (changes are drafts until published, §5.6) |
-| `hold` | Toʻxtatilgan | draft (or published, if it was paused after publication) | Editors |
-| `withdrawn` | Olib tashlangan | published (the URL renders a notice) | Editor-in-chief only |
+| State | Label | Payload `_status` | Who can edit content | Owner: who must act next |
+|---|---|---|---|---|
+| `idea` | Gʻoya | draft | Authors, assignee, editors | `assignee` (by `dueAt`) |
+| `draft` | Qoralama | draft | Authors, assignee, editors | `assignee`, else the authors |
+| `in_edit` | Tahrirda | draft | Editors, editor-in-chief | `deskEditor` once an editor takes it; until then the edit queue ("Tahrir navbati"), which the duty editor watches |
+| `ready` | Tayyor | draft | Editors, editor-in-chief (an edit by anyone other than the approver voids the approval) | `approvedBy`, who publishes or schedules; any ¬author editor may also publish |
+| `scheduled` | Rejalashtirilgan | draft | As `ready` | `scheduledBy` (the worker publishes as them; a failure alerts editors and the editor-in-chief, §5.11) |
+| `published` | Chop etilgan | published | Editors and editor-in-chief (changes are drafts until published, §5.6) | Second read: any ¬author editor (§5.4). Translations: `translation.<locale>.assignee` |
+| `hold` | Toʻxtatilgan | draft | Editors | The editor who set it, as recorded in `workflowHistory` |
+| `withdrawn` | Olib tashlangan | published (the URL renders a notice) | Editor-in-chief only | Editor-in-chief |
+
+For sponsored articles, "editors" in this table means the editor-in-chief only. Commercial edits sponsored items in `idea`, `draft` and `in_edit` (§4.2, SP-11).
+
+A published story cannot be put on hold. Use withdrawal (§5.8) or legal hold instead. (An earlier draft allowed `hold` after publication, but no transition led to it.)
 
 ### 5.2 Transitions
 
@@ -919,7 +942,8 @@ The endpoint loads the document and checks the table below. It then calls `paylo
 | (new) → `idea` | Reporter, editor, editor-in-chief | Title | — |
 | `idea` → `draft` | Assignee, author, editor | Assignee set | — |
 | `draft` → `in_edit` ("Tahrirga yuborish", submit for edit) | Author, assignee, editor; commercial for sponsored | Title, lead, rubric, at least 1 author and at least 1 source present (validation run in "submit" mode, so errors are listed) | `submittedBy`, `submittedAt`; notification to the editors (§10.9 alerts group); the author leaves the document |
-| `in_edit` → `draft` ("Qayta ishlashga", back for rework) | Editor, editor-in-chief | **Comment required** | Notification to the author |
+| `in_edit` → `in_edit` ("Tahrirga olish", take for editing) | Editor or editor-in-chief who is ¬author | `deskEditor` empty, or the caller is the editor-in-chief | `deskEditor = actor`; shown in the edit queue |
+| `in_edit` → `draft` ("Qayta ishlashga", back for rework) | Editor, editor-in-chief | **Comment required** | Notification to the author; `deskEditor` cleared |
 | `in_edit` → `ready` ("Tasdiqlash", approve) | Editor or editor-in-chief who is ¬author | Publish-mode validation has **no errors**; `needsLegal ≠ required`; the §5.5 tier needs the editor-in-chief | `approvedBy`, `approvedAt`, `approvedContentHash` |
 | `ready` → `scheduled` | Editor, editor-in-chief | `scheduledAt` ≥ now + 1 min, and ≥ `embargo.until` | `scheduledBy` |
 | `scheduled` → `ready` (unschedule) | Editor, editor-in-chief | — | — |
@@ -1015,7 +1039,7 @@ Saving a draft of a published story is free. **Publishing** that draft requires 
 
 | Kind | Who publishes | Required | Effects |
 |---|---|---|---|
-| `minor` | Editor, editor-in-chief (an author is allowed) | `reason` | No public trace; recorded in the version and audit; translations unchanged |
+| `minor` | Editor, editor-in-chief (an author is allowed; for sponsored items, the editor-in-chief only) | `reason` | No public trace; recorded in the version and audit; translations unchanged |
 | `update` | ¬author editor, editor-in-chief, or an author-editor (who triggers a second read as in §5.4) | `reason` | `significantUpdateAt = now`; ru and en translations → `outdated` (still shown, with "Asl matn yangilangan…", "the original was updated…", §6.3) |
 | `correction` | ¬author editor, editor-in-chief | A new `corrections[]` item of kind `correction` added in this save | `significantUpdateAt = now`; translations → `outdated` and **hidden** until fixed; Telegram correction (§10.4) |
 | `clarification` | Editor-in-chief | New item of kind `clarification` | as `correction` |
@@ -1069,7 +1093,7 @@ The corrections log lives in `hooks/corrections.ts`.
   - `withdrawal.hideTitle`.
 
   Withdrawal itself is still possible.
-- **Trash:** only for never-published documents (`firstPublishedAt` empty). Permanent deletion from trash is admin only and is refused when `sponsored.retainUntil` is in the future or `legalHold` is set (`beforeDelete`).
+- **Trash:** only for never-published documents (`firstPublishedAt` empty). Permanent deletion from trash is for the editor-in-chief only, because admin cannot read drafts (§4.2). It is refused when `sponsored.retainUntil` is in the future or `legalHold` is set (`beforeDelete`).
 
 ### 5.9 Sponsored-content guard
 
@@ -1087,6 +1111,7 @@ The guard lives in `hooks/sponsored.ts` and runs for `create` and `update`.
 | SP-8 | Sponsored articles are never: the HomePage lead, secondary or pinned items, breaking item or interview feature (HOME-1); `featured` is ignored; excluded from `getMostRead`, `getRelated`, the news sitemap and the "latest" wire on the homepage (today's `slotPicker` already excludes them) | system |
 | SP-9 | `sponsored.enabled` cannot be cleared after first publication; the hard delete is blocked until `retainUntil` | error |
 | SP-10 | A sponsored body cannot contain a `glossaryLink` whose label includes a review term (TXT-4) | warning |
+| SP-11 | A user with role `editor` cannot update a sponsored article. Only commercial (in `idea`, `draft` and `in_edit`) and the editor-in-chief can. This follows the separation rule in CMS-RESEARCH §2.6 ("Only the commercial role creates or edits partner items") and Bloomberg's rule that journalists do not edit sponsored work | error |
 
 Rendering changes:
 
@@ -1136,13 +1161,15 @@ for (const doc of due.docs) {
 }
 ```
 
-If the scheduling user has been disabled since, the publish fails closed. A Payload 3.90 change makes Payload's own scheduled jobs behave the same way, so we match it.
+If the scheduling user has been disabled since, the publish fails closed. This is our own design choice. Payload 3.90.0 changed its built-in scheduled jobs only to keep the scheduling user's auth collection ([release notes](https://github.com/payloadcms/payload/releases/tag/v3.90.0)); it does not say they fail closed for a disabled user.
+
+**VERIFY** (§18, item 22) that `payload.update` with `data: { _status: 'published' }` and `draft: false` publishes the latest draft's content, not the last published version.
 
 ### 5.12 Drafts, autosave, versions, locking
 
 | Collection | `drafts` | `autosave` | `maxPerDoc` | `lockDocuments` |
 |---|---|---|---|---|
-| `articles` | ✓ | interval 2000 ms (set explicitly: the docs and the 3.x source disagree on the default) | 0 | 600 s |
+| `articles` | ✓ | interval 2000 ms (set explicitly: the docs say the default is 800 ms, the 3.90.2 source uses 2000 ms) | 0 | 600 s (default 300 s) |
 | `glossary-terms`, `institutions` | ✓ | ✓ | 0 | default |
 | `authors`, `tags`, `milestones`, `club-events`, `rubrics` | ✓ | ✓ | 100 | default |
 | `media` | — | — | 50 | default |
@@ -1349,7 +1376,7 @@ Levels:
 | ART-26 | `kr.*` override contains Latin words (`checkKr`) | E | | new |
 | ART-27 | Numbers changed with kind `minor` (N-1); headline (N-2); entities (N-3) | E | | §5.6 |
 | ART-28 | `publishedAt`, `firstPublishedAt`, `significantUpdateAt` in order and not in the future | S | | validate-content |
-| ART-29 | Telegram caption over 1024 UTF-16 units | E (for the post) | telegram-posts | new |
+| ART-29 | Telegram caption over 1024 UTF-16 units after entity parsing (tags removed) | E (for the post) | telegram-posts | new |
 | ART-30 | Body over 400 words when `urgent` | E | | §5.4 |
 | ART-31 | An author declared an interest in an institution in `about` or `mentions` | W, escalates to the editor-in-chief (§5.5) | | new (FT/Reuters) |
 | SP-1…SP-10 | Sponsored guard | see §5.9 | | new |
@@ -1406,6 +1433,11 @@ Levels:
 - `generateStaticParams` returns at least one param: the latest 50 articles, all terms, and so on.
 - Draft mode reads bypass the cached functions: `draftMode()` is read outside the cache scope and an uncached path is called.
 - Risk: we have not confirmed that the Payload admin works with `cacheComponents` (§18).
+- Risk: two Next.js advisories of 30 September 2026 describe failures of exactly this design:
+  - GHSA-3w37-wq28-93x7: a pending `use cache` fill shared with a draft-mode request leaks unpublished content into regular responses and prerendered pages;
+  - GHSA-h694-7cp9-m8p3: a nested `use cache` call is keyed without a root param, and `[lang]` is our root param.
+
+  Both affect 16.3.x. We infer that 16.4.0 (6 October) includes the fixes ([advisories](https://github.com/vercel/next.js/security/advisories)). Keep `next` at 16.4.0 or later, keep draft reads outside every cached function (above), and run test H10.
 
 **Option B (fallback).** The previous model:
 
@@ -1445,13 +1477,17 @@ Both options use the same tags (§8.3) and the same invalidation code.
    - `/internal/revalidate` (route handler) does the same for callers outside a request. It accepts `POST {targets, ts}` with header `X-Signature: HMAC-SHA256(body, INTERNAL_REVALIDATE_SECRET)`. It rejects requests with a timestamp older than 60 s and any request carrying `cf-connecting-ip`, which means it arrived through the tunnel.
 3. **Worker outbox loop** (every 5 s) over `publish-events` with `status = pending`:
    1. **Warm-up.** `GET ${INTERNAL_APP_URL}<public path>` with `Host: muomalat.uz` for each edition URL, twice, 2 s apart.
-   2. **Cloudflare purge.** `POST /zones/{zone}/purge_cache`, either by prefix (`muomalat.uz/<rubric>/<slug>`, `muomalat.uz/kr/<rubric>/<slug>`, …, which covers the OG image routes) or by exact URLs (`/`, `/kr`, `/ru`, `/en`, the rubric fronts, `/rss.xml` for each edition, `/sitemap.xml`). At most 100 operations per request; the free plan allows 5 requests a minute ([Cloudflare purge](https://developers.cloudflare.com/cache/how-to/purge-cache)). The worker batches and paces its requests.
+   2. **Cloudflare purge.** `POST /zones/{zone}/purge_cache`.
+      - Purge by exact URL by default: the article in each edition, each one's `/opengraph-image` URL, `/`, `/kr`, `/ru`, `/en`, the rubric fronts, `/rss.xml` for each edition, and `/sitemap.xml`.
+      - On the Free plan, single-URL purge allows 800 URLs a second with at most 100 per request. Prefix, tag and hostname purges are limited to 5 requests a minute, with a bucket of 25 ([Cloudflare purge](https://developers.cloudflare.com/cache/how-to/purge-cache)).
+      - Use prefix purge (`muomalat.uz/<rubric>/<slug>`, …) only for slug or rubric changes, where unknown sub-URLs may exist.
+      - The worker batches and paces its requests.
    3. **Telegram.** Create the draft post on first publication; queue edit or reply posts for corrections (§10).
    4. Mark the event done, or failed with `attempts` and `lastError`. Retry with backoff up to 10 times, then alert.
 4. **Cloudflare cache rules for `muomalat.uz` HTML:**
    - eligible for cache, respecting origin `Cache-Control`;
    - edge TTL capped at 120 s for `/`, `/kr`, `/ru`, `/en` and the rubric fronts, and at 1 h elsewhere;
-   - cache bypassed when the request carries `__prerender_bypass` or a `payload-token` cookie, which should not happen on this host;
+   - cache bypassed when the request carries `__prerender_bypass` or a `muomalat-token` cookie, which should not happen on this host. Payload names its cookie `<cookiePrefix>-token`, and §12.2 sets `cookiePrefix: 'muomalat'`, so the cookie is not called `payload-token`;
    - `cms.muomalat.uz` bypasses the cache entirely.
 
 **`publish-events` fields:**
@@ -1595,7 +1631,7 @@ REVOKE DELETE, TRUNCATE ON publish_events FROM muomalat_app;
 
 ### 9.4 Failed logins
 
-Payload 3 has no documented failed-login hook (**VERIFY**). Until one exists:
+Payload 3 has no failed-login hook. The collection hook list in the 3.90.2 source has `beforeLogin` and `afterLogin` but nothing for failures. The root config does have `hooks.afterError` ([config types, v3.90.2](https://github.com/payloadcms/payload/blob/v3.90.2/packages/payload/src/config/types.ts)). **VERIFY** whether it receives the login `AuthenticationError` with the attempted email; if it does, record `auth.login_failed` there instead. Until then:
 
 - a worker job runs every minute and records an `auth.login_failed` row for each user whose `loginAttempts` rose or whose `lockUntil` was set;
 - Cloudflare Access logs show attempts at the edge (retained 24 h on the free plan per third-party sources; export them if needed).
@@ -1619,7 +1655,7 @@ Phase 2 and optional. Until it ships, posting is manual, and the §12.9 account 
 | `article` | rel articles | |
 | `kind` | select: `article`, `correction_reply`, `retraction` | |
 | `status` | select: `draft`, `approved`, `queued`, `sent`, `edit_pending`, `edited`, `cancelled`, `retracted`, `failed` | |
-| `captionHtml` | textarea | Live counter in **UTF-16 units** (JS `string.length`); max 1024 with a photo, 4096 for text |
+| `captionHtml` | textarea | Live counter of the caption **after entity parsing**: HTML tags removed and `&lt;`, `&gt;`, `&amp;` decoded, counted in UTF-16 units (JS `string.length`). Max 1024 with a photo, 4096 for text. Telegram's limit is "0-1024 characters after entities parsing" ([Bot API](https://core.telegram.org/bots/api#sendphoto)) |
 | `photo` | upload (defaults to the hero image's `og` size) | |
 | `imageFileId` | text | Telegram `file_id`, reused afterwards |
 | `silent` | checkbox | `disable_notification` |
@@ -1686,14 +1722,14 @@ Sponsored (fixed first line, Art. 6/18):
 ### 10.5 Bot setup and rights check
 
 - **Setup:**
-  - one production bot, which is a channel admin with **exactly** `can_post_messages`, `can_edit_messages` and `can_delete_messages`;
+  - one production bot, a channel admin with `can_post_messages`, `can_edit_messages` and `can_delete_messages` and no other right. `can_manage_chat` is the exception: Telegram reports it as true for every admin ("Implied by any other administrator privilege", [ChatAdministratorRights](https://core.telegram.org/bots/api#chatadministratorrights)), so the check below must allow it;
   - `TELEGRAM_BOT_TOKEN` comes only from the environment;
   - no bot-token field exists in the database.
 - **At worker start and every hour:**
   - `getMe`;
   - `getChat(@channel)`, storing the numeric `-100…` ID in `site-settings.telegram.channelChatId`;
   - `getChatMember(chat, botId)`.
-- **If any other right is present** (for example `can_promote_members` or `can_change_info`), or one is missing: alert and pause posting.
+- **If any other right is present** (for example `can_promote_members`, `can_change_info`, `can_invite_users` or the story rights; `can_manage_chat` excepted), or one is missing: alert and pause posting.
 
 ### 10.6 Listening for channel changes
 
@@ -1705,7 +1741,7 @@ Sponsored (fixed first line, Art. 6/18):
 
 - **Short links:** §8.8.
 - **Invite links:**
-  - an admin action creates named invite links with `createChatInviteLink({ name })` for `sayt-sticky`, `sayt-maqola`, `klub`, `dayjest` and `in-app` (this needs `can_invite_users` temporarily, or an owner creates them in the app);
+  - the channel owner creates named invite links in the Telegram app for `sayt-sticky`, `sayt-maqola`, `klub`, `dayjest` and `in-app`, and an admin pastes them into site settings. The bot never gets `can_invite_users`: the rights check in §10.5 would pause posting. (An earlier draft had the bot call `createChatInviteLink`, which contradicted §10.5.);
   - they are stored in `site-settings.telegram.inviteLinks`;
   - `TelegramButton` uses the link for its placement, and when `window.TelegramWebviewProxy` exists, the `in-app` link.
 
@@ -1740,6 +1776,8 @@ They are not audit alerts. An email fallback covers the case where Telegram is d
 - **Preflight:** the import runs only after `npm run validate` passes on the mock data.
 - **Idempotent:** a re-run upserts by `legacyId`.
 - **Runs as the system user `importer`** (`overrideAccess: true`, `context: { trustedInternal: true, import: true }`). Hooks then skip the two-person rule but still write audit rows (`system:import`).
+  - The translation hook (§6.3) also skips its "approver ≠ translator" check for imports, because step 7 sets both `translatedBy` and `reviewedBy` to the importer.
+  - In production this applies only to glossary terms and institutions, which stay blocked by `needsReview` until an editor clears it. Their imported translations should go in as `in_edit`, not `approved`, so that a person approves them *(added during verification)*.
 
 ### 11.2 Order and mapping
 
@@ -1814,7 +1852,9 @@ buildConfig({
   defaultDepth: 1,
   telemetry: false,
   upload: { limits: { fileSize: 15_000_000 } },
-  cookiePrefix: 'muomalat',                   // VERIFY '__Host-' prefix support
+  cookiePrefix: 'muomalat',                   // auth cookie is then 'muomalat-token'; VERIFY '__Host-' prefix support
+  // no `jobs` key: we do not use Payload Jobs (§5.11). If Jobs are ever enabled, set jobs.access.queue/run/cancel
+  // explicitly: in 3.90.2 they default to "any logged-in user" (packages/payload/src/config/defaults.ts)
   admin: { user: 'users', meta: { robots: 'noindex, nofollow' } },
   db: postgresAdapter({ pool: { connectionString: process.env.DATABASE_URL }, push: false, migrationDir: './src/migrations' }),
   // no prodMigrations: migrations run as the owner role before deploy (§15)
@@ -1859,7 +1899,7 @@ hooks: { beforeLogin: [assertEdgeEmailMatches], afterLogin: [auditLogin, trackCo
 - [ ] **DNS:**
   - only tunnel CNAMEs for `muomalat.uz` and `cms.muomalat.uz`, with no A records pointing to the VPS;
   - DNSSEC enabled, with SUVAN NET submitting the DS record;
-  - CAA records for Cloudflare's CAs plus `iodef`;
+  - CAA records for Cloudflare's CAs plus `iodef`, bound to our CA account (`accounturi`) where the CA supports it, as Google advised after the October 2026 ccTLD hijacks ([Google](https://blog.google/security/chromes-response-to-recent-cctld-registry-hijacks/)). **VERIFY** that this works with Cloudflare-managed edge certificates;
   - CT monitoring on.
 - [ ] **Access application on `cms.muomalat.uz`:**
   - the policy allows only the `staff` email group;
@@ -1872,15 +1912,24 @@ hooks: { beforeLogin: [assertEdgeEmailMatches], afterLogin: [auditLogin, trackCo
   - block `/api/*` except `GET /api/media/file/*`;
   - block `/preview*`, `/exit-preview*`, `/internal/*`.
 - [ ] **Both hosts:** block `/internal/*`, `/api/users/first-register` and `/admin/create-first-user`.
-- [ ] **Rate limiting** (number of free rules **VERIFY**):
-  - POST to `muomalat.uz` with header `Next-Action` (server-action forms): 10 per minute per IP, then a managed challenge;
-  - `POST /api/users/login` and `/api/users/forgot-password` on `cms.muomalat.uz`: 5 per minute per IP. Payload has no IP rate limiting of its own.
+- [ ] **Rate limiting.**
+  - Plan limits, checked 9 October ([Cloudflare](https://developers.cloudflare.com/waf/rate-limiting-rules/)):
+    - the Free plan has **one** rule, counting by IP over a fixed 10-second window with a 10-second block;
+    - a Free rule can match only on the path (and Verified Bot), not on method, host or headers;
+    - Pro has two rules, with windows of up to 1 minute.
+  - **Free plan (Phase 1):** one rule on the paths of the four form pages (contact, advertising, club application, digest sign-up) in every edition.
+    - It counts GET requests too, so set the limit above normal browsing, for example 10 per 10 s per IP. Tune it from Security Events.
+    - The login endpoints get no edge rule, because `cms.muomalat.uz` is reachable only after Cloudflare Access.
+  - **Pro plan or Galileo (if available; VERIFY which expression fields each plan allows):**
+    - server actions: 10 per minute per IP, then a managed challenge;
+    - `POST /api/users/login` and `/api/users/forgot-password` on `cms.muomalat.uz`: 5 per minute per IP.
+  - Payload has no IP rate limiting of its own. It has per-account lockout (`maxLoginAttempts`) and, since 3.90.0, a per-account forgot-password interval (`forgotPassword.minRequestInterval`, default 15 s).
 - [ ] **Cache rules:** §8.4. `cms.muomalat.uz` bypass.
 - [ ] **TLS:** Always Use HTTPS; minimum TLS 1.2; HSTS (1 year, `includeSubDomains`; preload LATER).
 - [ ] **Bot handling:** Bot Fight Mode off, or confirmed not to block the `TelegramBot` preview crawler (check Security Events).
 - [ ] **Accounts:** at most two Cloudflare super-admins, each with security keys.
 - [ ] **API tokens:** `CF_API_TOKEN` scoped to Zone → Cache Purge on this zone only. The tunnel token is stored only in the `cloudflared` environment file.
-- [ ] P1: apply to Project Galileo through a partner organisation.
+- [ ] P1: apply to Project Galileo, through a partner organisation or Cloudflare's form. The form asks for nonprofit status, so a commercial outlet's eligibility is unverified (CMS-RESEARCH §3.2, "Free DDoS programmes"). Google Project Shield is a fallback, not an addition: it would replace Cloudflare in front of the site.
 
 ### 12.4 Next.js headers (MUST)
 
@@ -2052,7 +2101,10 @@ The `retainUntil` fields are set by hooks. The worker's nightly `retention` job 
 ### 13.6 Breach procedure
 
 1. Contain the breach (§12.10), capture evidence, and assess what data was exposed.
-2. For any leak of data stored abroad, which means all of ours: a preliminary report to the authorised body **within 24 hours** and a detailed report **within 72 hours** (resolution 415). The body is unclear: the State Personalization Centre or the Ministry of Internal Affairs' Migration and Personalisation Department. Counsel names it before launch.
+2. For any leak of data stored abroad, which means all of ours: a preliminary report to the authorised body **within 24 hours** and a detailed report **within 72 hours** (resolution 415, para 4).
+   - Resolution 415 (para 3) names the Ministry of Internal Affairs' Migration and Personalisation Department as that body.
+   - Art. 8 of the Personal Data Law still names the State Personalization Centre.
+   - Counsel confirms the recipient before launch. Until then, the runbook sends to the Department named in resolution 415.
 3. Notify the affected people where there is risk to them, using an email template in four languages.
 4. Assess whether ZRU-764 reporting to the State Security Service also applies.
 
@@ -2065,6 +2117,8 @@ The personal-data collections can be moved to an Uzbek host without touching the
 - the consent and retention logic lives in that module.
 
 If counsel or the law requires local storage, an alternative implementation writes to a small Postgres or HTTP service on an Uzbek host (Ahost, UZINFOCOM).
+
+Gap noted during verification: `requests` also holds personal data (`requesterName`, `requesterContact`) and is not in the movable set. If local storage becomes mandatory, move those two fields into a fifth movable collection. `requests` then keeps only an opaque reference as a text field, not a Payload relationship, so the rule above still holds.
 
 ---
 
@@ -2279,12 +2333,13 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **H7 (I)** RSS excludes withdrawn and `noindex` items and keeps a stable `guid` across slug changes.
 - **H8 (E)** `/t/<code>` answers 301 to the canonical URL with the UTM parameters. An unknown code returns 404.
 - **H9 (I)** The parity test (§11.4) passes on staging.
+- **H10 (E, Option A only)** While an editor repeatedly loads a draft preview, concurrent anonymous requests for the same article and for an un-prerendered article never receive draft content. `/uz/…` and `/ru/…` responses for the same cached list function differ (Next advisories GHSA-3w37-wq28-93x7 and GHSA-h694-7cp9-m8p3).
 
 ### I. Telegram (Phase 2)
 
 - **I1 (I)** A post cannot be approved by the article's author or by the person who requested it.
 - **I2 (I)** An approved post is sent after `delayMinutes`. Cancelling inside the window prevents sending.
-- **I3 (I)** The caption counter counts UTF-16 units. A caption of 1,025 units is rejected.
+- **I3 (I)** The caption counter counts UTF-16 units after removing HTML tags and decoding entities. A caption of 1,025 such units is rejected; a caption of 1,024 visible units plus `<b>` tags is accepted.
 - **I4 (I)** The sponsored template's first line is "Reklama", and it cannot be removed.
 - **I5 (I)** A correction produces an `edit_pending` caption edit and, for kind `correction`, a reply post that references the original `message_id`.
 - **I6 (I)** Withdrawal of a post older than 48 h edits the caption to a retraction and creates a manual-deletion task; it does not call `deleteMessage`.
@@ -2311,7 +2366,7 @@ Automate everything marked (I) as a Vitest integration test, which runs the Loca
 - **K6 (M)** No VPS port is open from the internet (external `nmap` of the VPS address shows nothing, or only SSH restricted to known addresses).
 - **K7 (I)** The startup guard exits in production on each unsafe setting in §12.1.
 - **K8 (I)** Read-only mode (`CMS_READ_ONLY=1`) rejects every write, pauses the scheduler and Telegram, and the public site still serves pages.
-- **K9 (I)** Six wrong passwords lock the account for 15 minutes. Only an admin can unlock it.
+- **K9 (I)** After `maxLoginAttempts` (5) wrong passwords the account is locked for 15 minutes, and a further attempt with the right password is refused. Only an admin can unlock it: a reporter or editor calling unlock gets 403 (the 3.90 default would allow any staff user).
 - **K10 (I)** A 14-character password and a known-breached password are both rejected.
 - **K11 (M)** Cloudflare Access refuses a login that offers only an authenticator-app code where security keys are required (if Independent MFA is available on our plan).
 - **K12 (M)** A restore drill from last night's backup to a scratch VM succeeds, with RTO and RPO recorded.
@@ -2369,9 +2424,16 @@ The estimates are our own inference, for one experienced developer.
 13. The join field on `articles.mediaRefs`; `filterOptions` on relationships with `_status`.
 14. A custom endpoint passes `context` to `payload.update` and inherits CSRF and cookie auth.
 15. Lexical: pasting from Google Docs drops disabled formats; internal links to `glossary-terms` resolve at the depth used; inline blocks serialize as specified.
-16. Copy-to-locale in the admin, or whether a custom action is needed.
-17. A failed-login hook exists, or the polling job in §9.4 is needed.
+16. Copy-to-locale in the admin, or whether a custom action is needed. A `CopyLocaleData` admin element exists in the 3.90.2 source (`packages/ui/src/elements/CopyLocaleData`). Check that it copies blocks and rich text the way translators need.
+17. Whether root `hooks.afterError` sees failed logins (§9.4), or the polling job is needed. There is no collection-level failed-login hook in 3.90.2.
 18. Payload's insert into `audit_log` works with no UPDATE privilege (otherwise set `timestamps: false`).
 19. Custom admin languages (`uz`) through `i18n`.
-20. Cloudflare: Independent MFA on our plan; the number of free rate-limit rules; purge by prefix on our plan; Access log retention; Data Privacy Framework status (for counsel).
-21. Telegram: editing bot-sent channel posts older than 48 h; `getUpdates` `chat_member` delivery for channels.
+20. Cloudflare:
+    - Independent MFA on our plan (launched 15 April 2026; the docs name no plan);
+    - Access log retention;
+    - the Data Privacy Framework entry on the official list (Cloudflare says it is certified);
+    - CAA `accounturi` with Cloudflare-managed certificates.
+
+    Resolved during verification: Free has one rate-limiting rule (path-only, 10 s window), and prefix purge is available on Free at 5 requests a minute (§12.3, §8.4).
+21. Telegram: editing bot-sent channel posts older than 48 h. For `chat_member` updates, `allowed_updates` must list `chat_member` explicitly, because it is excluded by default ([getUpdates](https://core.telegram.org/bots/api#getupdates)). Check that it is delivered for channels.
+22. `payload.update({ data: { _status: 'published' }, draft: false })` on a document with a newer draft publishes the draft's content, not the last published version (§5.11 scheduler; also the transition endpoint).

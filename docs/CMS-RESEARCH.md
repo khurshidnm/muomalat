@@ -14,12 +14,15 @@ The build specification that follows from this research is [CMS-SPEC.md](./CMS-S
 ## Executive summary
 
 1. **Decision: run Payload CMS 3 (version 3.90.2 or later) inside the existing Next.js app, on PostgreSQL, on one Hostinger VPS in an EU region, behind Cloudflare.** Payload is open source (MIT), costs no licence fee, keeps the content in our own database, and fits the current stack (Next 16.4, React 19.3) ([npm](https://registry.npmjs.org/payload)). The Guardian moved its own CMS database to PostgreSQL in 2018 ([InfoQ](https://www.infoq.com/news/2019/01/guardian-mongodb-postgresql/)). Vox Media's experience shows that building a CMS from scratch is the expensive option ([Axios](https://www.axios.com/2023/07/18/vox-media-chorus)).
-2. **Payload gives us drafts, version history, autosave, document locking, scheduling, languages and field-level permissions. It does not give us an approval workflow, two-factor login or an audit log.** In Payload those three are paid Enterprise features ([Payload Enterprise](https://payloadcms.com/enterprise)). We build them ourselves with fields and hooks, and put two-factor login in front of the admin with Cloudflare Access. This is the main build cost.
+2. **Payload gives us drafts, version history, autosave, document locking, scheduling, languages and field-level permissions. It does not give us an approval workflow, two-factor login or an audit log.**
+   - Payload's Enterprise page lists "Publishing Workflows" (approval workflows) and SSO as Enterprise features. It also advertises "Audit Logs & Version Control" on the same page, without saying whether the audit log is a paid feature ([Payload Enterprise](https://payloadcms.com/enterprise), checked 9 October).
+   - Two-factor login is not offered at all, in the open-source product or on the Enterprise page. Only community plugins exist ([Payload auth](https://payloadcms.com/docs/authentication/overview)).
+   - We build the workflow and the audit log ourselves with fields and hooks, and put two-factor login in front of the admin with Cloudflare Access. This is the main build cost.
 3. **No story is first published by the person who wrote it.** An editor or the editor-in-chief who is not the author publishes it. This is Reuters' "second pair of eyes" rule ([Reuters Handbook, 2009](https://mediakar.wordpress.com/wp-content/uploads/2012/10/handbook-of-journalism-reuters.pdf)), and it matches Uzbek law, which makes the editor-in-chief responsible for every release ([Law on Mass Media, Art. 16 and 26](https://lex.uz/docs/-1106870)). Higher-risk stories also need the editor-in-chief: legal risk, a single anonymous source, sponsored content, and withdrawals. For breaking news from an official source there is a fast path: the story goes out first and gets a mandatory second read within 30 minutes.
 4. **Content stays structured, never stored as HTML.** The NYT, the Washington Post's Arc XP and the BBC all store stories as typed blocks ([NYT Oak](https://github.com/xitu/gold-miner/blob/master/TODO1/building-a-text-editor-for-a-digital-first-newsroom.md), [Arc ANS](https://docs.arcxp.com/en/products/content/getting-started-with-ans.html), [BBC Optimo data](https://github.com/bbc/simorgh/tree/latest/data/uzbek/articles/cxj3rjxm6r0o)). Muomalat's `ArticleBlock` model already does this. The CMS keeps it, and adds two things: every chart and table must name its source before publication, and stories are linked to the institutions they are about.
 5. **Mistakes are corrected in public, specifically, and permanently.** Every change to a published story must be classified: minor fix, update, correction, clarification or editor's note. A changed number or name is always a correction, never a silent edit. Correction notes cannot be deleted. Published stories are never deleted; a withdrawal keeps the page and shows a notice. These rules come from Reuters, the Washington Post and the NYT ([Reuters Handbook](https://mediakar.wordpress.com/wp-content/uploads/2012/10/handbook-of-journalism-reuters.pdf), [WaPo 2013 memo](https://www.poynter.org/?p=200844), [NYT standards](https://www.nytimes.com/editorial-standards/ethical-journalism.html)). A correction is also posted to Telegram.
 6. **Sponsored content must carry the word "Reklama".** Uzbek advertising law requires paid editorial material to sit under a «Реклама» heading ([ZRU-776, Art. 18](https://lex.uz/uz/docs/-6052631)). The Competition Committee repeated this in September 2026 ([Spot](https://www.spot.uz/ru/2026/09/03/ad-regulations/)). The current label, "Hamkorlik materiali" ("Partner content"), is probably not enough on its own. In the CMS the commercial desk can prepare sponsored items but never publish them. Ads for financial services need the advertiser's licence, a risk warning, and no promise of returns (Art. 42–43). Ad records are kept for 3 years (Art. 15).
-7. **The most likely serious incident is a hijacked staff account publishing a fake story that is then pushed automatically to Telegram.** That is how the PAP 2024 and LIGA.net 2024 incidents unfolded ([Notes from Poland](https://notesfrompoland.com/2024/05/31/fake-polish-press-agency-reports-on-sending-troops-to-ukraine-blamed-on-russian-hackers/), [IMI](https://imi.org.ua/en/news/someone-hacks-the-liga-net-website-posts-russian-disinformation-on-avdiivka-i59293)). Uzbek journalists' Telegram channels have been hijacked in 2025–26 ([Uzbek Forum](https://www.uzbekforum.org/digital-attacks-silence-independent-uzbek-journalists-and-government-critics/)). The controls:
+7. **The most likely serious incident is a hijacked staff account publishing a fake story that is then pushed automatically to Telegram.** That is how the PAP 2024 and LIGA.net 2024 incidents unfolded ([Notes from Poland](https://notesfrompoland.com/2024/05/31/fake-polish-press-agency-reports-on-sending-troops-to-ukraine-blamed-on-russian-hackers/), [IMI](https://imi.org.ua/en/news/someone-hacks-the-liga-net-website-posts-russian-disinformation-on-avdiivka-i59293)). Uzbek journalists' Telegram channels were hijacked in 2025 ([Uzbek Forum](https://www.uzbekforum.org/digital-attacks-silence-independent-uzbek-journalists-and-government-critics/), published September 2026). The controls:
    - the admin is never reachable from the public internet; it sits behind Cloudflare Access and hardware security keys;
    - every Telegram post is reviewed and leaves through a short delay that can be cancelled;
    - alerts go to a channel the attacker cannot erase;
@@ -298,7 +301,7 @@ Roles. The pattern comes from WordPress and Ghost ([WordPress statuses](https://
 | Role | Uzbek | Can | Cannot |
 |---|---|---|---|
 | Reporter | Muxbir | Write and edit own or assigned drafts; submit for edit; propose corrections | Publish, schedule, edit others' drafts, see embargoed stories not assigned to them |
-| Editor | Muharrir | Edit any editorial story; approve and publish stories they did not write; publish corrections and updates; curate the homepage; approve Telegram posts | Withdraw stories; sign off legal or sponsored items; manage users |
+| Editor | Muharrir | Edit any editorial story; approve and publish stories they did not write; publish corrections and updates; curate the homepage; approve Telegram posts | Withdraw stories; edit, sign off or publish sponsored items; sign off legal items; manage users |
 | Editor-in-chief | Bosh muharrir | Everything an editor can do, plus legal sign-off, sponsored approval, clarifications and editor's notes, withdrawals, legal hold, decisions on refutation and reply requests, the legal imprint | Manage users and technical settings |
 | Commercial | Tijorat boʻlimi | Create and edit sponsored items and ad slots; handle advertising enquiries and club applications | Publish sponsored items; see unpublished journalism; remove the sponsored flag |
 | Admin | Administrator | Users, roles, technical settings, integrations | Publish or edit editorial content (separation of duties) |
@@ -387,7 +390,8 @@ Rules:
   - An accidental early release is not deleted; an advisory goes out (the Reuters rule).
   - Pending embargoes appear on a handover list.
 - **Scheduling in Payload** needs a background job runner. Without one, "scheduled publish / unpublish jobs will never be executed" ([Payload drafts](https://payloadcms.com/docs/versions/drafts)).
-  - Version 3.90 changed how scheduled jobs carry the scheduling user, and two 2026 advisories concerned scheduled publishing ([3.90.0 release](https://github.com/payloadcms/payload/releases/tag/v3.90.0); GHSA-mg7r-jhr9-m745, GHSA-2qw6-cm49-277x).
+  - Version 3.90.0 changed scheduled publishing so that it keeps the scheduling user's auth collection ([3.90.0 release](https://github.com/payloadcms/payload/releases/tag/v3.90.0)).
+  - One 2026 advisory concerned scheduled publishing (GHSA-mg7r-jhr9-m745) and one the Jobs queue that runs it (GHSA-2qw6-cm49-277x). Both were fixed in 3.89.0, which also tightened the default access to the Jobs collection ([advisories](https://github.com/payloadcms/payload/security/advisories)).
   - The spec therefore uses our own small scheduler, which re-checks approval and embargo at the moment of publishing.
 
 ### 2.6 Separating sponsored content from journalism
@@ -441,7 +445,7 @@ Muomalat already separates commercial material visually ([DESIGN.md](../DESIGN.m
 - **Auto-posting is a risk multiplier.** On LIGA.net a fake story "was automatically shared on the outlet's X account" before editors removed it ([IMI](https://imi.org.ua/en/news/someone-hacks-the-liga-net-website-posts-russian-disinformation-on-avdiivka-i59293)). So:
   - every Telegram post needs approval from an editor who is not the author;
   - posts leave through a 3-minute delay that can be cancelled;
-  - the bot holds only post, edit and delete rights.
+  - the bot holds only post, edit and delete rights, plus `can_manage_chat`, which Telegram reports for every admin ("Implied by any other administrator privilege", [ChatAdministratorRights](https://core.telegram.org/bots/api#chatadministratorrights)).
 - **Skip for now:**
   - Instant View templates: approval looks closed in practice ([seroperson 2025](https://seroperson.me/2025/01/03/making-website-telegram-instant-view-compatible/)).
   - Rich Messages in channels: channel support is undocumented.
@@ -488,12 +492,12 @@ Muomalat already separates commercial material visually ([DESIGN.md](../DESIGN.m
 | Ghostwriter, 2017–21: real articles replaced with fakes on Baltic and Polish sites ([Mandiant](https://cloud.google.com/blog/topics/threat-intelligence/ghostwriter-influence-campaign/)) | Stolen CMS credentials; spoofed emails | MFA; DMARC reject; versions to roll back |
 | PAP, 2024: fake "mobilisation" dispatch, published twice ([Notes from Poland](https://notesfrompoland.com/2024/05/31/fake-polish-press-agency-reports-on-sending-troops-to-ukraine-blamed-on-russian-hackers/)) | Publishing access | Read-only mode; incident playbook |
 | LIGA.net and others, 2024: fake story auto-shared to X ([IMI](https://imi.org.ua/en/news/someone-hacks-the-liga-net-website-posts-russian-disinformation-on-avdiivka-i59293)) | Auto-posting amplified a breach | Telegram approval plus cancellable delay |
-| Lee Enterprises ransomware, 2025: ~350 GB taken, $10.5M losses ([SEC 10-Q](https://www.sec.gov/Archives/edgar/data/0000058361/000005836126000060/lee-20260628.htm)) | Ransomware | Off-site immutable backups; restore drills |
-| Kloop (Kyrgyzstan): 50 TB DDoS over 7 hours ([Qurium](https://www.qurium.org/press-releases/kloop-media-hit-by-50-tb-multi-vector-ddos-attack/)) | Volumetric attack | Cloudflare; public pages fully cached; hidden origin |
-| Uzbek Telegram and YouTube hijacks, 2025–26 ([Uzbek Forum](https://www.uzbekforum.org/digital-attacks-silence-independent-uzbek-journalists-and-government-critics/)) | Admin devices, platform abuse reports | Dedicated owner phone; few admins; own channels (site, newsletter) |
-| Uzbek governor's Telegram account, Dec 2025: malicious file and a fake "Central Bank" bot ([Kun.uz](https://kun.uz/en/news/2026/07/13/how-cybercriminals-used-hacked-accounts-and-fake-documents-to-steal-millions-in-uzbekistan-201719)) | Opening files on an admin phone | No files or APKs on admin devices |
+| Lee Enterprises ransomware, February 2025: $10.5M in cash-flow losses ([SEC 10-Q](https://www.sec.gov/Archives/edgar/data/0000058361/000005836126000060/lee-20260628.htm)). The attackers claimed 350 GB stolen; Lee has not confirmed that figure, and the 10-Q does not give one ([Comparitech](https://comparitech.com/news/ransomware-gang-qilin-claims-responsibility-for-cyber-attack-on-newspaper-giant-lee-enterprises), seen through a search summary) | Ransomware | Off-site immutable backups; restore drills |
+| Kloop (Kyrgyzstan), 31 August 2026: about 50 TB of attack traffic over about 7 hours ([Qurium](https://www.qurium.org/press-releases/kloop-media-hit-by-50-tb-multi-vector-ddos-attack/)) | Volumetric attack | Cloudflare; public pages fully cached; hidden origin |
+| Uzbek Telegram and YouTube hijacks, 2025 ([Uzbek Forum](https://www.uzbekforum.org/digital-attacks-silence-independent-uzbek-journalists-and-government-critics/), published September 2026) | Admin devices, platform abuse reports | Dedicated owner phone; few admins; own channels (site, newsletter) |
+| Gijduvon district governor's Telegram account, 3 December 2025: taken over through a malicious file. In the same campaign another official received PDFs from a bot posing as a Central Bank service ([Kun.uz](https://kun.uz/en/news/2026/07/13/how-cybercriminals-used-hacked-accounts-and-fake-documents-to-steal-millions-in-uzbekistan-201719)) | Opening files on an admin phone | No files or APKs on admin devices |
 | Journalists in Uzbekistan, 2020: phishing that relays one-time codes, and trojanised Telegram Desktop ([Amnesty](https://amnesty.org/en/latest/research/2020/03/targeted-surveillance-attacks-in-uzbekistan-an-old-threat-with-new-techniques)) | SMS and authenticator codes can be relayed | Hardware security keys ([CPJ](https://cpj.org/2019/01/cpj-safety-advisory-sophisticated-phishing-attacks/), [FPF](https://freedom.press/newsletter/2024-resolution-get-started-with-security-keys/)) |
-| ccTLD registry hijacks (.gh, .sl, .as), Oct 2026 ([Google](https://blog.google/security/chromes-response-to-recent-cctld-registry-hijacks/)) | The registry itself was compromised | Certificate Transparency monitoring (we cannot control .uz) |
+| ccTLD registry hijacks (.gh, .sl, .as), reported 6 October 2026 ([Google](https://blog.google/security/chromes-response-to-recent-cctld-registry-hijacks/)) | The registry itself was compromised | Certificate Transparency monitoring, and CAA records restricted to our CA account, as Google recommends (we cannot control .uz) |
 
 ### 3.2 Threats and controls, prioritised
 
@@ -503,10 +507,10 @@ Muomalat already separates commercial material visually ([DESIGN.md](../DESIGN.m
 |---|---|---|---|
 | T1 | Staff account phished, fake story published | Admin on `cms.muomalat.uz` behind Cloudflare Access with security keys only. Access login checked again inside Payload. Two-person publish. Audit alerts sent off the server. Read-only switch. Payload versions for rollback | P0 |
 | T2 | Fake story amplified on Telegram | Telegram posts approved by a non-author editor; 3-minute cancellable delay; bot rights limited to post, edit and delete; alert on any channel-admin change | P0 (posting is manual until the bot ships) |
-| T3 | Telegram channel hijacked | Owner account on a newsroom SIM and a dedicated phone; 2-step password, passkey, recovery email; at most one other full admin; staff admins can only post and edit; monthly session review; screenshot "Recent actions" immediately in an incident (kept about 48 h, *unverified*) ([Telegram passkeys](https://telegram.org/blog/passkeys-and-gift-offers), [admin rights](https://core.telegram.org/bots/api#chatadministratorrights)) | P0 |
-| T4 | Payload or Next.js vulnerability | Pin `payload` 3.90.2+; public site reads content only through Payload's server-side Local API (`/api` blocked at the edge on muomalat.uz); GraphQL off; first admin created by script before the app is reachable (first-register RCE, GHSA-97rh-rhh2-7vjv); override `access.unlock` (CVE-2026-11779 lists no fix up to 3.88.0, and the 3.90.2 code is reportedly unchanged); critical patches within 48 h; Renovate with a cooldown | P0 |
-| T5 | DDoS | Cloudflare in front; public pages cacheable at the edge; origin reached only through Cloudflare Tunnel, with no public IP or ports ([Cloudflare](https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/)); apply to Project Galileo through a partner ([Galileo](https://www.cloudflare.com/galileo/); eligibility of a commercial outlet unclear) | P0 (Tunnel), P1 (Galileo) |
-| T6 | Domain or DNS hijack | Renew muomalat.uz for several years now (expires 2027-10-08, verified by WHOIS); security keys on the registrar (SUVAN NET) and Cloudflare accounts; DNSSEC with the DS record submitted; CAA records; Cloudflare CT monitoring ([CT monitoring](https://developers.cloudflare.com/ssl/edge-certificates/additional-options/certificate-transparency-monitoring/)); at most two Cloudflare super-admins | P0 |
+| T3 | Telegram channel hijacked | Owner account on a newsroom SIM and a dedicated phone; 2-step password, passkey, recovery email; at most one other full admin; staff admins can only post and edit; monthly session review; screenshot "Recent actions" immediately in an incident (kept 48 h according to Telegram's 2017 announcement, [Telegram](https://telegram.org/blog/admin-revolution); the current window was not re-checked) ([Telegram passkeys](https://telegram.org/blog/passkeys-and-gift-offers), [admin rights](https://core.telegram.org/bots/api#chatadministratorrights)) | P0 |
+| T4 | Payload or Next.js vulnerability | Pin `payload` 3.90.2+; public site reads content only through Payload's server-side Local API (`/api` blocked at the edge on muomalat.uz); GraphQL off; first admin created by script before the app is reachable (first-register RCE, GHSA-97rh-rhh2-7vjv); override `access.unlock` (see below); critical patches within 48 h; Renovate with a cooldown. On `access.unlock`: CVE-2026-11779 ([NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-11779); it lists only 3.84.1 as affected) and Payload's own GHSA-m35c-r5p5-c3w8 (8 October 2026) cover the default. The 3.90.0 fix limits unlocking to users of the admin collection ([3.90.2 source](https://github.com/payloadcms/payload/blob/v3.90.2/packages/payload/src/auth/defaultUnlockAccess.ts)). For us that is every staff account, so the override stays | P0 |
+| T5 | DDoS | Cloudflare in front; public pages cacheable at the edge; origin reached only through Cloudflare Tunnel, with no public IP or ports ([Cloudflare](https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/)); apply to Project Galileo, through a partner or Cloudflare's own form ([Galileo](https://www.cloudflare.com/galileo/)). The form asks for nonprofit status, so whether a commercial outlet qualifies is *unverified* ("Free DDoS programmes" below) | P0 (Tunnel), P1 (Galileo) |
+| T6 | Domain or DNS hijack | Renew muomalat.uz for several years now (expires 2027-10-08, verified by WHOIS); security keys on the registrar (SUVAN NET) and Cloudflare accounts; DNSSEC with the DS record submitted; CAA records, bound to our CA account where the CA supports it ([Google, Oct 2026](https://blog.google/security/chromes-response-to-recent-cctld-registry-hijacks/)); Cloudflare CT monitoring ([CT monitoring](https://developers.cloudflare.com/ssl/edge-certificates/additional-options/certificate-transparency-monitoring/)); at most two Cloudflare super-admins | P0 |
 | T7 | Server compromise or ransomware | Ubuntu LTS with security updates; SSH keys only, not public; containers non-root with read-only filesystems; Docker ports bound to 127.0.0.1 because Docker bypasses UFW ([Docker docs](https://docs.docker.com/engine/network/packet-filtering-firewalls/)); app database role is not a superuser; nightly encrypted backups to an EU bucket with object lock; monthly restore test ([CISA](https://www.cisa.gov/stopransomware/ransomware-guide)) | P0 |
 | T8 | Malicious npm package | Committed lockfile and `npm ci`; `min-release-age` in `.npmrc`; Renovate `minimumReleaseAge`; build in CI, never on the VPS ([Shai-Hulud](https://www.theregister.com/2025/11/24/shai_hulud_npm_worm/), [Renovate](https://docs.renovatebot.com/key-concepts/minimum-release-age/)) | P0 |
 | T9 | Our own mistake: test content, early embargo | Separate staging database and staging Telegram bot; test accounts have no publish rights in production; embargo hard lock | P0 |
@@ -518,17 +522,28 @@ Muomalat already separates commercial material visually ([DESIGN.md](../DESIGN.m
 
 **Why "never public" is the core control.**
 
-- Payload's 2026 advisories include three critical SQL-injection flaws in the Postgres adapter, a pre-authentication remote-code-execution flaw through first-user registration, and several access-control bypasses ([advisories](https://github.com/payloadcms/payload/security/advisories); 22 published on 18 Sept and 10 more on 6–8 Oct 2026, all fixed by 3.90.0).
+- Payload's 2026 advisories include two critical SQL-injection flaws that affect the Postgres adapter (GHSA-xx6w-jxg9-2wh8, GHSA-v49j-62m6-pgrr) and a high-severity one (GHSA-7xxh-373w-35vg). They also include a pre-authentication remote-code-execution flaw through first-user registration, rated high (GHSA-97rh-rhh2-7vjv), and several access-control bypasses ([advisories](https://github.com/payloadcms/payload/security/advisories); 22 published on 18 Sept and 10 more on 6–8 Oct 2026, all fixed by 3.90.0).
 - Several were exploitable only by someone who can send queries to the API.
 - If the API cannot be reached from the internet, and the admin sits behind a second, independent log-in, most of these never reach us. Patching still matters.
 
 **Two-factor login.**
 
 - Payload has no built-in two-factor login ([Payload auth](https://payloadcms.com/docs/authentication/overview)). The community plugins are small and maintained by single developers.
-- Cloudflare Access can require security keys or biometrics only, with no codes ([Independent MFA](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/independent-mfa/)). Whether that option is on the free plan is *unverified*.
+- Cloudflare Access can require security keys or biometrics only, with no codes ([Independent MFA](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/independent-mfa/)). The feature shipped on 15 April 2026 ([changelog](https://developers.cloudflare.com/changelog/post/2026-04-15-independent-mfa/)). It also offers authenticator-app codes, which we leave switched off. Whether it is on the free plan is *unverified*: neither page names a plan.
 - The free Zero Trust plan covers up to 50 users ([Cloudflare 2020](https://blog.cloudflare.com/teams-plans), confirmed by third-party guides in 2026).
 - NIST rates SMS as "restricted" and prohibits email as an out-of-band second factor ([NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html)). So no SMS and no email codes.
 - Buy two FIDO2 keys per person.
+
+**Free DDoS programmes.**
+
+- **Cloudflare Project Galileo:**
+  - It is for organisations "working in human rights, civil society, journalism, or democracy". Applicants go through a partner organisation or use Cloudflare's form ([Galileo](https://www.cloudflare.com/galileo/)).
+  - The form asks for "nonprofit status". The 2014 launch criteria admitted "not-for-profit organizations or small commercial entities" engaged in news gathering and "subject to online attacks" ([Cloudflare blog, 12 June 2014](https://blog.cloudflare.com/protecting-free-expression-online)). Today partners decide eligibility. Whether Muomalat, a commercial outlet with a commercial desk, qualifies is *unverified*.
+  - It gives Business-plan features. That would also lift the Free-plan limits we hit: one rate-limiting rule, and slow prefix purges (section 6.2).
+- **Google Project Shield:**
+  - It is free for news publishers, election sites and human-rights groups. Google added further categories in March 2025 ([Google Cloud blog, 2025](https://cloud.google.com/blog/products/identity-security/project-shield-makes-it-easier-to-sign-up-set-up-automate-ddos-protection/)).
+  - The current pages do not say whether for-profit outlets qualify. An archived 2016 sign-up page excluded "businesses" ([archive](https://web-archive.nli.org.il/National_Library/20161007105358mp_/http://g.co/shield), seen only through a search summary). *Unverified* for Muomalat.
+  - It is a reverse proxy on Google Cloud Armor and Cloud CDN, switched on by pointing DNS at Shield. It would therefore replace Cloudflare in front of `muomalat.uz`, and it has no equivalent of Cloudflare Access or Tunnel *(inference)*. It is a fallback if Cloudflare ever drops us, not an addition.
 
 ### 3.3 Not worth it now
 
@@ -598,8 +613,8 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
   - Only **biometric, genetic and telecom-subscriber data** must be stored in Uzbekistan.
   - Other personal data may be stored abroad if one of three conditions holds: the country is on the Cabinet's list; the operator adopts approved standard contract terms or binding corporate rules; or the operator complies with listed international standards.
 - **Cabinet resolution 415 of 29.07.2026 (in force 03.08.2026) lists 49 countries** ([lex.uz](https://lex.uz/uz/docs/8369688), [Spot](https://www.spot.uz/ru/2026/08/04/personal-data-abroad/)).
-  - The list includes Lithuania, Germany, France, the Netherlands, the UK and most of the EU.
-  - The US counts only for companies in the EU–US Data Privacy Framework.
+  - The list includes all 27 EU member states (Lithuania and Germany among them), the UK, Switzerland, Norway, Brazil and Russia.
+  - The US counts only for companies in the EU–US Data Privacy Framework (footnote to the list on lex.uz; the Spot summary omits this condition).
   - **India, Malaysia and Indonesia are not on the list.**
   - A data leak during a cross-border transfer must be reported within 24 hours, with a detailed report within 72 hours.
 - **The database register.** Registration in the state register now applies only to databases that must be stored in Uzbekistan (Art. 20, as amended). Art. 31 still lists "register its databases" among general duties, so ask counsel.
@@ -612,7 +627,11 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
   - an electronic way to ask for suspension or deletion (Art. 31).
 
   Liability: Administrative Code Art. 46-2, Criminal Code Art. 141-2.
-- **Which state body is responsible is unclear.** The law names the State Personalization Centre; resolution 415 names the Ministry of Internal Affairs' Migration and Personalisation Department ([UzA](https://uza.uz/posts/808545)).
+- **Which state body is responsible is not fully settled.**
+  - Art. 8 of the law still names the State Personalization Centre under the Cabinet as the authorised body ([lex.uz](https://lex.uz/docs/4396419)).
+  - Resolution 415 (para 3) designates the Ministry of Internal Affairs' Migration and Personalisation Department as "the authorised state body" for its own purposes. Its para 4 sends cross-border breach reports to that body ([lex.uz](https://lex.uz/uz/docs/8369688), [UzA](https://uza.uz/posts/808545)).
+  - Counsel confirms which body receives reports.
+- **Later amendments.** The law was amended again on 13 July 2026 (ZRU-1158, in force 25 July) and 11 September 2026 (ZRU-1174). Neither touches Art. 27¹ (checked on lex.uz, 9 October).
 
 **Recommendation.**
 
@@ -639,7 +658,7 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
    - a 24/72-hour breach runbook.
 4. **Latency.** Uncached requests from Tashkent take about 110–120 ms to an EU server. Our researcher measured Cloudflare serving Uzbek traffic from Warsaw at about 115 ms. Pages are cached at Cloudflare, so readers barely notice; editors in the admin will feel it slightly.
 5. **A fallback if the law or counsel's reading changes.** The spec keeps the four personal-data collections separate from editorial content and behind one storage interface. They can then be moved to an Uzbek host without touching the newsroom side: [Ahost](https://ahost.uz/), [UZINFOCOM dc.uz](https://dc.uz/) or [Sarkor](https://sarkor.uz/), whose prices we have not researched.
-6. **Cloudflare sees form traffic in transit.** Cloudflare is a US company. Whether it participates in the Data Privacy Framework, which resolution 415 requires for US recipients, is *unverified*. Check before launch.
+6. **Cloudflare sees form traffic in transit.** Cloudflare is a US company, and resolution 415 accepts US recipients only if they are in the Data Privacy Framework. Cloudflare says it is certified under the EU–US Data Privacy Framework ([Cloudflare trust hub](https://www.cloudflare.com/trust-hub/gdpr/)). Confirm its entry on the official list at dataprivacyframework.gov before launch; we did not check the list itself.
 
 ### 4.4 Other duties
 
@@ -669,7 +688,7 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
 
 ### 5.1 Why Payload
 
-- **It runs inside the app we already have.** `@payloadcms/next@3.90.2` requires Next ≥16.3.3 <17 and React ^19.0.1, and our Next 16.4.0 and React 19.3.0 qualify ([npm](https://registry.npmjs.org/payload)). There is one codebase, one deployment and one TypeScript model. The admin lives at `/admin`.
+- **It runs inside the app we already have.** `@payloadcms/next@3.90.2` requires Next ≥16.3.3 <17, and `@payloadcms/ui@3.90.2` requires React ^19.0.1. Our Next 16.4.0 and React 19.3.0 qualify ([npm](https://registry.npmjs.org/@payloadcms/ui/3.90.2)). 3.90.2 (23 September 2026) is the latest 3.x release; 4.0 is still in canary. There is one codebase, one deployment and one TypeScript model. The admin lives at `/admin`.
 - **It has the newsroom basics built in:**
   - drafts with a Draft / Published / Changed indicator, and version history with compare and restore ([versions](https://payloadcms.com/docs/versions/overview), [drafts](https://payloadcms.com/docs/versions/drafts));
   - autosave;
@@ -689,10 +708,10 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
 | Gap | Our answer | Source for the gap |
 |---|---|---|
 | Approval workflow | `workflowStatus` field, transition table, hooks that enforce the two-person rule | [Payload Enterprise](https://payloadcms.com/enterprise); [independent review, 2026](https://www.buildwithmatija.com/blog/payload-cms-publishing-team-honest-review-2026) |
-| Audit log | Append-only `audit-log` collection; the database role cannot update or delete it; events forwarded off the server | Same; 3.x version records do not store the user ([source](https://github.com/payloadcms/payload/blob/3.x/packages/payload/src/versions/buildCollectionFields.ts)) |
-| Two-factor login and SSO | Cloudflare Access in front, with the Access login checked inside Payload | [Payload auth](https://payloadcms.com/docs/authentication/overview) |
-| IP rate limiting | Cloudflare rules | [Preventing abuse](https://payloadcms.com/docs/production/preventing-abuse) |
-| Safe defaults | Override: `cookies.secure` (off by default), `access.unlock` (any admin user can unlock anyone by default), CSRF list, GraphQL off, upload types | [defaults.ts](https://github.com/payloadcms/payload/blob/3.x/packages/payload/src/collections/config/defaults.ts); CVE-2026-11779 |
+| Audit log | Append-only `audit-log` collection; the database role cannot update or delete it; events forwarded off the server | No audit-log feature in the open-source docs; the Enterprise page mentions "Audit Logs & Version Control" without a tier. 3.x version records do not store the user ([source, v3.90.2](https://github.com/payloadcms/payload/blob/v3.90.2/packages/payload/src/versions/buildCollectionFields.ts)). Payload 4 adds `createdBy` / `updatedBy` by default ([v4 guide](https://github.com/payloadcms/payload/blob/main/docs/migration-guide/v4.mdx)) |
+| Two-factor login and SSO | Cloudflare Access in front, with the Access login checked inside Payload | No 2FA in core ([Payload auth](https://payloadcms.com/docs/authentication/overview)); SSO is listed as Enterprise ([Enterprise](https://payloadcms.com/enterprise)) |
+| IP rate limiting | Cloudflare rules (the Free plan has one rule; section 6.2) | [Preventing abuse](https://payloadcms.com/docs/production/preventing-abuse) mentions only login lockout. Since 3.90.0 forgot-password requests are throttled per account (`forgotPassword.minRequestInterval`, default 15 s) |
+| Safe defaults | Override: `cookies.secure` (off by default; `sameSite` defaults to `Lax`), `access.unlock` (any admin-collection user can unlock anyone by default), CSRF list, GraphQL off, upload types | [defaults.ts, v3.90.2](https://github.com/payloadcms/payload/blob/v3.90.2/packages/payload/src/collections/config/defaults.ts); CVE-2026-11779; GHSA-m35c-r5p5-c3w8 |
 | Uzbek admin interface | Uzbek field labels now; an Uzbek pack later | [translations](https://github.com/payloadcms/payload/tree/3.x/packages/translations/src/languages) |
 
 ### 5.3 Alternatives considered
@@ -712,7 +731,8 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
 ### 5.4 Conditions attached to this decision
 
 - Payload is pinned to an exact version of 3.90.2 or later. Upgrades follow the weekly patch routine. Each upgrade runs `payload migrate` (3.90.0 itself needed a migration).
-- Plugins that carried 2026 advisories are not installed: form-builder, import-export, MCP and multi-tenant ([advisories](https://github.com/payloadcms/payload/security/advisories)).
+- Plugins that carried 2026 advisories are not installed: form-builder, import-export, MCP, multi-tenant, Stripe, ecommerce, and the S3, Azure, GCS and Vercel Blob storage adapters ([advisories](https://github.com/payloadcms/payload/security/advisories)).
+- Next.js stays at 16.4.0 or later. Two September 2026 advisories affect our caching design directly: GHSA-3w37-wq28-93x7 (draft-mode content leaking through a pending `use cache` fill) and GHSA-h694-7cp9-m8p3 (a nested `use cache` key missing a root param such as `[lang]`). The advisories give 16.3.8 as the fix or leave the version open; we infer that 16.4.0, released on 6 October, includes the fixes ([Next.js advisories](https://github.com/vercel/next.js/security/advisories)).
 - Code never relies on Payload's default access override. The Local API's `overrideAccess` default flips from `true` to `false` in Payload 4 ([v4 migration guide](https://github.com/payloadcms/payload/blob/main/docs/migration-guide/v4.mdx)). We pass it explicitly everywhere, use Node 24 now (Payload 4 will require 24.15+), and avoid field names Payload 4 reserves (`createdBy`, `updatedBy`).
 - A short technical spike verifies the uncertain Payload behaviours before the full build (CMS-SPEC §18).
 
@@ -724,14 +744,14 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
 
 | Risk | Likelihood / impact | Mitigation | Owner |
 |---|---|---|---|
-| Critical Payload or Next.js flaw before we patch | High / high | API and admin not public; weekly patch window; 48-hour rule for critical fixes; GitHub release watch (fixes ship before advisories: about half the advisories came out later than the fix, by a median of about 11 days, per our researcher's count) | Developer |
+| Critical Payload or Next.js flaw before we patch | High / high | API and admin not public; weekly patch window; 48-hour rule for critical fixes; GitHub release watch (fixes ship before advisories: of the 49 advisories in 2026, 28 came out 6 to 237 days after the first fixed release, with a median of 19 days; the other 21 came out the same day. Our count compares each advisory's date with the npm publish date of the first patched 3.x version it lists) | Developer |
 | The workflow we build has a bypass (for example the Publish button or scheduled jobs) | Medium / high | All rules enforced in server hooks, not the UI; acceptance tests in CMS-SPEC §16 cover every publish path | Developer |
 | The two-person rule slows breaking news at night | Medium / medium | Fast path for official-source news with a 30-minute second read; duty rota | Editor-in-chief |
 | Telegram channel hijack | Medium / high | Section 3.2 T3; backup channel; emergency banner on the site | Editor-in-chief |
 | Sponsored label judged non-compliant | Medium / medium (fine 70 BRV, reputation) | Adopt "Reklama · …" now; counsel review | Commercial lead |
 | Data-law reading wrong, or the law changes again | Low–medium / medium | Personal-data collections isolated and movable; minimal data | Founder |
 | Payload 4 migration cost | Certain / medium | Node 24 now; explicit `overrideAccess`; avoid reserved names; plan the migration only after 4.0 is stable | Developer |
-| Cloudflare free-plan limits (Access MFA options, rate-limit rules, purge rate of 5 requests a minute) | Medium / low | Verify in Phase 0; Pro plan if needed | Developer |
+| Cloudflare free-plan limits: Independent MFA availability unknown; only one rate-limiting rule, with a fixed 10-second window; prefix and tag purges limited to 5 requests a minute | Medium / low | Verify Access MFA in Phase 0; purge by URL (800 URLs a second on Free); Pro plan or Galileo if a second rate-limit rule is needed | Developer |
 | One developer as a single point of failure | High / high | This spec, runbooks, two people with server and Cloudflare access, documented restore | Founder |
 | Machine translation errors published | Low / high | Reviewer must differ from translator; outdated translations hidden | Editor-in-chief |
 
@@ -747,13 +767,15 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
   - the jobs CLI flags;
   - the date-field `timezone` option.
 - **Cloudflare:**
-  - whether Independent MFA (security keys only) is on the free Zero Trust plan;
-  - how many rate-limiting rules the free plan has;
-  - Cloudflare's participation in the Data Privacy Framework.
-  - Purge by URL, prefix and tag is now open to all plans: free accounts get 5 requests a minute (bursts up to 25) and 100 operations per request ([changelog](https://developers.cloudflare.com/changelog/post/2025-04-01-purge-for-all/index.md), [purge docs](https://developers.cloudflare.com/cache/how-to/purge-cache)).
+  - whether Independent MFA (security keys only) is on the free Zero Trust plan (still open; the docs name no plan);
+  - Cloudflare's entry on the official Data Privacy Framework list (Cloudflare says it is certified; the list itself not checked).
+  - Resolved on 9 October: the Free plan has **one** rate-limiting rule, counting by IP over a fixed 10-second window with a 10-second block. Pro has two rules, with windows of up to 1 minute ([rate limiting rules](https://developers.cloudflare.com/waf/rate-limiting-rules/)).
+  - Resolved on 9 October: purge by URL, prefix, tag and hostname is open to all plans ([changelog](https://developers.cloudflare.com/changelog/post/2025-04-01-purge-for-all/index.md), [purge docs](https://developers.cloudflare.com/cache/how-to/purge-cache)).
+    - On Free, prefix, tag, hostname and purge-everything requests are limited to 5 a minute (bucket 25), with 100 operations per request.
+    - Single-URL purges allow 800 URLs a second, with 100 per request.
 - **Telegram:**
-  - whether bot-sent channel posts can be edited with no time limit, inferred because the docs state none;
-  - the 48-hour admin-log window and the 7-day rule for transferring ownership (third-party sources);
+  - whether bot-sent channel posts can be edited with no time limit, inferred because the docs state none (`editMessageCaption` states a 48-hour limit only for business messages);
+  - the 7-day rule for transferring ownership (third-party sources). The 48-hour admin log comes from Telegram's own 2017 announcement and was not re-checked;
   - which IP addresses and user agent the link-preview crawler uses.
 - **Sources that may be out of date:**
   - the Reuters Handbook (2009);
@@ -774,5 +796,171 @@ Law ZRU-776, in force since September 2022, amended up to March 2025 ([Uzbek tex
 | Data localisation | The workflow and security researchers cited the 2021 rule (all data stays in Uzbekistan); the platforms and Uzbekistan researchers found ZRU-1125 (2026) | The 2026 text on lex.uz is current; EU hosting is allowed, with counsel to confirm |
 | Payload advisory dates | One researcher reported 19 advisories on 6–7 October; another reported 22 on 18 September | Checked on GitHub on 9 October: 22 published on 18 Sept (the 3.90.0 release day), 5 on 22 Sept, then 3 on 6 Oct and 7 on 8 Oct; 49 in 2026 in total (8 critical, 23 high, 18 medium); all patched by 3.90.0 |
 | Job runner | `autoRun` inside the app or a separate worker | A separate worker. A worker process cannot call Next's `revalidateTag` (the docs allow it only in server functions and route handlers), so all cache refresh goes through one internal route that both the admin and the worker call |
-| Scheduling | Payload's built-in `schedulePublish` or our own | Our own scheduler, because it must re-check approval and embargo at publish time, and built-in scheduled publishing had two 2026 advisories |
+| Scheduling | Payload's built-in `schedulePublish` or our own | Our own scheduler, because it must re-check approval and embargo at publish time. Two 2026 advisories touched built-in scheduled publishing and the Jobs queue behind it |
 | Statuses | 7 to 10 proposed | 8 states plus three-state flags, following Arc's "start small" advice |
+
+---
+
+## Verification notes
+
+An independent fact-check and security review of this document and [CMS-SPEC.md](./CMS-SPEC.md), done on 9 October 2026.
+
+**Sources used:**
+
+- Payload: the docs, the GitHub source at tag `v3.90.2`, the release notes, and the GitHub Security Advisories API.
+- npm registry metadata.
+- Uzbek law: lex.uz texts, read in the Uzbek and Russian versions.
+- NVD and CVE.org.
+- Cloudflare: developer docs and changelog.
+- Telegram Bot API 10.3.
+- Next.js: its GitHub advisories and its local docs in `node_modules/next/dist/docs`.
+
+"Confirmed" below means the primary source was read on that date.
+
+### Confirmed
+
+- **Payload 3.90.2** (latest 3.x, 23 September 2026; 4.0 is still canary):
+  - drafts, with `versions.drafts.validate` defaulting to `false`;
+  - versions: `maxPerDoc` defaults to 100, and 0 keeps everything; globals use `max`;
+  - autosave keeps one rolling version;
+  - `lockDocuments.duration` is in seconds (default 300), and another user can take over;
+  - `trash: true`;
+  - `schedulePublish` never runs without a job runner;
+  - `localizeStatus` is experimental (beta);
+  - field access returns booleans only, and a denied update is dropped silently;
+  - an `update` constraint on `_status` hides Publish and Unpublish;
+  - there is no built-in 2FA and no IP rate limiting;
+  - CSRF is an allow-list, and `serverURL` is added to it automatically (`config/sanitize.ts`). With an empty list, cookie auth is accepted from any origin;
+  - `cookies.secure` defaults to `false` and `sameSite` to `Lax`;
+  - default unlock access is any user of the admin collection;
+  - version records carry no user field;
+  - the admin ships 44 languages and no Uzbek;
+  - peer dependencies are Next ≥16.3.3 <17 and React ^19.0.1 (the React peer is declared by `@payloadcms/ui`);
+  - the v4 guide confirms: `overrideAccess` defaults to `false`, Node ≥24.15.0 is required, and `createdBy` / `updatedBy` are injected by default.
+- **Payload advisories:**
+  - 49 in 2026: 8 critical, 23 high, 18 medium;
+  - 22 published on 18 September;
+  - all fixed by 3.90.0;
+  - every GHSA ID cited in both documents exists and matches its description.
+- **Personal data:**
+  - Art. 27¹ as rewritten by ZRU-1125 (26 March 2026, in force 27 March);
+  - Art. 20: the register now covers only databases that must stay in Uzbekistan;
+  - Art. 23: three-day notice when data goes to a third party;
+  - resolution 415: 49 countries, Lithuania and Germany included, India, Malaysia and Indonesia absent, a DPF footnote for the US, and the 24 h / 72 h breach reports.
+- **Mass Media Law:**
+  - Art. 4 (once in six months, registration);
+  - Art. 15 (work starts after registration);
+  - Art. 16 (the editor-in-chief decides on releases);
+  - Art. 20 (re-registration for a change of name, language, type, goals, specialisation or founder; one month for other changes);
+  - Art. 26 (each release needs the editor-in-chief's permission);
+  - Art. 27¹ (home-page imprint, including "indeks");
+  - Art. 33 (sources);
+  - Art. 34 (refutation and reply: same page, special heading, one month for electronic forms);
+  - Art. 40 (no liability for content from official sources, statistics, news agencies, press services and official websites).
+- **Cabinet resolution 86, Annex 10:** 8 working days, unlimited validity, a fee of 50% of the BRV for internet outlets, the conditions on investigation materials and court outcomes, and it still names the dissolved Agency.
+- **Advertising Law ZRU-776:** Arts. 6, 13, 15, 18, 42, 43, 47 (70 BRV) and 49, checked in the Russian text.
+- **Other laws:** Informatisation Law Art. 12¹ and ZRU-1115 (21 January 2026); ZRU-444 Art. 17 (0+ to 18+).
+- **Reports and incidents:**
+  - Spot's report on the Competition Committee (3 September 2026);
+  - Kun.uz on the dissolution of the Agency (14 July 2025);
+  - LIGA.net (18 February 2024; the fake story was auto-shared to X);
+  - Google's post on the ccTLD hijacks (6 October 2026);
+  - Telegram passkeys (12 December 2025).
+- **Newsroom systems:**
+  - NYT Monolog: every asset since 1851, under 100 GB, schema-checked, dependants republished (Confluent, 2017);
+  - Arc: revision history keeps at most 100 revisions and does not track corrections, authors, scheduling or workflow status; the "No events (like save and publish)…" quote and the default Draft / Edit / Publish statuses;
+  - Guardian: `Status.scala` lists Writers → Final plus Hold;
+  - BBC Simorgh: the Uzbek `cyr` and `lat` configuration.
+- **Other:**
+  - NIST SP 800-63B-4: 15-character minimum for single-factor passwords, no composition rules, SMS "restricted", email "SHALL NOT" be used for out-of-band;
+  - Hostinger VPS locations;
+  - Cloudflare purge and rate-limit plan tables;
+  - Telegram `can_manage_chat` ("implied by any other administrator privilege"), the 48-hour `deleteMessage` limit, and caption limits counted "after entities parsing".
+
+### Changed in CMS-RESEARCH.md
+
+- **Executive summary 2.** Not all three gaps are "paid Enterprise features".
+  - The Enterprise page lists Publishing Workflows and SSO.
+  - It shows "Audit Logs & Version Control" without a tier.
+  - 2FA is not offered anywhere.
+- **Executive summary 7 and §3.1.**
+  - The Uzbek Forum incidents date from 2025 (the report is from September 2026).
+  - Kun.uz describes a *district* governor (Gijduvon, 3 December 2025). The fake Central Bank bot targeted a different official.
+  - Lee's "~350 GB" is the attackers' claim, not in the 10-Q.
+  - Kloop dated to 31 August 2026.
+  - The ccTLD lesson now includes CAA records bound to our CA account.
+- **§2.5.** The two advisories are now attributed correctly: one on scheduled publishing, one on the Jobs queue, both fixed in 3.89.0. The 3.90 change only keeps the scheduler's auth collection.
+- **§2.2, §2.8.** The editor role cannot edit sponsored items. The bot's rights include the implied `can_manage_chat`.
+- **§3.2.**
+  - "Three critical SQL injections in the Postgres adapter" was wrong: two are critical (GHSA-xx6w, GHSA-v49j) and one is high (GHSA-7xxh). First-register RCE is rated high.
+  - CVE-2026-11779 lists only 3.84.1, not "no fix up to 3.88.0". Payload's own GHSA-m35c-r5p5-c3w8 (fixed in 3.90.0) limits unlock to admin-collection users, which is all our staff, so the override stays.
+  - Independent MFA dated to 15 April 2026.
+  - New "Free DDoS programmes" paragraph covering Galileo and Project Shield eligibility.
+  - The Telegram 48-hour admin log is now sourced to Telegram's 2017 announcement.
+- **§4.3.**
+  - The 415 list covers all 27 EU states, plus Brazil and Russia among others.
+  - Responsibility is clarified: resolution 415, para 3, designates the Ministry of Internal Affairs' Migration and Personalisation Department; Art. 8 still names the State Personalization Centre.
+  - Later amendments (ZRU-1158, ZRU-1174) noted.
+  - Cloudflare DPF status: Cloudflare says it is certified.
+- **§5.1–5.4.**
+  - The React peer dependency belongs to `@payloadcms/ui`.
+  - The gap table now says what Payload Enterprise actually lists, and notes Payload 4 authorship and the forgot-password throttle.
+  - The plugin exclusion list is extended.
+  - New condition: Next.js 16.4.0 or later, because of two September 2026 cache advisories.
+- **§6.1–6.2.**
+  - Advisory lag recounted: 28 of 49 came out 6–237 days after the fix, with a median of 19 days (previously "about half, median 11 days").
+  - Cloudflare Free limits resolved: one path-only rate-limit rule with a 10 s window; prefix and tag purge at 5 a minute but URL purge at 800 a second.
+
+### Changed in CMS-SPEC.md (now version 1.1)
+
+- **Factual fixes:**
+  - five Next.js Proxy-bypass advisories, not four (§2.3);
+  - Payload's own scheduler does not "fail closed the same way" (§5.11);
+  - the autosave default is 800 ms in the docs and 2000 ms in the source (§5.12);
+  - the auth cookie is `muomalat-token`, not `payload-token` (§8.4);
+  - purge strategy switched to URL purges because of the Free limits (§8.4);
+  - Free-plan rate limiting rewritten: one path-only rule; login rules need Pro or Galileo (§12.3);
+  - the breach-report body (§13.6);
+  - the Telegram caption is counted after entity parsing (§10.2, ART-29, I3).
+- **Contradictions resolved:**
+  - The bot rights check would always trip on the implied `can_manage_chat`; it now allows it (§1, §10.5).
+  - Bot-created invite links needed `can_invite_users`, which §10.5 forbids. The owner now creates them (§10.7).
+  - Permanent deletion was given to admin, which cannot read drafts. It now belongs to the editor-in-chief (§4.2, §5.8).
+  - Editors could edit sponsored content although the research forbids it. New rule SP-11 (§4.2, §5.1, §5.6, §5.9).
+  - "Hold after publication" had no transition. Removed (§5.1).
+  - Anonymous reads were denied on every collection, which breaks media files. Media is now the exception (§4.3).
+  - Admin's site-settings rights lacked `emergency` (§4.2).
+  - The importer conflicted with the translator ≠ reviewer rule (§11.1).
+- **Gaps filled:**
+  - an "Owner" column for every workflow state;
+  - a `deskEditor` field and a "Tahrirga olish" (take for editing) transition;
+  - `translation.assignee` and a translator permission row;
+  - `requests.assignedTo`;
+  - `types.ts` additions for `ImageRef` licence fields, `decorative`, and the `ClubEvent` registration fields;
+  - the `postalIndex` ambiguity;
+  - CAA `accounturi`;
+  - a `jobs.access` warning in §12.2;
+  - `requests` personal data outside the movable set (§13.7);
+  - acceptance test H10 for the Next cache advisories;
+  - a clearer K9;
+  - §18 items 16, 17, 20 and 21 updated, and item 22 added (publishing the latest draft through `payload.update`).
+
+### Still uncertain or not re-checked
+
+- **Unverified:**
+  - Whether Cloudflare Independent MFA is on the Free Zero Trust plan, and how long Access logs are kept.
+  - Cloudflare's entry on the official DPF list.
+  - Whether a commercial outlet qualifies for Project Galileo or Project Shield.
+  - Whether Payload's advertised "Audit Logs" are a paid feature.
+  - Whether Next 16.4.0 contains the fix for GHSA-3w37 (the advisory says "16.3.?").
+  - Whether Telegram's admin log still covers 48 hours.
+  - The number and date of PQ-371. Spot confirms that registration moved to the Inspection under the Ministry of Digital Technologies, but gives no decree number.
+- **Not re-checked in this pass**, so they stand on the original researchers' sources:
+  - NYT Oak and Scoop details; Arc token expiry and the ideas-portal claims;
+  - other Guardian repositories; the Reuters, NPR, Bloomberg, FT, Politico, Semafor and Axios material;
+  - Superdesk, Livingdocs, Quintype and RebelMouse;
+  - the Telegram reach figures;
+  - the Uzbek peers' headers and footers, the WHOIS expiry date and the latency measurements;
+  - ZRU-764; Ofcom 2022; the 2026 BRV amount;
+  - the Uzbek-language wording of ZRU-776, read here only in Russian.
+- **Legal interpretation** is unchanged and still needs counsel (§4.5).
