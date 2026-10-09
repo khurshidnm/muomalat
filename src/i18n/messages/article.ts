@@ -27,6 +27,14 @@ const uz = {
   /** First-column headers for chart data tables (line charts: x axis; bar charts: bars). */
   period: 'Davr',
   category: 'Toifa',
+  /** A withdrawn story (CMS-SPEC §5.8): its page keeps the date and the newsroom's notice. */
+  withdrawn: 'Material olib tashlandi',
+  withdrawnTitle: 'Olib tashlangan material',
+  /** A ru/en translation that has not caught up with an update of the Uzbek original (§6.3). */
+  translationOutdated: (date: string) => `Oʻzbekcha asl matn ${date} yangilangan; tarjima hali yangilanmagan.`,
+  /** Draft preview on the CMS host (§5.13). */
+  preview: 'KOʻRIB CHIQISH — chop etilmagan',
+  previewExit: 'Koʻrib chiqishni yakunlash',
 } as const
 
 export const articleMessages = defineMessages({
@@ -57,6 +65,11 @@ export const articleMessages = defineMessages({
     chart: 'Интерактивная диаграмма: наведите курсор или используйте стрелки, чтобы увидеть значения',
     period: 'Период',
     category: 'Категория',
+    withdrawn: 'Материал снят с публикации',
+    withdrawnTitle: 'Снятый с публикации материал',
+    translationOutdated: (date: string) => `Узбекский оригинал обновлён ${date}; перевод пока не обновлён.`,
+    preview: 'ПРЕДПРОСМОТР — не опубликовано',
+    previewExit: 'Выйти из предпросмотра',
   },
   en: {
     shareTelegram: 'Share on Telegram',
@@ -84,5 +97,10 @@ export const articleMessages = defineMessages({
     chart: 'Interactive chart: hover or use the arrow keys to read values',
     period: 'Period',
     category: 'Category',
+    withdrawn: 'This story has been withdrawn',
+    withdrawnTitle: 'Withdrawn story',
+    translationOutdated: (date: string) => `The Uzbek original was updated on ${date}; this translation has not been updated yet.`,
+    preview: 'PREVIEW — not published',
+    previewExit: 'Leave preview',
   },
 })

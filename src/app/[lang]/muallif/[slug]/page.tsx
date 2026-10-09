@@ -4,7 +4,7 @@ import { isLocale, locales, localePath, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { listingMessages } from '@/i18n/messages/listing'
-import { getArticlesByAuthor, getAuthor, getAuthors, getLatest, getMostRead, isCommercialAuthor } from '@/content'
+import { getArticlesByAuthor, getAuthor, getAuthors, getLatest, getMostRead, isCommercialAuthor, isSlug, resolveMissing } from '@/content'
 import { site } from '@/content/data/site'
 import { absoluteUrl, href, paths } from '@/lib/routes'
 import { jsonLd, pageMetadata } from '@/lib/seo'
@@ -19,21 +19,22 @@ import { listingLd } from '@/components/listing/ld'
 
 type Params = { params: Promise<{ lang: string; slug: string }> }
 
-export const dynamicParams = false
+/** Seconds; a new story by the author reaches the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
-export function generateStaticParams() {
-  return locales.flatMap((lang) => getAuthors(lang).map((a) => ({ lang, slug: a.slug })))
+export async function generateStaticParams() {
+  return (await Promise.all(locales.map(async (lang) => (await getAuthors(lang)).map((a) => ({ lang, slug: a.slug }))))).flat()
 }
 
-function load(lang: string, slug: string) {
-  if (!isLocale(lang)) return undefined
-  const author = getAuthor(lang, slug)
+async function load(lang: string, slug: string) {
+  if (!isLocale(lang) || !isSlug(slug)) return undefined
+  const author = await getAuthor(lang, slug)
   return author ? { locale: lang as Locale, author } : undefined
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { lang, slug } = await params
-  const p = load(lang, slug)
+  const p = await load(lang, slug)
   if (!p) return {}
   const m = pick(listingMessages, p.locale)
   return pageMetadata({
@@ -41,21 +42,26 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     path: paths.author(slug),
     title: p.author.name,
     description: m.author.metaDescription(p.author.name, p.author.role),
-    noindex: getArticlesByAuthor(p.locale, slug).length === 0,
+    noindex: (await getArticlesByAuthor(p.locale, slug)).length === 0,
   })
 }
 
 export default async function AuthorPage({ params }: Params) {
   const { lang, slug } = await params
-  const p = load(lang, slug)
-  if (!p) notFound()
+  const p = await load(lang, slug)
+  if (!p) {
+    if (isLocale(lang) && isSlug(slug)) await resolveMissing(localePath(lang, paths.author(slug)))
+    notFound()
+  }
   const { locale, author: a } = p
   const t = pick(commonMessages, locale)
   const m = pick(listingMessages, locale)
-  const items = getArticlesByAuthor(locale, slug)
+  const items = await getArticlesByAuthor(locale, slug)
   const ownMostRead = mostReadWithin(items, 5)
   const scoped = ownMostRead.length >= 3
-  const org = isOrganisationByline(slug)
+  const siteMostRead = scoped ? ownMostRead : await getMostRead(locale, 5)
+  const latest = await getLatest(locale, 5)
+  const org = a.isTeam ?? isOrganisationByline(slug)
   // Partner-content byline: brass commercial label and avatar, never the editorial kicker.
   const commercial = isCommercialAuthor(a)
   const pageUrl = absoluteUrl(localePath(locale, paths.author(slug)))
@@ -119,10 +125,10 @@ export default async function AuthorPage({ params }: Params) {
         locale={locale}
         articles={items}
         kicker="rubric"
-        mostRead={scoped ? ownMostRead : getMostRead(locale, 5)}
+        mostRead={siteMostRead}
         mostReadScope={scoped ? m.mostReadScope.author : m.mostReadScope.site}
         idPrefix={`author-${slug}`}
-        empty={<EmptyState locale={locale} title={m.empty.title} text={m.empty.author} latest={getLatest(locale, 5)} id={`author-${slug}-empty`} />}
+        empty={<EmptyState locale={locale} title={m.empty.title} text={m.empty.author} latest={latest} id={`author-${slug}-empty`} />}
       />
     </>
   )

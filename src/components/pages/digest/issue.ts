@@ -1,5 +1,5 @@
 import {
-  CONTENT_NOW,
+  contentNow,
   getArticleById,
   getArticles,
   getClubEvents,
@@ -46,19 +46,19 @@ function sendTime(n: number): number {
 }
 
 /** Number of the most recent issue already sent at `now`. */
-export function latestIssueNumber(now: string = CONTENT_NOW): number {
+export function latestIssueNumber(now: string = contentNow()): number {
   return Math.max(1, Math.floor((Date.parse(now) - Date.parse(digestConfig.firstIssue)) / WEEK_MS) + 1)
 }
 
 /** ISO time of the next issue after `now`. */
-export function nextIssueAt(now: string = CONTENT_NOW): string {
+export function nextIssueAt(now: string = contentNow()): string {
   return new Date(sendTime(latestIssueNumber(now) + 1)).toISOString()
 }
 
-export function getIssue(locale: Locale, n: number, limit: number = digestConfig.stories): DigestIssue {
+export async function getIssue(locale: Locale, n: number, limit: number = digestConfig.stories): Promise<DigestIssue> {
   const sent = sendTime(n)
   const from = sent - WEEK_MS
-  const stories = getArticles(locale)
+  const stories = (await getArticles(locale))
     .filter((a) => {
       const t = Date.parse(a.publishedAt)
       return !a.sponsored && t > from && t <= sent
@@ -74,30 +74,30 @@ export function getIssue(locale: Locale, n: number, limit: number = digestConfig
 }
 
 /** The latest issue with everything the preview shows. */
-export function getLatestIssue(locale: Locale, now: string = CONTENT_NOW): DigestIssueFull {
-  const issue = getIssue(locale, latestIssueNumber(now))
+export async function getLatestIssue(locale: Locale, now: string = contentNow()): Promise<DigestIssueFull> {
+  const issue = await getIssue(locale, latestIssueNumber(now))
   // A thin week is topped up with the most-read stories so the e-mail never looks empty.
   if (issue.stories.length < 5) {
     const have = new Set(issue.stories.map((a) => a.id))
-    issue.stories = [...issue.stories, ...getMostRead(locale, 12).filter((a) => !have.has(a.id))].slice(0, digestConfig.stories)
+    issue.stories = [...issue.stories, ...(await getMostRead(locale, 12)).filter((a) => !have.has(a.id))].slice(0, digestConfig.stories)
     issue.minutes = issue.stories.reduce((sum, a) => sum + a.readingMinutes, 0)
   }
   const sent = Date.parse(issue.sentAt)
   // Term of the week: the first glossary term behind the week's top story.
   const termSlug = issue.stories[0]?.terms?.[0]
-  const term = (termSlug ? getTerm(locale, termSlug) : undefined) ?? getTermOfDay(locale, issue.sentAt)
-  const club = getClubEvents(locale)
+  const term = (termSlug ? await getTerm(locale, termSlug) : undefined) ?? (await getTermOfDay(locale, issue.sentAt))
+  const club = (await getClubEvents(locale))
     .filter((e) => Date.parse(e.startsAt) > sent)
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0]
-  const numberStory = getArticleById(locale, digestConfig.numberArticleId)
+  const numberStory = await getArticleById(locale, digestConfig.numberArticleId)
   return { ...issue, term, club, numberStory }
 }
 
 /** Earlier issues (newest first) that carried at least one story. */
-export function getPreviousIssues(locale: Locale, count = 3, now: string = CONTENT_NOW): DigestIssue[] {
+export async function getPreviousIssues(locale: Locale, count = 3, now: string = contentNow()): Promise<DigestIssue[]> {
   const out: DigestIssue[] = []
   for (let n = latestIssueNumber(now) - 1; n >= 1 && out.length < count; n--) {
-    const issue = getIssue(locale, n, 1)
+    const issue = await getIssue(locale, n, 1)
     if (issue.stories.length) out.push(issue)
   }
   return out

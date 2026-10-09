@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
-import { CONTENT_NOW, getArticles, rubricSlugs } from '@/content'
+import { contentNow, getArticles, rubricSlugs } from '@/content'
 import { formatDate } from '@/lib/format'
 import { href, paths } from '@/lib/routes'
 import { Icon } from '@/components/ui/Icon'
@@ -18,14 +18,14 @@ import { Wordmark } from './Wordmark'
 const DEMO = process.env.NEXT_PUBLIC_DEMO_NOTICE !== 'off'
 
 /** Stories whose text exists in the page language (ru/en translations). */
-function translatedPaths(locale: Locale): string[] {
+async function translatedPaths(locale: Locale): Promise<string[]> {
   if (locale !== 'ru' && locale !== 'en') return []
-  return getArticles(locale)
+  return (await getArticles(locale))
     .filter((a) => a.contentLang === locale)
     .map((a) => a.url)
 }
 
-export function Header({ locale }: { locale: Locale }) {
+export async function Header({ locale }: { locale: Locale }) {
   const t = pick(commonMessages, locale)
   const home = href(locale, '/')
   const sections = [
@@ -40,7 +40,8 @@ export function Header({ locale }: { locale: Locale }) {
     { path: paths.advertise(), label: t.nav.advertise },
     { path: paths.contact(), label: t.nav.contact },
   ]
-  const today = CONTENT_NOW
+  const today = contentNow()
+  const hideNotice = await translatedPaths(locale)
 
   // `display: contents` on the banner: its children are laid out as children of
   // <body>, so the sticky row sticks for the whole page (a sticky box only
@@ -207,7 +208,7 @@ export function Header({ locale }: { locale: Locale }) {
       </nav>
 
       {t.contentLanguageNotice ? (
-        <ContentLanguageNotice text={t.contentLanguageNotice} hideOn={translatedPaths(locale)} />
+        <ContentLanguageNotice text={t.contentLanguageNotice} hideOn={hideNotice} />
       ) : null}
     </header>
   )

@@ -35,10 +35,10 @@ export function mostReadWithin(list: ArticleView[], limit = 5): ArticleView[] {
 }
 
 /** Tags that most often appear alongside `slug` in the given stories. */
-export function relatedTags(locale: Locale, slug: string, list: ArticleView[], limit = 8): Localized<Tag>[] {
+export async function relatedTags(locale: Locale, slug: string, list: ArticleView[], limit = 8): Promise<Localized<Tag>[]> {
   const counts = new Map<string, number>()
   for (const a of list) for (const t of a.tags) if (t !== slug) counts.set(t, (counts.get(t) ?? 0) + 1)
-  const all = getTags(locale)
+  const all = await getTags(locale)
   return [...counts.entries()]
     .sort((x, y) => y[1] - x[1])
     .map(([s]) => all.find((t) => t.slug === s))

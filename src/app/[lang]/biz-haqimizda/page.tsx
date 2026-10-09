@@ -21,6 +21,8 @@ import { Imprint } from '@/components/pages/about/Imprint'
 
 // Only the four editions from the layout exist; anything else is a 404.
 export const dynamicParams = false
+/** Seconds; the team and corrections lists follow content changes through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
 type Params = { params: Promise<{ lang: string }> }
 
@@ -56,16 +58,20 @@ export default async function AboutPage({ params }: Params) {
   const t = pick(commonMessages, locale)
   const a = pick(aboutMessages, locale)
 
-  const members: TeamMember[] = getAuthors(locale).map((author) => ({
-    author,
-    stories: getArticlesByAuthor(locale, author.slug).length,
-  }))
-  const people = members.filter((m) => !COLLECTIVE_BYLINES.includes(m.author.slug))
-  const collective = members.filter((m) => COLLECTIVE_BYLINES.includes(m.author.slug))
+  const members: TeamMember[] = await Promise.all(
+    (await getAuthors(locale)).map(async (author) => ({
+      author,
+      stories: (await getArticlesByAuthor(locale, author.slug)).length,
+    })),
+  )
+  // Team bylines (the newsroom, partner content) are listed apart from people.
+  const collectiveByline = (m: TeamMember) => m.author.isTeam ?? COLLECTIVE_BYLINES.includes(m.author.slug)
+  const people = members.filter((m) => !collectiveByline(m))
+  const collective = members.filter(collectiveByline)
   // The most recent corrected story serves as the live example of a "Tuzatish" note.
-  const corrected = getArticles(locale).find((x) => x.corrections?.length)
-  const explainer = getArticleById(locale, BOARD_EXPLAINER_ID)
-  const boardTerm = getTerm(locale, BOARD_TERM)
+  const corrected = (await getArticles(locale)).find((x) => x.corrections?.length)
+  const explainer = await getArticleById(locale, BOARD_EXPLAINER_ID)
+  const boardTerm = await getTerm(locale, BOARD_TERM)
 
   const toc: TocItem[] = [
     { id: IDS.mission, label: a.mission.short },

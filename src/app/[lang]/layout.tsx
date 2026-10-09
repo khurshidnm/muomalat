@@ -7,6 +7,7 @@ import { commonMessages } from '@/i18n/messages/common'
 import { site } from '@/content/data/site'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { previewChrome } from '@/components/layout/PreviewChrome'
 import '../globals.css'
 
 // Both families cover Uzbek Latin (ʻ U+02BB, ʼ U+02BC), Uzbek Cyrillic
@@ -87,6 +88,8 @@ export default async function RootLayout({
   const lang = isLocale(raw) ? raw : defaultLocale
   const t = pick(commonMessages, lang)
   preload('/fonts/okina-sans.woff2', { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' })
+  // Draft preview on the CMS host only (§5.13); undefined for every public request.
+  const preview = await previewChrome(lang)
 
   return (
     <html lang={localeMeta[lang].htmlLang} className={`${serif.variable} ${serifItalic.variable} ${sans.variable}`} suppressHydrationWarning>
@@ -99,7 +102,14 @@ export default async function RootLayout({
         </a>
         <Header locale={lang} />
         <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
-          {children}
+          {preview ? (
+            <>
+              {preview}
+              {children}
+            </>
+          ) : (
+            children
+          )}
         </main>
         <Footer locale={lang} />
       </body>

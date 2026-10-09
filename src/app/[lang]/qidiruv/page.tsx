@@ -5,7 +5,7 @@ import { isLocale, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { searchMessages } from '@/i18n/messages/search'
-import { getLatest, search, type SearchResults } from '@/content'
+import { getArticleById, getLatest, search, type ArticleView, type SearchResults } from '@/content'
 import { href, paths } from '@/lib/routes'
 import { pageMetadata } from '@/lib/seo'
 import { SearchForm } from '@/components/layout/SearchForm'
@@ -71,10 +71,10 @@ interface SearchRun {
  * no direct match the transliterated results replace the empty set; with
  * both, the two are merged so a Latin query on /kr still finds everything.
  */
-function runSearch(locale: Locale, q: string): SearchRun {
-  const results = search(locale, q)
+async function runSearch(locale: Locale, q: string): Promise<SearchRun> {
+  const results = await search(locale, q)
   const alt = otherScriptQuery(locale, q)
-  const retry = alt ? search(locale, alt) : undefined
+  const retry = alt ? await search(locale, alt) : undefined
   if (!alt || !retry || retry.total === 0) return { results, used: q, words: queryWords(q) }
   if (results.total === 0) return { results: retry, used: alt, words: queryWords(alt) }
   const articles = union(results.articles, retry.articles, (a) => a.id)
@@ -103,8 +103,18 @@ export default async function SearchPage({ params, searchParams }: Params) {
   const q = readQuery(sp.q)
   const tooShort = q.length > 0 && queryWords(q).join('').length < 2
   const searched = q.length > 0 && !tooShort
-  const run = searched ? runSearch(locale, q) : undefined
+  const run = searched ? await runSearch(locale, q) : undefined
   const results = run?.results
+  // Everything the views show is read here, so they render in one pass.
+  const latest = await getLatest(locale, 6)
+  const stories = new Map(
+    await Promise.all(
+      (results?.institutions ?? [])
+        .slice(0, INSTITUTIONS_SHOWN)
+        .flatMap((i) => (i.articleId ? [i.articleId] : []))
+        .map(async (id) => [id, await getArticleById(locale, id)] as const),
+    ),
+  )
   const used = run?.used ?? q
   const words = run?.words ?? []
   const converted = used !== q
@@ -175,11 +185,13 @@ export default async function SearchPage({ params, searchParams }: Params) {
           spellings={[used, run?.also].filter((x): x is string => !!x)}
           words={words}
           shownParam={first(sp.n)}
+          latest={latest}
+          stories={stories}
         />
       ) : searched ? (
-        <EmptyView locale={locale} />
+        <EmptyView locale={locale} latest={latest} />
       ) : (
-        <IdleView locale={locale} />
+        <IdleView locale={locale} latest={latest} />
       )}
     </div>
   )
@@ -194,6 +206,8 @@ function ResultsView({
   spellings,
   words,
   shownParam,
+  latest,
+  stories,
 }: {
   locale: Locale
   results: SearchResults
@@ -202,6 +216,9 @@ function ResultsView({
   spellings: string[]
   words: string[]
   shownParam?: string
+  latest: ArticleView[]
+  /** Stories covering the institutions shown, by article id. */
+  stories: Map<string, ArticleView | undefined>
 }) {
   const m = pick(searchMessages, locale).search
   const { articles, terms, institutions } = results
@@ -254,7 +271,7 @@ function ResultsView({
       <ul className="mt-1">
         {institutions.slice(0, INSTITUTIONS_SHOWN).map((i) => (
           <li key={i.id} className="border-b border-rule py-3.5">
-            <InstitutionResult institution={i} locale={locale} words={words} />
+            <InstitutionResult institution={i} locale={locale} words={words} story={i.articleId ? stories.get(i.articleId) : undefined} />
           </li>
         ))}
       </ul>
@@ -320,7 +337,7 @@ function ResultsView({
         </div>
         <div className="min-w-0 space-y-12 lg:col-span-4">
           {termsFirst ? null : termsSection}
-          {twoColumns ? institutionsSection : <LatestFeed articles={getLatest(locale, 6)} locale={locale} id="search-latest" />}
+          {twoColumns ? institutionsSection : <LatestFeed articles={latest} locale={locale} id="search-latest" />}
         </div>
       </div>
     </>
@@ -329,7 +346,7 @@ function ResultsView({
 
 // ── Nothing found ─────────────────────────────────────────────────────────
 
-function EmptyView({ locale }: { locale: Locale }) {
+function EmptyView({ locale, latest }: { locale: Locale; latest: ArticleView[] }) {
   const m = pick(searchMessages, locale).search
   const { rubrics, projects } = siteSections(locale)
   return (
@@ -357,7 +374,7 @@ function EmptyView({ locale }: { locale: Locale }) {
         <SectionList items={[...rubrics, ...projects]} className="mt-3" />
       </section>
       <div className="min-w-0 lg:col-span-4">
-        <LatestFeed articles={getLatest(locale, 6)} locale={locale} id="search-latest" />
+        <LatestFeed articles={latest} locale={locale} id="search-latest" />
       </div>
     </div>
   )
@@ -365,11 +382,10 @@ function EmptyView({ locale }: { locale: Locale }) {
 
 // ── No query yet ──────────────────────────────────────────────────────────
 
-function IdleView({ locale }: { locale: Locale }) {
+function IdleView({ locale, latest }: { locale: Locale; latest: ArticleView[] }) {
   const t = pick(commonMessages, locale)
   const m = pick(searchMessages, locale).search
   const { rubrics, projects } = siteSections(locale)
-  const latest = getLatest(locale, 6)
   return (
     <div className="mt-10 grid gap-12 lg:grid-cols-12 lg:gap-x-8">
       <div className="min-w-0 space-y-12 lg:col-span-8">

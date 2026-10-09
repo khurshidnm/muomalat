@@ -12,10 +12,12 @@ import { EditorialNote } from '@/components/article/EndMatter'
 import { GlossaryBrowser, type BrowserEntry, type BrowserLabels } from '@/components/glossary/GlossaryBrowser'
 import { GlossaryAbout, GlossaryNotes } from '@/components/glossary/parts'
 import { letterOf } from '@/components/glossary/alphabet'
-import { CATEGORIES, indexLetters, orderedGlossary, searchHaystack } from '@/components/glossary/data'
+import { CATEGORIES, indexLetters, orderedGlossary, otherScriptTerms, searchHaystack } from '@/components/glossary/data'
 
 // Only the four editions from the layout exist; anything else is a 404.
 export const dynamicParams = false
+/** Seconds; glossary changes reach the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
 type Params = { params: Promise<{ lang: string }> }
 
@@ -38,7 +40,8 @@ export default async function GlossaryPage({ params }: Params) {
   const t = pick(commonMessages, locale)
   const m = pick(glossaryMessages, locale)
 
-  const terms = orderedGlossary(locale)
+  const terms = await orderedGlossary(locale)
+  const otherScript = await otherScriptTerms(locale)
   const contentLang = terms[0]?.contentLang ?? 'uz'
   const uiLang = localeMeta[locale].htmlLang
   const counts = Object.fromEntries(CATEGORIES.map((c) => [c, terms.filter((x) => x.category === c).length]))
@@ -52,7 +55,7 @@ export default async function GlossaryPage({ params }: Params) {
     en: x.aliases.en,
     ru: x.aliases.ru,
     short: x.short,
-    haystack: searchHaystack(locale, x),
+    haystack: searchHaystack(x, otherScript.get(x.slug)),
   }))
 
   const labels: BrowserLabels = {

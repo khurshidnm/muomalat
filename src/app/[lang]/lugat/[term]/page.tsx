@@ -6,7 +6,7 @@ import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { articleMessages } from '@/i18n/messages/article'
 import { glossaryMessages } from '@/i18n/messages/glossary'
-import { getArticlesByTerm, getGlossary, getTerm } from '@/content'
+import { getArticlesByTerm, getGlossary, getTerm, isSlug, resolveMissing } from '@/content'
 import { site } from '@/content/data/site'
 import { absoluteUrl, href, paths } from '@/lib/routes'
 import { jsonLd, pageMetadata } from '@/lib/seo'
@@ -23,18 +23,25 @@ import { AliasList, ExampleBox, RelatedTerms, StepList, TermNav, categoryHref } 
 
 type Params = { params: Promise<{ lang: string; term: string }> }
 
-export const dynamicParams = false
+/** Seconds; a change to the term reaches the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
-export function generateStaticParams() {
-  return locales.flatMap((lang) => getGlossary(lang).map((t) => ({ lang, term: t.slug })))
+export async function generateStaticParams() {
+  return (await Promise.all(locales.map(async (lang) => (await getGlossary(lang)).map((t) => ({ lang, term: t.slug }))))).flat()
 }
 
 /** Stories listed in full before the rest fold into "Yana N ta maqola". */
 const ARTICLES_SHOWN = 5
 
-function load(lang: string, slug: string): Term | undefined {
-  if (!isLocale(lang)) return undefined
+async function load(lang: string, slug: string): Promise<Term | undefined> {
+  if (!isLocale(lang) || !isSlug(slug)) return undefined
   return getTerm(lang, slug)
+}
+
+/** Editions that carry the term's text: uz, kr, and ru/en where an approved translation is shown. */
+async function editions(slug: string): Promise<Locale[]> {
+  const own = await Promise.all((['ru', 'en'] as const).map(async (l) => ((await getTerm(l, slug))?.contentLang === l ? [l] : [])))
+  return ['uz', 'kr', ...own.flat()]
 }
 
 /** Glossary text is written in Uzbek; ru/en pages show the Uzbek original. */
@@ -44,7 +51,7 @@ function isFallback(locale: Locale, term: Term) {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { lang, term: slug } = await params
-  const term = load(lang, slug)
+  const term = await load(lang, slug)
   if (!term || !isLocale(lang)) return {}
   const m = pick(glossaryMessages, lang)
   return pageMetadata({
@@ -52,7 +59,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     path: paths.term(term.slug),
     title: m.meta.termTitle(term.term),
     description: plainText(term.short),
-    languages: ['uz', 'kr'],
+    languages: await editions(term.slug),
     canonicalLocale: isFallback(lang, term) ? 'uz' : undefined,
     images: [{ url: absoluteUrl(`${localePath(lang, paths.term(term.slug))}/opengraph-image`), width: 1200, height: 630, alt: term.term }],
   })
@@ -62,8 +69,11 @@ const H2 = 'scroll-mt-6 font-display text-h3 font-semibold text-ink'
 
 export default async function TermPage({ params }: Params) {
   const { lang, term: slug } = await params
-  const loaded = load(lang, slug)
-  if (!loaded || !isLocale(lang)) notFound()
+  const loaded = await load(lang, slug)
+  if (!loaded || !isLocale(lang)) {
+    if (isLocale(lang) && isSlug(slug)) await resolveMissing(localePath(lang, paths.term(slug)))
+    notFound()
+  }
   const locale: Locale = lang
   const term = loaded
   const t = pick(commonMessages, locale)
@@ -73,10 +83,10 @@ export default async function TermPage({ params }: Params) {
   const ui = localeMeta[locale].htmlLang
 
   const category = m.categories[term.category]
-  const related = term.related.map((s) => getTerm(locale, s)).filter((x): x is Term => !!x)
-  const articles = getArticlesByTerm(locale, term.slug)
-  const { prev, next } = neighbours(locale, term.slug)
-  const sameCategory = orderedGlossary(locale).filter((x) => x.category === term.category)
+  const related = (await Promise.all(term.related.map((s) => getTerm(locale, s)))).filter((x): x is Term => !!x)
+  const articles = await getArticlesByTerm(locale, term.slug)
+  const { prev, next } = await neighbours(locale, term.slug)
+  const sameCategory = (await orderedGlossary(locale)).filter((x) => x.category === term.category)
 
   const glossaryUrl = absoluteUrl(localePath(locale, paths.glossary()))
   const url = absoluteUrl(localePath(locale, paths.term(term.slug)))
