@@ -1,0 +1,403 @@
+import { defineMessages } from '../messages'
+
+/**
+ * Weekly digest: home signup block (top-level keys, used by DigestSignup —
+ * keep them stable) and the /dayjest page (`page`).
+ */
+const uz = {
+  title: 'Haftalik dayjest',
+  pitch: 'Har juma: haftaning eng muhim xabarlari, raqamlari va hujjatlari — bitta xatda.',
+  emailLabel: 'Elektron pochta',
+  placeholder: 'siz@kompaniya.uz',
+  submit: 'Obuna boʻlish',
+  sending: 'Yuborilmoqda…',
+  success: 'Rahmat! Obunani tasdiqlash uchun pochtangizga xat yubordik.',
+  note: 'Har hafta bitta xat. Obunani istalgan vaqtda bekor qilish mumkin.',
+  orTelegram: 'Yoki Telegram kanalimizga obuna boʻling',
+  page: {
+    metaTitle: 'Haftalik dayjest va Telegram kanal',
+    metaDescription:
+      'Muomalatni ikki yoʻl bilan kuzating: har kuni — Telegram kanalida, har juma — elektron pochtaga keladigan haftalik dayjestda. Obuna bepul.',
+    kicker: 'Obuna',
+    standfirst:
+      'Islom moliyasi bozorini ikki yoʻl bilan kuzatish mumkin: har kuni — Telegram kanalimizda, haftada bir marta — elektron pochtaga keladigan dayjestda. Ikkalasi ham bepul.',
+    facts: {
+      label: 'Dayjest haqida qisqacha',
+      schedule: 'Har juma, 18:00',
+      free: 'Bepul',
+      unsubscribe: 'Istalgan vaqtda bekor qilinadi',
+    },
+    ways: {
+      title: 'Kuzatishning ikki yoʻli',
+      description: 'Tezkor xabarlar uchun — Telegram, haftaning xulosasi uchun — pochta.',
+      inside: 'Nimalar bor',
+      subscribers: 'Obunachilar',
+      email: {
+        cadence: 'Har hafta',
+        title: 'Elektron pochta dayjesti',
+        text: 'Juma kuni kechqurun — hafta davomida nima boʻlgani va nega bu muhimligi haqida bitta xat.',
+        items: [
+          'Haftaning olti asosiy materiali — har biri bir jumlada',
+          'Haftaning raqami va lugʻatdan bitta atama',
+          'Muomalat klubining navbatdagi uchrashuvi',
+        ],
+      },
+      telegram: {
+        cadence: 'Har kuni',
+        title: 'Telegram kanal',
+        text: 'Bozordagi har bir muhim voqea — eʼlon qilingan zahoti, telefoningizda.',
+        items: [
+          'Ertalabki sharh: soat 08:00 da kunning asosiy xabarlari',
+          'Tezkor xabarlar: yangi litsenziyalar, regulyator qarorlari va bitimlar',
+          'Grafiklar: bozor raqamlari bitta rasmda',
+        ],
+        openApp: 'Kanal Telegram ilovasida ochiladi.',
+      },
+    },
+    preview: {
+      title: 'Soʻnggi son',
+      description: 'Obunachilarga yuborilgan xatning veb-nusxasi. Sarlavhalar saytdagi materiallarga olib boradi.',
+      sample: 'Namuna',
+      envelope: 'Xat sarlavhasi',
+      from: 'Kimdan',
+      subject: 'Mavzu',
+      date: 'Sana',
+      sender: 'Muomalat · Haftalik dayjest',
+      issue: (n: number) => `№ ${n}`,
+      issueTitle: (n: number) => `Haftalik dayjest, ${n}-son`,
+      summary: (stories: number, minutes: number) => `${stories} ta material · ${minutes} daqiqada oʻqiladi`,
+      greeting: 'Xayrli kech!',
+      intro:
+        'Hafta davomida eng koʻp oʻqilgan va bozor uchun eng muhim boʻlgan materiallar — bitta xatda. Har bir sarlavha saytdagi toʻliq matnga olib boradi.',
+      signoff: 'Muomalat tahririyati',
+      stories: 'Haftaning asosiy xabarlari',
+      numberTitle: 'Haftaning raqami',
+      termTitle: 'Haftaning atamasi',
+      termWhy: 'Haftaning bosh xabarini tushunish uchun',
+      clubTitle: 'Klubda',
+      clubMeeting: (n: number) => `${n}-uchrashuv`,
+      readStory: 'Materialni oʻqish',
+      readTerm: 'Lugʻatda batafsil',
+      clubCta: 'Roʻyxatdan oʻtish',
+      source: 'Manba',
+      footer:
+        'Siz bu xatni muomalat.uz saytida obuna boʻlganingiz uchun oldingiz. Obunani bekor qilish havolasi har bir xatning oxirida joylashgan.',
+      languageNote: '',
+      nextTitle: 'Keyingi son',
+      nextText: 'Soat 18:00 da pochtangizda.',
+      nextCta: 'Dayjestga obuna boʻlish',
+      previousTitle: 'Oldingi sonlar',
+      previousLead: 'Bosh material',
+    },
+    numberOfWeek: {
+      value: '195',
+      text: 'nafar mutaxassisni 40 ta bozor ishtirokchisi kelgusi 12 oyda yollashni rejalashtirmoqda. Hozir ularda 96 ta boʻsh ish oʻrni bor.',
+      source: 'Muomalat soʻrovi',
+    },
+    faq: {
+      title: 'Savol-javob',
+      description: 'Dayjest qachon keladi, manzilingiz qanday saqlanadi va obunani qanday bekor qilish mumkin.',
+      items: {
+        when: {
+          q: 'Dayjest qachon keladi?',
+          a: 'Har juma, Toshkent vaqti bilan soat 18:00 da. Xat oʻtgan juma kechqurundan buyon chiqqan materiallarni qamrab oladi.',
+        },
+        difference: {
+          q: 'Telegram kanal va dayjestning farqi nima?',
+          a: 'Telegram kanalda xabarlar kun davomida, eʼlon qilingan zahoti chiqadi. Dayjest — haftaning saralangan xulosasi: eng muhim materiallar qisqa izoh bilan, haftaning raqami va atamasi. Ikkalasiga birdan obuna boʻlish mumkin.',
+        },
+        cost: {
+          q: 'Obuna pullikmi? Xatda reklama boʻladimi?',
+          a: 'Obuna bepul. Xatda bitta reklama yoki hamkorlik bloki boʻlishi mumkin. U har doim «Reklama» yoki «Hamkorlik materiali» deb belgilanadi va tahririyat matnidan ajratiladi — [tahririyat siyosati](/biz-haqimizda#tahririyat-siyosati)da batafsil.',
+        },
+        privacy: {
+          q: 'Elektron pochta manzilimdan qanday foydalanasiz?',
+          a: 'Manzilingizdan faqat dayjestni yuborish uchun foydalanamiz. Uni reklama beruvchilarga yoki boshqa uchinchi shaxslarga bermaymiz va sotmaymiz. Manzilingizni roʻyxatdan butunlay oʻchirishni istasangiz, [«Aloqa» sahifasi](/aloqa) orqali yozing.',
+        },
+        unsubscribe: {
+          q: 'Obunani qanday bekor qilaman?',
+          a: 'Har bir xatning oxirida «Obunani bekor qilish» havolasi bor — uni bir marta bosishning oʻzi kifoya. Qayta obuna boʻlish uchun shu sahifadagi formani yana toʻldiring.',
+        },
+        confirm: {
+          q: 'Tasdiqlash xati kelmadi. Nima qilish kerak?',
+          a: 'Bir necha daqiqa kuting va «Spam» papkasini tekshiring. Xat topilmasa, manzil toʻgʻri yozilganini tekshirib, formani qayta yuboring.',
+        },
+        language: {
+          q: 'Dayjest qaysi tilda yuboriladi?',
+          a: 'Dayjest oʻzbek tilida, lotin yozuvida yuboriladi. Saytning kirill yozuvidagi nashri ham bor.',
+        },
+      },
+      moreTitle: 'Javob topmadingizmi?',
+      moreText: 'Savolingizni «Aloqa» sahifasi orqali tahririyatga yuboring.',
+      moreCta: 'Tahririyatga yozish',
+    },
+    previewLabel: 'Soʻnggi sonning veb-nusxasi',
+    unsubscribe: 'Obunani bekor qilish',
+  },
+} as const
+
+export const digestMessages = defineMessages({
+  uz,
+  ru: {
+    title: 'Еженедельный дайджест',
+    pitch: 'Каждую пятницу: главные новости, цифры и документы недели — в одном письме.',
+    emailLabel: 'Электронная почта',
+    placeholder: 'name@company.uz',
+    submit: 'Подписаться',
+    sending: 'Отправка…',
+    success: 'Спасибо! Мы отправили письмо для подтверждения подписки.',
+    note: 'Одно письмо в неделю. Отписаться можно в любой момент.',
+    orTelegram: 'Или подпишитесь на наш Telegram-канал',
+    page: {
+      metaTitle: 'Еженедельный дайджест и Telegram-канал',
+      metaDescription:
+        'Следите за Muomalat двумя способами: каждый день — в Telegram-канале, каждую пятницу — в еженедельном дайджесте по электронной почте. Подписка бесплатная.',
+      kicker: 'Подписка',
+      standfirst:
+        'За рынком исламских финансов можно следить двумя способами: каждый день — в нашем Telegram-канале, раз в неделю — в дайджесте, который приходит на электронную почту. Оба бесплатны.',
+      facts: {
+        label: 'Коротко о дайджесте',
+        schedule: 'Каждую пятницу, 18:00',
+        free: 'Бесплатно',
+        unsubscribe: 'Отписаться можно в любой момент',
+      },
+      ways: {
+        title: 'Два способа следить за рынком',
+        description: 'Для оперативных новостей — Telegram, для итогов недели — почта.',
+        inside: 'Что внутри',
+        subscribers: 'Подписчиков',
+        email: {
+          cadence: 'Раз в неделю',
+          title: 'Дайджест по электронной почте',
+          text: 'В пятницу вечером — одно письмо о том, что произошло за неделю и почему это важно.',
+          items: [
+            'Шесть главных материалов недели — каждый в одном предложении',
+            'Цифра недели и один термин из словаря',
+            'Ближайшая встреча клуба Muomalat',
+          ],
+        },
+        telegram: {
+          cadence: 'Каждый день',
+          title: 'Telegram-канал',
+          text: 'Каждое важное событие рынка — сразу после публикации, в вашем телефоне.',
+          items: [
+            'Утренний обзор: главные новости дня в 08:00',
+            'Срочные новости: новые лицензии, решения регулятора и сделки',
+            'Графики: цифры рынка на одной картинке',
+          ],
+          openApp: 'Канал откроется в приложении Telegram.',
+        },
+      },
+      preview: {
+        title: 'Последний выпуск',
+        description: 'Веб-версия письма, отправленного подписчикам. Заголовки ведут к материалам на сайте.',
+        sample: 'Образец',
+        envelope: 'Заголовок письма',
+        from: 'От',
+        subject: 'Тема',
+        date: 'Дата',
+        sender: 'Muomalat · Еженедельный дайджест',
+        issue: (n: number) => `№ ${n}`,
+        issueTitle: (n: number) => `Еженедельный дайджест, выпуск ${n}`,
+        summary: (stories: number, minutes: number) => `Материалов: ${stories} · ${minutes} мин чтения`,
+        greeting: 'Добрый вечер!',
+        intro:
+          'Самые читаемые и самые важные для рынка материалы недели — в одном письме. Каждый заголовок ведёт к полному тексту на сайте.',
+        signoff: 'Редакция Muomalat',
+        stories: 'Главное за неделю',
+        numberTitle: 'Цифра недели',
+        termTitle: 'Термин недели',
+        termWhy: 'Чтобы понять главную новость недели',
+        clubTitle: 'В клубе',
+        clubMeeting: (n: number) => `Встреча № ${n}`,
+        readStory: 'Читать материал',
+        readTerm: 'Подробнее в словаре',
+        clubCta: 'Зарегистрироваться',
+        source: 'Источник',
+        footer:
+          'Вы получили это письмо, потому что подписались на сайте muomalat.uz. Ссылка для отписки есть в конце каждого письма.',
+        languageNote: 'Письма дайджеста выходят на узбекском языке; материалы приводятся в оригинале.',
+        nextTitle: 'Следующий выпуск',
+        nextText: 'В 18:00 в вашей почте.',
+        nextCta: 'Подписаться на дайджест',
+        previousTitle: 'Предыдущие выпуски',
+        previousLead: 'Главный материал',
+      },
+      numberOfWeek: {
+        value: '195',
+        text: 'специалистов планируют нанять за ближайшие 12 месяцев 40 участников рынка. Сейчас у них открыто 96 вакансий.',
+        source: 'опрос Muomalat',
+      },
+      faq: {
+        title: 'Вопросы и ответы',
+        description: 'Когда приходит дайджест, как хранится ваш адрес и как отписаться.',
+        items: {
+          when: {
+            q: 'Когда приходит дайджест?',
+            a: 'Каждую пятницу в 18:00 по ташкентскому времени. Письмо охватывает материалы, вышедшие с вечера прошлой пятницы.',
+          },
+          difference: {
+            q: 'Чем Telegram-канал отличается от дайджеста?',
+            a: 'В Telegram-канале новости выходят в течение дня, сразу после публикации. Дайджест — отобранные итоги недели: главные материалы с коротким пояснением, цифра и термин недели. Можно подписаться на оба.',
+          },
+          cost: {
+            q: 'Подписка платная? Будет ли в письме реклама?',
+            a: 'Подписка бесплатная. В письме может быть один рекламный или партнёрский блок. Он всегда помечен «Реклама» или «Партнёрский материал» и отделён от редакционного текста — подробнее в [редакционной политике](/biz-haqimizda#tahririyat-siyosati).',
+          },
+          privacy: {
+            q: 'Как вы используете мой адрес электронной почты?',
+            a: 'Мы используем адрес только для рассылки дайджеста. Мы не передаём и не продаём его рекламодателям или другим третьим лицам. Если хотите, чтобы адрес полностью удалили из списка, напишите нам через [страницу «Контакты»](/aloqa).',
+          },
+          unsubscribe: {
+            q: 'Как отписаться?',
+            a: 'В конце каждого письма есть ссылка «Отписаться» — достаточно одного нажатия. Чтобы подписаться снова, заполните форму на этой странице.',
+          },
+          confirm: {
+            q: 'Не пришло письмо с подтверждением. Что делать?',
+            a: 'Подождите несколько минут и проверьте папку «Спам». Если письма нет, проверьте, правильно ли указан адрес, и отправьте форму ещё раз.',
+          },
+          language: {
+            q: 'На каком языке выходит дайджест?',
+            a: 'Дайджест выходит на узбекском языке, латиницей. У сайта есть и издание на узбекской кириллице.',
+          },
+        },
+        moreTitle: 'Не нашли ответа?',
+        moreText: 'Задайте вопрос редакции через страницу «Контакты».',
+        moreCta: 'Написать в редакцию',
+      },
+      previewLabel: 'Веб-версия последнего выпуска',
+      unsubscribe: 'Отписаться',
+    },
+  },
+  en: {
+    title: 'Weekly digest',
+    pitch: 'Every Friday: the week’s most important news, numbers and documents — in one email.',
+    emailLabel: 'Email',
+    placeholder: 'you@company.uz',
+    submit: 'Subscribe',
+    sending: 'Sending…',
+    success: 'Thank you! We have sent you an email to confirm your subscription.',
+    note: 'One email a week. Unsubscribe at any time.',
+    orTelegram: 'Or follow our Telegram channel',
+    page: {
+      metaTitle: 'Weekly digest and Telegram channel',
+      metaDescription:
+        'Follow Muomalat two ways: every day on our Telegram channel, every Friday in the weekly email digest. Both are free.',
+      kicker: 'Subscribe',
+      standfirst:
+        'There are two ways to follow Uzbekistan’s Islamic finance market: every day on our Telegram channel, and once a week in a digest delivered to your inbox. Both are free.',
+      facts: {
+        label: 'The digest at a glance',
+        schedule: 'Fridays, 18:00',
+        free: 'Free',
+        unsubscribe: 'Unsubscribe at any time',
+      },
+      ways: {
+        title: 'Two ways to follow the market',
+        description: 'Telegram for breaking news, email for the week in review.',
+        inside: 'What you get',
+        subscribers: 'Subscribers',
+        email: {
+          cadence: 'Weekly',
+          title: 'Email digest',
+          text: 'On Friday evening, one email on what happened this week and why it matters.',
+          items: [
+            'The week’s six key stories, each in one sentence',
+            'The number of the week and one glossary term',
+            'The next Muomalat club meeting',
+          ],
+        },
+        telegram: {
+          cadence: 'Daily',
+          title: 'Telegram channel',
+          text: 'Every important market event, the moment it is published, on your phone.',
+          items: [
+            'Morning brief: the day’s key news at 08:00',
+            'Breaking news: new licences, regulator decisions and deals',
+            'Charts: market numbers in a single picture',
+          ],
+          openApp: 'The channel opens in the Telegram app.',
+        },
+      },
+      preview: {
+        title: 'Latest issue',
+        description: 'The web version of the email sent to subscribers. Headlines link to the stories on the site.',
+        sample: 'Sample',
+        envelope: 'Email header',
+        from: 'From',
+        subject: 'Subject',
+        date: 'Date',
+        sender: 'Muomalat · Weekly digest',
+        issue: (n: number) => `No. ${n}`,
+        issueTitle: (n: number) => `Weekly digest, issue ${n}`,
+        summary: (stories: number, minutes: number) => `${stories} stories · ${minutes} min read`,
+        greeting: 'Good evening,',
+        intro:
+          'The week’s most read stories, and the ones that matter most for the market, in one email. Every headline links to the full text on the site.',
+        signoff: 'The Muomalat newsroom',
+        stories: 'The week’s key stories',
+        numberTitle: 'Number of the week',
+        termTitle: 'Term of the week',
+        termWhy: 'To make sense of the week’s top story',
+        clubTitle: 'At the club',
+        clubMeeting: (n: number) => `Meeting No. ${n}`,
+        readStory: 'Read the story',
+        readTerm: 'More in the glossary',
+        clubCta: 'Register',
+        source: 'Source',
+        footer:
+          'You are receiving this email because you subscribed on muomalat.uz. Every email ends with an unsubscribe link.',
+        languageNote: 'The digest is written in Uzbek; stories are shown in the original.',
+        nextTitle: 'Next issue',
+        nextText: 'In your inbox at 18:00.',
+        nextCta: 'Subscribe to the digest',
+        previousTitle: 'Previous issues',
+        previousLead: 'Top story',
+      },
+      numberOfWeek: {
+        value: '195',
+        text: 'specialists: the combined 12-month hiring plans of 40 market participants. They currently have 96 open positions.',
+        source: 'Muomalat survey',
+      },
+      faq: {
+        title: 'Questions and answers',
+        description: 'When the digest arrives, how we store your address and how to unsubscribe.',
+        items: {
+          when: {
+            q: 'When does the digest arrive?',
+            a: 'Every Friday at 18:00 Tashkent time. Each issue covers the stories published since the previous Friday evening.',
+          },
+          difference: {
+            q: 'How is the Telegram channel different from the digest?',
+            a: 'The Telegram channel carries news throughout the day, as soon as it is published. The digest is a curated review of the week: the key stories with a short note, plus the number and the term of the week. You can subscribe to both.',
+          },
+          cost: {
+            q: 'Is it free? Will the email contain advertising?',
+            a: 'The digest is free. An issue may carry one advertising or partner block. It is always labelled “Advertisement” or “Partner content” and kept apart from editorial text — see our [editorial policy](/biz-haqimizda#tahririyat-siyosati).',
+          },
+          privacy: {
+            q: 'How do you use my email address?',
+            a: 'We use your address only to send the digest. We do not give or sell it to advertisers or any other third party. To have your address removed from the list entirely, write to us via the [contact page](/aloqa).',
+          },
+          unsubscribe: {
+            q: 'How do I unsubscribe?',
+            a: 'Every email ends with an “Unsubscribe” link; one click is enough. To subscribe again, fill in the form on this page.',
+          },
+          confirm: {
+            q: 'The confirmation email has not arrived. What should I do?',
+            a: 'Wait a few minutes and check your spam folder. If it is not there, check that the address is spelled correctly and send the form again.',
+          },
+          language: {
+            q: 'What language is the digest in?',
+            a: 'The digest is written in Uzbek, in the Latin script. The site also has an Uzbek Cyrillic edition.',
+          },
+        },
+        moreTitle: 'Didn’t find an answer?',
+        moreText: 'Send your question to the newsroom through the contact page.',
+        moreCta: 'Write to the newsroom',
+      },
+      previewLabel: 'Web version of the latest issue',
+      unsubscribe: 'Unsubscribe',
+    },
+  },
+})

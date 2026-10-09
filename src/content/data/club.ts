@@ -1,0 +1,193 @@
+import type { ClubEvent } from '../types'
+import { img } from './images'
+
+/**
+ * Muomalat klubi: tadbirkorlar uchun oylik uchrashuvlar (yangilari birinchi).
+ * Spiker ismlari shartli va real shaxslarga ishora qilmaydi.
+ */
+export const clubEvents: ClubEvent[] = [
+  {
+    slug: 'oktabr-2026-ijora-uskuna',
+    number: 5,
+    title: 'Uskuna va transportni ijora asosida olish: kichik va oʻrta biznes uchun amaliyot',
+    theme: 'Uskuna va avtotransportni ijora asosida moliyalash',
+    startsAt: '2026-10-30T18:30:00+05:00',
+    endsAt: '2026-10-30T21:00:00+05:00',
+    venue: { name: 'Biznes markazi, anjumanlar zali', address: 'Toshkent sh., Mirobod tumani', city: 'Toshkent' },
+    summary:
+      'Klubning oktabr uchrashuvi ishlab chiqarish uskunalari va avtotransportni ijora asosida olish amaliyotiga bagʻishlanadi. Lizing kompaniyalari vakillari shartnoma tuzilmasi, toʻlov jadvali va mulk mijozga qachon oʻtishi haqida soʻzlab beradi, mebel ishlab chiqaruvchi tadbirkor esa dastgohlarni ijora asosida olish tajribasi bilan oʻrtoqlashadi. Joylar soni cheklangan, ishtirok uchun oldindan roʻyxatdan oʻtish talab etiladi.',
+    agenda: [
+      { time: '18:30', title: 'Roʻyxatdan oʻtish va tanishuv' },
+      { time: '18:50', title: 'Kirish soʻzi: ijora bozorining dastlabki oylari', speaker: 'Nilufar Qodirova' },
+      { time: '19:00', title: 'Ijora va ijora muntahiya bittamlik: shartnoma qanday tuziladi', speaker: 'Shuhrat Mirzayev' },
+      { time: '19:30', title: 'Avtotransport ijorasi: sugʻurta, texnik xizmat va toʻlov jadvali', speaker: 'Kamola Rashidova' },
+      { time: '20:00', title: 'Tadbirkor tajribasi: dastgohlarni ijora asosida olish', speaker: 'Anvar Holiqov' },
+      { time: '20:20', title: 'Savol-javob' },
+      { time: '20:45', title: 'Erkin muloqot' },
+    ],
+    speakers: [
+      { name: 'Shuhrat Mirzayev', role: 'Lizing kompaniyasi N savdo direktori', portrait: img('portrait05', { alt: 'Shuhrat Mirzayev' }) },
+      { name: 'Kamola Rashidova', role: 'Lizing kompaniyasi O tijorat direktori', portrait: img('portrait06', { alt: 'Kamola Rashidova' }) },
+      { name: 'Anvar Holiqov', role: 'tadbirkor, mebel ishlab chiqaruvchi korxona rahbari', portrait: img('portrait07', { alt: 'Anvar Holiqov' }) },
+    ],
+    capacity: 80,
+    status: 'upcoming',
+    image: img('clubHall'),
+  },
+  {
+    slug: 'sentabr-2026-eksport-moliyasi',
+    number: 4,
+    title: 'Eksport va savdo moliyasi: xomashyo xaridi uchun murobaha',
+    theme: 'Eksportchilar uchun savdo moliyasi va xomashyo murobahasi',
+    startsAt: '2026-09-25T18:30:00+05:00',
+    endsAt: '2026-09-25T21:00:00+05:00',
+    venue: { name: 'Mehmonxona, anjumanlar zali', address: 'Toshkent sh., Yunusobod tumani', city: 'Toshkent' },
+    summary:
+      'Sentabr uchrashuvida eksportchi korxonalar vakillari xomashyo xaridini murobaha orqali moliyalash imkoniyatlarini muhokama qildi. Islom banki A vakili bank qanday hujjatlarni talab qilishini tushuntirdi, toʻqimachilik korxonasi rahbari esa murobaha uchun hujjat tayyorlash tajribasi haqida gapirdi.',
+    agenda: [
+      { time: '18:30', title: 'Roʻyxatdan oʻtish' },
+      { time: '18:50', title: 'Kirish soʻzi', speaker: 'Nilufar Qodirova' },
+      { time: '19:00', title: 'Xomashyo murobahasi: bank tovarga qanday egalik qiladi', speaker: 'Laylo Abdullayeva' },
+      { time: '19:35', title: 'Eksport shartnomasi va moliyalash muddatini moslashtirish', speaker: 'Zarina Hamidova' },
+      { time: '20:05', title: 'Toʻqimachilik korxonasi tajribasi', speaker: 'Bahodir Sultonov' },
+      { time: '20:25', title: 'Savol-javob' },
+      { time: '20:45', title: 'Erkin muloqot' },
+    ],
+    speakers: [
+      { name: 'Laylo Abdullayeva', role: 'Islom banki A korporativ mijozlar boʻlimi rahbari', portrait: img('portrait04', { alt: 'Laylo Abdullayeva' }) },
+      { name: 'Zarina Hamidova', role: 'mustaqil tashqi savdo maslahatchisi', portrait: img('portrait02', { alt: 'Zarina Hamidova' }) },
+      { name: 'Bahodir Sultonov', role: 'tadbirkor, toʻqimachilik korxonasi rahbari', portrait: img('portrait01', { alt: 'Bahodir Sultonov' }) },
+    ],
+    capacity: 70,
+    status: 'past',
+    report: [
+      'Muomalat klubining toʻrtinchi uchrashuvida 60 dan ortiq tadbirkor qatnashdi. Muhokama markazida eksportchi korxonalarning aylanma mablagʻga boʻlgan ehtiyoji va xomashyo xaridini [[murobaha|murobaha]] shartnomasi orqali moliyalash turdi.',
+      'Islom banki A korporativ mijozlar boʻlimi rahbari Laylo Abdullayeva bank tovarni avval yetkazib beruvchidan oʻz nomiga sotib olishini, shundan keyingina uni mijozga ustama bilan sotishini taʼkidladi. Uning soʻzlariga koʻra, mijoz oldindan tovarni sotib olishga [[vad|vaʼda]] beradi, sotuv shartnomasi esa tovar bank mulkiga oʻtgach tuziladi. «Ustama shartnoma imzolanganda belgilanadi va muddat davomida oʻzgarmaydi», — dedi u.',
+      'Mustaqil tashqi savdo maslahatchisi Zarina Hamidova eksportchilar uchun asosiy masala moliyalash muddatini xorijiy xaridordan tushum kelish muddatiga moslashtirish ekanini aytdi. Toʻqimachilik korxonasi rahbari Bahodir Sultonovning maʼlum qilishicha, korxona ip-kalava xaridini murobaha asosida moliyalash boʻyicha Islom banki A bilan muzokara olib bormoqda. Uning aytishicha, hujjatlarni tayyorlash anʼanaviy kreditga qaraganda koʻproq vaqt olmoqda, chunki bank har bir partiya boʻyicha yetkazib berish hujjatlarini talab qiladi.',
+      'Ishtirokchilar bitim davomida xomashyo narxi yoki valyuta kursi oʻzgarsa, nima boʻlishini soʻradi. Spikerlarning taʼkidlashicha, sotuv narxi shartnoma imzolangan kuni qatʼiy belgilanadi va keyinchalik qayta koʻrib chiqilmaydi, shu sababli narx va kurs oʻzgarishi bilan bogʻliq xavfni mijoz bitimdan oldin hisobga olishi kerak.',
+    ],
+    takeaways: [
+      'Bank tovarni avval oʻz nomiga sotib oladi, keyin mijozga sotadi',
+      'Ustama shartnomada qatʼiy belgilanadi va muddat davomida oʻzgarmaydi',
+      'Har bir xomashyo partiyasi uchun yetkazib berish hujjatlari talab qilinadi',
+      'Moliyalash muddatini eksport tushumi kelish sanasiga moslashtirish muhim',
+    ],
+    image: img('panel', { caption: 'Klubning sentabr uchrashuvidagi panel muhokamasi' }),
+  },
+  {
+    slug: 'avgust-2026-islom-oynasi-hujjatlar',
+    number: 3,
+    title: 'Islom oynasidan moliyalash olish: hujjatlar va muddatlar',
+    theme: 'Islom oynasiga murojaat qilish tartibi',
+    startsAt: '2026-08-28T18:30:00+05:00',
+    endsAt: '2026-08-28T21:00:00+05:00',
+    venue: { name: 'Kovorking markazi, katta zal', address: 'Toshkent sh., Chilonzor tumani', city: 'Toshkent' },
+    summary:
+      'Birinchi islom oynasiga litsenziya berilganidan sakkiz kun keyin oʻtkazilgan uchrashuvda tadbirkorlar moliyalash uchun qanday hujjatlar kerakligi va ariza qancha vaqtda koʻrib chiqilishini aniqlashtirdi. Tijorat banki D islom oynasi vakili dastlabki murojaatlar haqida gapirdi, mustaqil auditor esa hujjatlarni tayyorlash boʻyicha tavsiyalar berdi.',
+    agenda: [
+      { time: '18:30', title: 'Roʻyxatdan oʻtish' },
+      { time: '18:50', title: 'Kirish soʻzi', speaker: 'Nilufar Qodirova' },
+      { time: '19:00', title: 'Islom oynasi: dastlabki murojaatlar va ariza berish tartibi', speaker: 'Javlon Usmonov' },
+      { time: '19:40', title: 'Moliyaviy hisobot va taʼminot hujjatlarini tayyorlash', speaker: 'Feruza Aliyeva' },
+      { time: '20:15', title: 'Savol-javob' },
+      { time: '20:40', title: 'Erkin muloqot' },
+    ],
+    speakers: [
+      { name: 'Javlon Usmonov', role: 'Tijorat banki D islom oynasi kichik biznes boʻlimi rahbari', portrait: img('portrait03', { alt: 'Javlon Usmonov' }) },
+      { name: 'Feruza Aliyeva', role: 'mustaqil buxgalter-auditor', portrait: img('portrait04', { alt: 'Feruza Aliyeva' }) },
+    ],
+    capacity: 60,
+    status: 'past',
+    report: [
+      'Uchrashuv Tijorat banki D mamlakatdagi birinchi [[islom-oynasi|islom oynasi]] uchun litsenziya olganidan sakkiz kun keyin boʻlib oʻtdi. Zalda 60 ga yaqin tadbirkor qatnashdi, ularning koʻpchiligi savdo va qurilish materiallari ishlab chiqarish bilan shugʻullanadi.',
+      'Tijorat banki D islom oynasi kichik biznes boʻlimi rahbari Javlon Usmonovning maʼlum qilishicha, oyna litsenziya olinganidan beri 40 dan ortiq murojaat qabul qilgan, ularning aksariyati asbob-uskuna va tovar xaridini [[murobaha|murobaha]] asosida moliyalashga oid. Uning soʻzlariga koʻra, ariza toʻliq hujjatlar bilan topshirilsa, 7–10 ish kunida koʻrib chiqiladi. «Biz mijozga pul bermaymiz, balki u koʻrsatgan aktivni sotib olib, unga sotamiz. Shuning uchun yetkazib beruvchining tijorat taklifi arizaning majburiy qismi hisoblanadi», — dedi u.',
+      'Mustaqil buxgalter-auditor Feruza Aliyeva tadbirkorlarga soʻnggi ikki yillik moliyaviy hisobotni, bank hisobvaragʻidan koʻchirmani va taʼminot hujjatlarini oldindan tayyorlashni tavsiya qildi. Uning taʼkidlashicha, taʼminot sifatida [[rahn|garov]] yoki uchinchi shaxs [[kafolat|kafolati]] qabul qilinadi, bu boradagi talablar esa anʼanaviy kreditdagidan yengil emas.',
+      'Savollar asosan boshlangʻich toʻlov miqdori, bitimni muddatidan oldin yopish shartlari va tovar yetkazib berilmasa, xavf kim zimmasida qolishi bilan bogʻliq boʻldi. Javlon Usmonov tovar mijozga topshirilgunga qadar uning yoʻqolishi yoki shikastlanishi xavfini bank oʻz zimmasiga olishini aytdi.',
+    ],
+    takeaways: [
+      'Toʻliq hujjatlar bilan topshirilgan ariza 7–10 ish kunida koʻrib chiqiladi',
+      'Yetkazib beruvchining tijorat taklifi arizaning majburiy qismi',
+      'Taʼminot talablari anʼanaviy kreditdagidan yengil emas',
+      'Tovar mijozga topshirilgunga qadar xavf bank zimmasida boʻladi',
+    ],
+    image: img('meetingTable', { caption: 'Avgust uchrashuvi: tadbirkorlar islom oynasi vakili bilan hujjatlarni muhokama qilmoqda' }),
+  },
+  {
+    slug: 'iyul-2026-murobaha-ijora-amaliyot',
+    number: 2,
+    title: 'Murobaha va ijora: shartnomalar amalda qanday tuziladi',
+    theme: 'Murobaha va ijora shartnomalarining amaliy tuzilishi',
+    startsAt: '2026-07-31T18:30:00+05:00',
+    endsAt: '2026-07-31T21:00:00+05:00',
+    venue: { name: 'Tadbirkorlar uyi, majlislar zali', address: 'Toshkent sh., Shayxontohur tumani', city: 'Toshkent' },
+    summary:
+      'Iyul uchrashuvi yangi tartib boʻyicha birinchi litsenziya berilganidan toʻqqiz kun keyin oʻtkazildi. Lizing kompaniyasi N vakili dastlabki ijora bitimlari qanday tuzilganini koʻrsatdi, fermer xoʻjaligi rahbari mijoz sifatidagi tajribasi bilan oʻrtoqlashdi, soliq maslahatchisi esa soliq va buxgalteriya hisobiga oid hali hal etilmagan masalalarni sanab oʻtdi.',
+    agenda: [
+      { time: '18:30', title: 'Roʻyxatdan oʻtish' },
+      { time: '18:45', title: 'Kirish soʻzi', speaker: 'Nilufar Qodirova' },
+      { time: '18:55', title: 'Murobaha va ijora: farqi nimada va qaysi biri qachon qulay', speaker: 'Shuhrat Mirzayev' },
+      { time: '19:30', title: 'Mijoz tajribasi: traktorni ijora asosida olish', speaker: 'Farhod Ismoilov' },
+      { time: '19:55', title: 'Soliq va buxgalteriya hisobi: hozircha nimalar aniq', speaker: 'Nodira Ahmedova' },
+      { time: '20:25', title: 'Savol-javob' },
+      { time: '20:45', title: 'Erkin muloqot' },
+    ],
+    speakers: [
+      { name: 'Shuhrat Mirzayev', role: 'Lizing kompaniyasi N savdo direktori', portrait: img('portrait05', { alt: 'Shuhrat Mirzayev' }) },
+      { name: 'Farhod Ismoilov', role: 'tadbirkor, fermer xoʻjaligi rahbari', portrait: img('portrait07', { alt: 'Farhod Ismoilov' }) },
+      { name: 'Nodira Ahmedova', role: 'mustaqil soliq maslahatchisi', portrait: img('portrait02', { alt: 'Nodira Ahmedova' }) },
+    ],
+    capacity: 70,
+    status: 'past',
+    report: [
+      'Klubning ikkinchi uchrashuvi Lizing kompaniyasi N yangi tartib boʻyicha birinchi boʻlib litsenziya olganidan toʻqqiz kun keyin boʻlib oʻtdi. Muhokama ikki asosiy shartnoma — [[murobaha|murobaha]] va [[ijora|ijora]] — amalda qanday rasmiylashtirilishiga qaratildi.',
+      'Lizing kompaniyasi N savdo direktori Shuhrat Mirzayevning soʻzlariga koʻra, kompaniya litsenziya olganidan keyingi birinchi haftada qishloq xoʻjaligi texnikasi boʻyicha ikkita ijora shartnomasini imzolagan. U ijora muddati davomida texnika kompaniya mulki boʻlib qolishini, mijoz esa undan foydalangani uchun haq toʻlashini tushuntirdi. «Mijoz soʻnggi toʻlovni amalga oshirgach, mulk unga alohida hujjat asosida oʻtadi. Bu [[ijora-muntahiya-bittamlik|ijora muntahiya bittamlik]] tuzilmasi», — dedi u.',
+      'Fermer xoʻjaligi rahbari Farhod Ismoilov traktor uchun ijora shartnomasini birinchilardan boʻlib imzolagan. Uning aytishicha, hujjatlar roʻyxati anʼanaviy lizingdagidan deyarli farq qilmagan, biroq texnikaning yirik taʼmiri va sugʻurtasi kim zimmasida ekani shartnomada alohida koʻrsatilgan.',
+      'Mustaqil soliq maslahatchisi Nodira Ahmedova murobaha bitimida tovar avval bankka, soʻng mijozga oʻtishi soliq hisobida qanday aks etishi boʻyicha rasmiy tushuntirishlar hali eʼlon qilinmaganini aytdi. U tadbirkorlarga har bir bitim boʻyicha hujjatlarni toʻliq saqlashni va bunday operatsiyalarni hisob siyosatida alohida koʻrsatishni tavsiya qildi.',
+    ],
+    takeaways: [
+      'Ijora muddati davomida aktiv lizing kompaniyasi mulki boʻlib qoladi',
+      'Yirik taʼmir va sugʻurta majburiyati shartnomada alohida belgilanadi',
+      'Murobahaning soliq hisobi boʻyicha rasmiy tushuntirishlar kutilmoqda',
+      'Hujjatlar roʻyxati anʼanaviy lizingdagidan deyarli farq qilmaydi',
+    ],
+    image: img('panel', { caption: 'Iyul uchrashuvi: spikerlar birinchi ijora bitimlarini muhokama qilmoqda' }),
+  },
+  {
+    slug: 'iyun-2026-qonun-kuchga-kirdi',
+    number: 1,
+    title: 'Qonun kuchga kirdi: tadbirkorlar uchun nima oʻzgaradi',
+    theme: 'Islom bank faoliyati toʻgʻrisidagi qonun va tadbirkorlar',
+    startsAt: '2026-06-26T18:30:00+05:00',
+    endsAt: '2026-06-26T21:00:00+05:00',
+    venue: { name: 'Biznes markazi, anjumanlar zali', address: 'Toshkent sh., Mirobod tumani', city: 'Toshkent' },
+    summary:
+      'Muomalat klubining birinchi uchrashuvi islom bank faoliyati toʻgʻrisidagi qonun kuchga kirgan oyda oʻtkazildi. Huquqshunos va bank vakili qonun tadbirkorlar uchun qanday moliyalash imkoniyatlarini ochishi va dastlabki mahsulotlar qachon paydo boʻlishi mumkinligi haqida gapirdi.',
+    agenda: [
+      { time: '18:30', title: 'Roʻyxatdan oʻtish' },
+      { time: '18:50', title: 'Klub haqida va kirish soʻzi', speaker: 'Nilufar Qodirova' },
+      { time: '19:00', title: 'Qonunning asosiy qoidalari: kim va qanday xizmat koʻrsatishi mumkin', speaker: 'Muzaffar Sobirov' },
+      { time: '19:40', title: 'Bank tayyorgarligi: islom oynasini ochish uchun nima kerak', speaker: 'Javlon Usmonov' },
+      { time: '20:15', title: 'Savol-javob' },
+      { time: '20:40', title: 'Erkin muloqot' },
+    ],
+    speakers: [
+      { name: 'Muzaffar Sobirov', role: 'huquqshunos, moliya huquqi boʻyicha mustaqil maslahatchi', portrait: img('portrait01', { alt: 'Muzaffar Sobirov' }) },
+      { name: 'Javlon Usmonov', role: 'Tijorat banki D islom moliyasi loyiha guruhi aʼzosi', portrait: img('portrait03', { alt: 'Javlon Usmonov' }) },
+    ],
+    capacity: 60,
+    status: 'past',
+    report: [
+      'Muomalat klubining birinchi uchrashuvida 50 dan ortiq tadbirkor, bank va lizing kompaniyalari xodimlari qatnashdi. Uchrashuv asosan qonun tadbirkorlar uchun amalda nimani anglatishiga bagʻishlandi.',
+      'Huquqshunos Muzaffar Sobirov qonun toʻliq islom banklari bilan bir qatorda anʼanaviy banklarga ham alohida [[islom-oynasi|islom oynasi]] orqali xizmat koʻrsatish imkonini berishini taʼkidladi. Uning soʻzlariga koʻra, bunday xizmatlar foizli qarz ([[ribo|ribo]]) emas, balki aktiv savdosi, ijarasi yoki sheriklikka asoslangan shartnomalar orqali koʻrsatiladi, mablagʻlar esa bankning anʼanaviy faoliyatidan alohida hisobda yuritiladi.',
+      'Tijorat banki D vakili Javlon Usmonov bank islom oynasini ochishga tayyorgarlik koʻrayotganini va litsenziya uchun arizani yaqin kunlarda topshirishini maʼlum qildi. «Mahsulotlarimiz tayyor, lekin har biri avval [[shariat-kengashi|shariat kengashi]] tomonidan maʼqullanishi kerak», — dedi u.',
+      'Ishtirokchilar asosan dastlabki mahsulotlar qachon paydo boʻlishi, mavjud kreditni qayta rasmiylashtirish imkoniyati va moliyalash narxi haqida soʻradi. Spikerlar narx bozor sharoitidan kelib chiqib belgilanishini, dastlabki oylarda esa mahsulotlar tanlovi cheklangan boʻlishini aytdi.',
+    ],
+    takeaways: [
+      'Qonun toʻliq islom banklari va anʼanaviy banklardagi islom oynalarini nazarda tutadi',
+      'Islom oynasi mablagʻlari bankning anʼanaviy faoliyatidan alohida yuritiladi',
+      'Dastlabki mahsulotlar birinchi litsenziyalar berilgach kutilmoqda',
+      'Har bir mahsulot avval shariat kengashi tomonidan maʼqullanishi kerak',
+    ],
+    image: img('clubHall', { caption: 'Muomalat klubining birinchi uchrashuvi, iyun' }),
+  },
+]

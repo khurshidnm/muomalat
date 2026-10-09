@@ -1,0 +1,77 @@
+import { defineMessages } from '../messages'
+
+/** Shared form strings: labels, validation and status messages. */
+const uz = {
+  required: 'majburiy',
+  optional: 'ixtiyoriy',
+  name: 'Ism va familiya',
+  email: 'Elektron pochta',
+  emailPlaceholder: 'siz@kompaniya.uz',
+  phone: 'Telefon',
+  phonePlaceholder: '+998 __ ___-__-__',
+  company: 'Kompaniya',
+  position: 'Lavozim',
+  message: 'Xabar',
+  consent: 'Shaxsga doir maʼlumotlarimni ushbu soʻrovni koʻrib chiqish uchun qayta ishlashga roziman.',
+  errors: {
+    summary: 'Formada xatolar bor. Iltimos, belgilangan maydonlarni tekshiring.',
+    required: 'Ushbu maydonni toʻldiring.',
+    email: 'Elektron pochta manzilini toʻgʻri kiriting.',
+    phone: 'Telefon raqamini +998 bilan boshlab kiriting.',
+    consent: 'Davom etish uchun roziligingiz kerak.',
+  },
+  success: 'Rahmat! Soʻrovingiz qabul qilindi.',
+  demoNote: 'Sinov rejimi: maʼlumotlar hech qayerga yuborilmaydi.',
+  /** Label of the hidden spam-trap field (never shown; bots fill it). */
+  honeypot: 'Bu maydonni boʻsh qoldiring',
+} as const
+
+export const formMessages = defineMessages({
+  uz,
+  ru: {
+    required: 'обязательно',
+    optional: 'необязательно',
+    name: 'Имя и фамилия',
+    email: 'Электронная почта',
+    emailPlaceholder: 'name@company.uz',
+    phone: 'Телефон',
+    phonePlaceholder: '+998 __ ___-__-__',
+    company: 'Компания',
+    position: 'Должность',
+    message: 'Сообщение',
+    consent: 'Я согласен (согласна) на обработку моих персональных данных для рассмотрения запроса.',
+    errors: {
+      summary: 'В форме есть ошибки. Проверьте отмеченные поля.',
+      required: 'Заполните это поле.',
+      email: 'Введите корректный адрес электронной почты.',
+      phone: 'Введите номер телефона, начиная с +998.',
+      consent: 'Для продолжения нужно ваше согласие.',
+    },
+    success: 'Спасибо! Ваш запрос принят.',
+    demoNote: 'Тестовый режим: данные никуда не отправляются.',
+    honeypot: 'Оставьте это поле пустым',
+  },
+  en: {
+    required: 'required',
+    optional: 'optional',
+    name: 'Full name',
+    email: 'Email',
+    emailPlaceholder: 'you@company.uz',
+    phone: 'Phone',
+    phonePlaceholder: '+998 __ ___-__-__',
+    company: 'Company',
+    position: 'Job title',
+    message: 'Message',
+    consent: 'I agree that my personal data may be used to process this request.',
+    errors: {
+      summary: 'There are errors in the form. Please check the marked fields.',
+      required: 'Please fill in this field.',
+      email: 'Please enter a valid email address.',
+      phone: 'Please enter a phone number starting with +998.',
+      consent: 'We need your consent to continue.',
+    },
+    success: 'Thank you! Your request has been received.',
+    demoNote: 'Preview mode: nothing is sent anywhere.',
+    honeypot: 'Leave this field empty',
+  },
+})

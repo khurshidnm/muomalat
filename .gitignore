@@ -1,0 +1,25 @@
+node_modules
+.next
+out
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+
+# secrets and local environment (the CMS will add these)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# tooling
+npm-debug.log*
+__pycache__/
+*.pyc
+/coverage
+.vercel
+
+# local databases and uploads
+/media
+*.sqlite
+*.sqlite3

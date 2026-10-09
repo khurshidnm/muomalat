@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+<defs>
+<pattern id="d1" patternUnits="userSpaceOnUse" width="18" height="18">
+  <circle cx="4.5" cy="4.5" r="1.3" fill="#FAF8F3"/>
+  <circle cx="13.5" cy="13.5" r="1.3" fill="#FAF8F3"/>
+</pattern>
+<clipPath id="c2"><path d="M70 800L92 660C104 596 160 566 246 548L352 524H448L554 548C640 566 696 596 708 660L730 800Z"/></clipPath>
+<pattern id="h3" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(50)">
+  <line x1="4" y1="-1" x2="4" y2="9" stroke="#2E8574" stroke-width="1.2"/>
+</pattern>
+<clipPath id="c4"><path d="M400 148C494 148 542 214 532 318C524 272 504 240 452 226C420 252 350 264 284 270C292 198 338 148 400 148Z"/></clipPath>
+<pattern id="h5" patternUnits="userSpaceOnUse" width="11" height="11" patternTransform="rotate(65)">
+  <line x1="5.5" y1="-1" x2="5.5" y2="12" stroke="#0F6B5C" stroke-width="1"/>
+</pattern>
+</defs>
+<rect x="0" y="0" width="800" height="800" fill="#E4DCC8"/>
+<rect x="0" y="0" width="800" height="800" fill="url(#d1)"/>
+<path d="M50 0L50 800M100 0L100 800M150 0L150 800M200 0L200 800M250 0L250 800M300 0L300 800M350 0L350 800M400 0L400 800M450 0L450 800M500 0L500 800M550 0L550 800M600 0L600 800M650 0L650 800M700 0L700 800M750 0L750 800" fill="none" stroke="#EFE9DC" stroke-width="1.5"/>
+<circle cx="400" cy="400" r="330" fill="#C9DDD3"/>
+<path d="M0 120L800 120M0 680L800 680" fill="none" stroke="#7FAE9F" stroke-width="1.2"/>
+<path d="M400 140C516 140 566 228 560 336C556 420 562 480 574 600L226 600C238 480 244 420 240 336C234 228 284 140 400 140Z" fill="#10201D" transform="translate(400 474) scale(0.94 1.02) translate(-400 -474)"/>
+<path d="M352 420V548H448V420Z" fill="#E4DCC8"/>
+<path d="M352 470Q400 500 448 470" fill="none" stroke="#10201D" stroke-width="1"/>
+<path d="M70 800L92 660C104 596 160 566 246 548L352 524H448L554 548C640 566 696 596 708 660L730 800Z" fill="#0F6B5C"/>
+<g clip-path="url(#c2)">
+  <rect x="430" y="500" width="400" height="300" fill="url(#h3)"/>
+  <path d="M246 548C200 562 166 590 150 640M554 548C600 562 634 590 650 640" fill="none" stroke="#2E8574" stroke-width="1.5"/>
+  <path d="M168 800C172 740 182 700 204 668M632 800C628 740 618 700 596 668" fill="none" stroke="#2E8574" stroke-width="1.5"/>
+  <path d="M120 700C136 690 160 684 190 684M680 700C664 690 640 684 610 684" fill="none" stroke="#2E8574" stroke-width="1"/>
+</g>
+<path d="M92 660C104 596 160 566 246 548L352 524M448 524L554 548C640 566 696 596 708 660" fill="none" stroke="#2E8574" stroke-width="1.2"/>
+<polygon points="340,532 400,720 460,532" fill="#B0843A"/>
+<path d="M352 532Q400 566 448 532" fill="none" stroke="#10201D" stroke-width="1.2"/>
+<polygon points="318,540 400,760 372,800 296,800 312,650 280,610" fill="#2E8574"/>
+<polygon points="482,540 400,760 428,800 504,800 488,650 520,610" fill="#2E8574"/>
+<path d="M318 540L280 610L312 650L296 800M482 540L520 610L488 650L504 800" fill="none" stroke="#10201D" stroke-width="1.2"/>
+<circle cx="400" cy="782" r="6" fill="#10201D"/>
+<g transform="translate(400 474) scale(0.94 1.02) translate(-400 -474)">
+  <path d="M400 168C468 168 520 222 520 306C520 398 470 474 400 474C330 474 280 398 280 306C280 222 332 168 400 168Z" fill="#E4DCC8"/>
+  <path d="M400 148C494 148 542 214 532 318C524 272 504 240 452 226C420 252 350 264 284 270C292 198 338 148 400 148Z" fill="#10201D" stroke="#10201D" stroke-width="1" stroke-linejoin="round"/>
+  <g clip-path="url(#c4)">
+    <rect x="200" y="100" width="400" height="300" fill="url(#h5)"/>
+  </g>
+  <path d="M286 300C272 380 262 450 268 510C274 560 262 604 236 640C284 634 318 604 330 556C340 512 326 470 312 428C300 390 292 344 286 300Z" fill="#10201D"/>
+  <path d="M514 300C528 380 538 450 532 510C526 560 538 604 564 640C516 634 482 604 470 556C460 512 474 470 488 428C500 390 508 344 514 300Z" fill="#10201D"/>
+  <path d="M290 380C282 450 290 520 270 600M510 380C518 450 510 520 530 600" fill="none" stroke="#0F6B5C" stroke-width="1.2"/>
+  <path d="M258 300C252 380 254 450 262 520M542 300C548 380 546 450 538 520M272 250C262 290 262 330 266 370M528 250C538 290 538 330 534 370" fill="none" stroke="#0F6B5C" stroke-width="1"/>
+</g>
+</svg>

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<defs>
+<pattern id="w1" patternUnits="userSpaceOnUse" x="772" y="312" width="50" height="12">
+  <rect x="0" y="0" width="50" height="4.8" fill="#2E8574"/>
+</pattern>
+<pattern id="w2" patternUnits="userSpaceOnUse" x="785" y="200" width="32" height="12">
+  <rect x="0" y="0" width="32" height="4.8" fill="#2E8574"/>
+</pattern>
+<pattern id="w3" patternUnits="userSpaceOnUse" x="560" y="160" width="15" height="14">
+  <line x1="0.5" y1="0" x2="0.5" y2="14" stroke="#7FAE9F" stroke-width="1"/><line x1="0" y1="0.5" x2="15" y2="0.5" stroke="#7FAE9F" stroke-width="0.8"/>
+</pattern>
+<clipPath id="c4"><polygon points="560,172 650,232 650,600 560,600" fill="#10201D"/></clipPath>
+<pattern id="w5" patternUnits="userSpaceOnUse" x="958" y="320" width="17" height="14">
+  <rect x="0" y="0" width="13" height="9" fill="#0F6B5C"/>
+</pattern>
+<pattern id="w6" patternUnits="userSpaceOnUse" x="1058" y="360" width="17" height="14">
+  <rect x="0" y="0" width="13" height="9" fill="#0F6B5C"/>
+</pattern>
+<clipPath id="c7"><polygon points="440,262 516,230 516,600 440,600" fill="#10201D"/></clipPath>
+<pattern id="h8" patternUnits="userSpaceOnUse" width="26" height="26" patternTransform="rotate(32)">
+  <line x1="13" y1="-1" x2="13" y2="27" stroke="#C9DDD3" stroke-width="1.5"/>
+</pattern>
+<pattern id="h9" patternUnits="userSpaceOnUse" width="26" height="26" patternTransform="rotate(-32)">
+  <line x1="13" y1="-1" x2="13" y2="27" stroke="#C9DDD3" stroke-width="1.5"/>
+</pattern>
+<pattern id="w10" patternUnits="userSpaceOnUse" x="378" y="442" width="16.7" height="14">
+  <rect x="0" y="0" width="10.7" height="8" fill="#2E8574"/>
+</pattern>
+<pattern id="w11" patternUnits="userSpaceOnUse" x="1148" y="422" width="54" height="14">
+  <rect x="0" y="0" width="54" height="5.6" fill="#0F6B5C"/>
+</pattern>
+<pattern id="w12" patternUnits="userSpaceOnUse" x="708" y="392" width="20" height="14">
+  <rect x="0" y="0" width="14" height="8" fill="#C9DDD3"/>
+</pattern>
+</defs>
+<rect x="0" y="0" width="1200" height="800" fill="#FAF8F3"/>
+<circle cx="232" cy="300" r="92" fill="#B0843A"/>
+<path d="M380 467h43v133h-43zM432.6 472.9h36.5v127.1h-36.5zM485.4 455h48.5v145h-48.5zM550.3 481.8h36.1v118.2h-36.1zM597.5 481.6h33.4v118.4h-33.4zM640.4 470.4h49.1v129.6h-49.1zM703.3 456.3h30.9v143.7h-30.9zM753.4 453h39.5v147h-39.5zM809.4 462.4h38.7v137.6h-38.7zM864.4 499.3h39v100.7h-39zM923 459.1h51.2v140.9h-51.2zM985.9 469.7h30.2v130.3h-30.2zM1032.7 518.5h54.2v81.5h-54.2zM1100.4 499.8h48.2v100.2h-48.2zM1156.4 459.6h44.7v140.4h-44.7z" fill="#C9DDD3"/>
+<rect x="765" y="300" width="110" height="300" fill="#0F6B5C"/>
+<rect x="844.2" y="300" width="30.8" height="300" fill="#10201D"/>
+<rect x="778" y="190" width="84" height="110" fill="#0F6B5C"/>
+<rect x="838.5" y="190" width="23.5" height="110" fill="#10201D"/>
+<rect x="790" y="110" width="60" height="80" fill="#0F6B5C"/>
+<rect x="833.2" y="110" width="16.8" height="80" fill="#10201D"/>
+<rect x="802" y="60" width="36" height="50" fill="#0F6B5C"/>
+<rect x="827.9" y="60" width="10.1" height="50" fill="#10201D"/>
+<line x1="820" y1="10" x2="820" y2="60" stroke="#10201D" stroke-width="3"/>
+<rect x="772" y="312" width="50" height="256.8" fill="url(#w1)"/>
+<rect x="785" y="200" width="32" height="76.8" fill="url(#w2)"/>
+<polygon points="560,170 650,230 650,600 560,600" fill="#2E8574"/>
+<polygon points="650,230 690,256 690,600 650,600" fill="#0F6B5C"/>
+<g clip-path="url(#c4)">
+  <rect x="560" y="160" width="90" height="440" fill="url(#w3)"/>
+</g>
+<polygon points="950,260 1030,304 1030,600 950,600" fill="#10201D"/>
+<rect x="958" y="320" width="64" height="261" fill="url(#w5)"/>
+<line x1="956" y1="312" x2="1024" y2="312" stroke="#0F6B5C" stroke-width="2"/>
+<polygon points="1050,344 1130,300 1130,600 1050,600" fill="#10201D"/>
+<rect x="1058" y="360" width="64" height="219" fill="url(#w6)"/>
+<line x1="1056" y1="352" x2="1124" y2="352" stroke="#0F6B5C" stroke-width="2"/>
+<polygon points="440,262 516,230 516,600 440,600" fill="#7FAE9F"/>
+<g clip-path="url(#c7)">
+  <rect x="440" y="220" width="76" height="380" fill="url(#h8)"/>
+  <rect x="440" y="220" width="76" height="380" fill="url(#h9)"/>
+</g>
+<rect x="500" y="230" width="16" height="370" fill="#2E8574"/>
+<polyline points="440,262 516,230" fill="none" stroke="#10201D" stroke-width="1.5" stroke-linejoin="round"/>
+<rect x="370" y="430" width="60" height="170" fill="#0F6B5C"/>
+<rect x="378" y="442" width="44" height="134" fill="url(#w10)"/>
+<rect x="1140" y="410" width="70" height="190" fill="#2E8574"/>
+<rect x="1148" y="422" width="54" height="145.6" fill="url(#w11)"/>
+<rect x="700" y="380" width="70" height="220" fill="#7FAE9F"/>
+<rect x="708" y="392" width="54" height="176" fill="url(#w12)"/>
+<rect x="0" y="600" width="1200" height="14" fill="#10201D"/>
+<rect x="0" y="614" width="1200" height="186" fill="#C9DDD3"/>
+<path d="M-21.1 630L10.6 630M176.1 630L250.6 630M279.9 630L334.9 630M468 630L569.2 630M557.5 630L588.7 630M669.2 630L750.6 630M757.1 630L855.3 630M877.8 630L954.3 630M959.4 630L1072 630M1114.8 630L1158.6 630M-6.7 644L34.3 644M95.8 644L128.1 644M266 644L372.5 644M406.4 644L511.2 644M507.3 644L576.2 644M691.1 644L783.7 644M813.3 644L872.6 644M979.3 644L1069.2 644M1092.8 644L1165.3 644M-37 658L50.2 658M104.6 658L187.9 658M229.4 658L321.7 658M394 658L506.5 658M490.6 658L553.2 658M607.1 658L695.3 658M719.8 658L802.2 658M809.7 658L891.4 658M907.1 658L993.8 658M1070.3 658L1109.8 658M1178.9 658L1232 658M-43.6 672L76.2 672M105.5 672L154.9 672M299.2 672L369 672M476.2 672L571.3 672M626.6 672L707.8 672M707.9 672L790.8 672M797.1 672L846 672M916.2 672L998 672M1090.9 672L1142.7 672M1188.5 672L1278.3 672M-32.7 686L51.1 686M164.6 686L249.4 686M269.6 686L359 686M451.6 686L527.3 686M550.7 686L619.2 686M650.6 686L698.3 686M829.1 686L870.2 686M932.7 686L968.2 686M1075.7 686L1116.7 686M-44.6 700L-12.2 700M143.3 700L259.8 700M236.5 700L344.9 700M374.5 700L482.7 700M540 700L583.9 700M665.8 700L771.7 700M801.6 700L885 700M934.4 700L1023.4 700M1125.3 700L1216.5 700M-55.3 714L50.9 714M60.6 714L178.2 714M238.6 714L291.9 714M393.2 714L430.2 714M589.5 714L699.5 714M759.6 714L872.2 714M888.9 714L971 714M1066.9 714L1151.9 714M1185.8 714L1286.2 714M-22.5 728L13 728M146.7 728L221.3 728M333.4 728L418.4 728M467.2 728L525.9 728M588.5 728L659.8 728M712.2 728L743.4 728M849.5 728L904 728M947.3 728L991.8 728M1062.9 728L1098.6 728M1151.3 728L1257.7 728M-56.4 742L10.4 742M87.3 742L181.9 742M213.9 742L332.4 742M319.9 742L358.8 742M515.6 742L558.2 742M693 742L752.2 742M881.4 742L913.8 742M976 742L1081.2 742M1144.2 742L1255.1 742M-18.7 756L78.8 756M72.2 756L163.6 756M200.1 756L251.5 756M384.3 756L421.2 756M473 756L583 756M559.2 756L663.5 756M723.8 756L773.9 756M823.6 756L899.3 756M996.8 756L1113.1 756M1079.1 756L1172.1 756M-47.4 770L-16 770M101.5 770L175.9 770M210.4 770L249.1 770M331.4 770L402 770M433.3 770L524.4 770M564 770L603.7 770M649.3 770L768.3 770M762.5 770L866.8 770M923.3 770L1031 770M1092.8 770L1131 770M1186.8 770L1242.6 770M-58.4 784L35 784M70.2 784L126.6 784M198.7 784L316.7 784M300.9 784L347.7 784M438.2 784L555 784M619.7 784L731.4 784M819.1 784L936.7 784M975.2 784L1007.2 784M1150.3 784L1194.8 784M-21.1 798L30.9 798M63.9 798L177.8 798M217.7 798L273.6 798M394.4 798L437.9 798M558 798L634.1 798M687.2 798L755.5 798M848.5 798L963.7 798M1002.1 798L1089.6 798M1170.9 798L1268.8 798" fill="none" stroke="#7FAE9F" stroke-width="1.4"/>
+<path d="M158 626L306 626M165 642L299 642M172 658L292 658M179 674L285 674M186 690L278 690M193 706L271 706M200 722L264 722M207 738L257 738M214 754L250 754" fill="none" stroke="#B0843A" stroke-width="3"/>
+<path d="M799.8 634L846.7 634M798.2 652L842.7 652M794.4 670L841.5 670M795.3 688L847.7 688M799.4 706L849.6 706M794.2 724L843.3 724M798.9 742L842.2 742M794.4 760L849.2 760" fill="none" stroke="#0F6B5C" stroke-width="3"/>
+<path d="M581.8 634L627.2 634M585.5 652L621.4 652M581.1 670L623.4 670M587.2 688L622.8 688M580.6 706L627.6 706M583.3 724L620.1 724M581 742L626.3 742M589.2 760L623.5 760" fill="none" stroke="#2E8574" stroke-width="3"/>
+<path d="M973.9 634L1009.4 634M977.4 652L1006 652M976.8 670L1005.7 670M974.2 688L1008.7 688M971.2 706L1009.7 706M977.4 724L1008.7 724M977.7 742L1002.8 742M970.7 760L1007.9 760M1077.5 634L1106.2 634M1074.3 652L1100.4 652M1079.4 670L1105.1 670M1071.6 688L1108.8 688M1072.4 706L1106.8 706M1076.1 724L1100.3 724M1075.2 742L1103.9 742M1075.6 760L1103.2 760" fill="none" stroke="#10201D" stroke-width="3"/>
+</svg>

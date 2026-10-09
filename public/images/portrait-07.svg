@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+<defs>
+<pattern id="d1" patternUnits="userSpaceOnUse" width="18" height="18">
+  <circle cx="4.5" cy="4.5" r="1.3" fill="#FAF8F3"/>
+  <circle cx="13.5" cy="13.5" r="1.3" fill="#FAF8F3"/>
+</pattern>
+<clipPath id="c2"><path d="M70 800L92 660C104 596 160 566 246 548L352 524H448L554 548C640 566 696 596 708 660L730 800Z"/></clipPath>
+<pattern id="h3" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(50)">
+  <line x1="4" y1="-1" x2="4" y2="9" stroke="#0F6B5C" stroke-width="1.2"/>
+</pattern>
+<clipPath id="c4"><path d="M282 340C276 286 284 248 304 224L326 230C310 260 304 300 308 350ZM518 340C524 286 516 248 496 224L474 230C490 260 496 300 492 350Z"/></clipPath>
+<pattern id="h5" patternUnits="userSpaceOnUse" width="11" height="11" patternTransform="rotate(65)">
+  <line x1="5.5" y1="-1" x2="5.5" y2="12" stroke="#2E8574" stroke-width="1"/>
+</pattern>
+</defs>
+<rect x="0" y="0" width="800" height="800" fill="#EFE9DC"/>
+<rect x="0" y="0" width="800" height="800" fill="url(#d1)"/>
+<rect x="120" y="120" width="560" height="560" fill="#C9DDD3"/>
+<rect x="144" y="144" width="512" height="512" fill="none" stroke="#7FAE9F" stroke-width="1.2"/>
+<path d="M352 420V548H448V420Z" fill="#E4DCC8"/>
+<path d="M352 470Q400 500 448 470" fill="none" stroke="#10201D" stroke-width="1"/>
+<path d="M70 800L92 660C104 596 160 566 246 548L352 524H448L554 548C640 566 696 596 708 660L730 800Z" fill="#10201D"/>
+<g clip-path="url(#c2)">
+  <rect x="430" y="500" width="400" height="300" fill="url(#h3)"/>
+  <path d="M246 548C200 562 166 590 150 640M554 548C600 562 634 590 650 640" fill="none" stroke="#0F6B5C" stroke-width="1.5"/>
+  <path d="M168 800C172 740 182 700 204 668M632 800C628 740 618 700 596 668" fill="none" stroke="#0F6B5C" stroke-width="1.5"/>
+  <path d="M120 700C136 690 160 684 190 684M680 700C664 690 640 684 610 684" fill="none" stroke="#0F6B5C" stroke-width="1"/>
+</g>
+<path d="M92 660C104 596 160 566 246 548L352 524M448 524L554 548C640 566 696 596 708 660" fill="none" stroke="#0F6B5C" stroke-width="1.2"/>
+<polygon points="352,524 400,640 448,524" fill="#FAF8F3"/>
+<polygon points="352,524 372,512 400,572 380,590" fill="#FAF8F3" stroke="#10201D" stroke-width="1"/>
+<polygon points="448,524 428,512 400,572 420,590" fill="#FAF8F3" stroke="#10201D" stroke-width="1"/>
+<polygon points="388,578 412,578 420,700 400,728 380,700" fill="#B0843A"/>
+<polygon points="386,566 414,566 410,588 390,588" fill="#B0843A"/>
+<polygon points="340,528 400,740 372,800 300,800 318,640 286,600" fill="#0F6B5C"/>
+<polygon points="460,528 400,740 428,800 500,800 482,640 514,600" fill="#0F6B5C"/>
+<path d="M340 528L286 600L318 640M460 528L514 600L482 640" fill="none" stroke="#10201D" stroke-width="1.2"/>
+<path d="M400 740V800" fill="none" stroke="#10201D" stroke-width="1.2"/>
+<circle cx="400" cy="776" r="6" fill="#10201D"/>
+<line x1="296" y1="650" x2="318" y2="646" stroke="#10201D" stroke-width="1.2"/>
+<rect x="530" y="640" width="50" height="8" fill="#FAF8F3"/>
+<path d="M530 648H580" fill="none" stroke="#10201D" stroke-width="1"/>
+<g transform="translate(400 474) scale(1.06 0.97) translate(-400 -474)">
+  <ellipse cx="282" cy="320" rx="18" ry="32" fill="#E4DCC8"/>
+  <ellipse cx="518" cy="320" rx="18" ry="32" fill="#E4DCC8"/>
+  <path d="M276 304Q286 320 278 338" fill="none" stroke="#10201D" stroke-width="1"/>
+  <path d="M524 304Q514 320 522 338" fill="none" stroke="#10201D" stroke-width="1"/>
+  <path d="M400 168C468 168 520 222 520 306C520 398 470 474 400 474C330 474 280 398 280 306C280 222 332 168 400 168Z" fill="#E4DCC8"/>
+  <path d="M282 340C276 286 284 248 304 224L326 230C310 260 304 300 308 350ZM518 340C524 286 516 248 496 224L474 230C490 260 496 300 492 350Z" fill="#0F6B5C" stroke="#10201D" stroke-width="1" stroke-linejoin="round"/>
+  <g clip-path="url(#c4)">
+    <rect x="200" y="100" width="400" height="300" fill="url(#h5)"/>
+  </g>
+  <rect x="318" y="304" width="70" height="46" fill="none" rx="14" stroke="#10201D" stroke-width="5"/>
+  <rect x="412" y="304" width="70" height="46" fill="none" rx="14" stroke="#10201D" stroke-width="5"/>
+  <path d="M388 318Q400 310 412 318" fill="none" stroke="#10201D" stroke-width="4"/>
+  <line x1="318" y1="316" x2="286" y2="310" stroke="#10201D" stroke-width="4"/>
+  <line x1="482" y1="316" x2="514" y2="310" stroke="#10201D" stroke-width="4"/>
+</g>
+</svg>

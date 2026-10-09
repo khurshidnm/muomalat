@@ -1,0 +1,576 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Muomalat design tokens
+   Paper, ink, emerald, brass, hairline. Every colour on the site resolves to
+   one of these variables; the dark theme redefines the same names.
+   Contrast (light, on paper): ink 15.9 · ink-2 8.5 · ink-3 5.6 · emerald 6.0
+   · brass-ink 5.5 · signal 6.5. Brass (3.2) is for rules, dots and marks only.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --paper: #faf8f3;
+  --paper-2: #f3efe5; /* tinted panels: digest, term of the day */
+  --paper-3: #ece6d7; /* pressed / hover on tinted panels */
+  --ink: #10201d;
+  --ink-2: #3e4c48; /* standfirsts, secondary copy */
+  --ink-3: #5a6662; /* timestamps, captions, meta */
+  --rule: #dad5c8; /* hairlines */
+  --rule-strong: #b9b2a2; /* form outlines use ink-3; this is for heavier dividers */
+  --emerald: #0f6b5c;
+  --emerald-ink: #0b5045; /* hover, text on emerald-wash */
+  --emerald-wash: #e4eee9;
+  --on-emerald: #faf8f3;
+  --brass: #b0843a; /* non-text highlights only */
+  --brass-ink: #80601f; /* brass when it has to be text */
+  --brass-wash: #f5eedf; /* sponsored content panel */
+  --signal: #9c3b25; /* corrections, errors */
+  --signal-wash: #f7ebe5;
+  --ad: #ecebe6; /* advert slots: neutral, deliberately off-palette */
+  --ad-ink: #55534c;
+  --girih-opacity: 0.55;
+  /* Chart series (validated: lightness band, chroma ≥ 0.10, CVD ΔE ≥ 8). */
+  --chart-1: #0a8068;
+  --chart-2: #b5852f;
+  --chart-3: #3f72b8;
+  --chart-muted: #c9c2b2;
+  --chart-grid: #e6e1d5;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #10201d; /* ink becomes the page */
+    --paper-2: #152824;
+    --paper-3: #1b302b;
+    --ink: #ece8de; /* paper becomes the type, slightly dimmed for long reads */
+    --ink-2: #c2c8c1;
+    --ink-3: #9aa59f;
+    --rule: #2c403b;
+    --rule-strong: #4a5e58;
+    --emerald: #5ebea8;
+    --emerald-ink: #86d3c0;
+    --emerald-wash: #17332d;
+    --on-emerald: #0b1715;
+    --brass: #c99a4e;
+    --brass-ink: #d6ae68;
+    --brass-wash: #231f15;
+    --signal: #e58a70;
+    --signal-wash: #2a1a15;
+    --ad: #1b2421;
+    --ad-ink: #a9b0aa;
+    --girih-opacity: 0.4;
+    --chart-1: #33a88a;
+    --chart-2: #ba8b3b;
+    --chart-3: #6e90da;
+    --chart-muted: #3d524c;
+    --chart-grid: #22352f;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #10201d;
+  --paper-2: #152824;
+  --paper-3: #1b302b;
+  --ink: #ece8de;
+  --ink-2: #c2c8c1;
+  --ink-3: #9aa59f;
+  --rule: #2c403b;
+  --rule-strong: #4a5e58;
+  --emerald: #5ebea8;
+  --emerald-ink: #86d3c0;
+  --emerald-wash: #17332d;
+  --on-emerald: #0b1715;
+  --brass: #c99a4e;
+  --brass-ink: #d6ae68;
+  --brass-wash: #231f15;
+  --signal: #e58a70;
+  --signal-wash: #2a1a15;
+  --ad: #1b2421;
+  --ad-ink: #a9b0aa;
+  --girih-opacity: 0.4;
+  --chart-1: #33a88a;
+  --chart-2: #ba8b3b;
+  --chart-3: #6e90da;
+  --chart-muted: #3d524c;
+  --chart-grid: #22352f;
+  color-scheme: dark;
+}
+
+@theme inline {
+  /* Drop Tailwind's default palette: only Muomalat tokens exist. */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-emerald: var(--emerald);
+  --color-emerald-ink: var(--emerald-ink);
+  --color-emerald-wash: var(--emerald-wash);
+  --color-on-emerald: var(--on-emerald);
+  --color-brass: var(--brass);
+  --color-brass-ink: var(--brass-ink);
+  --color-brass-wash: var(--brass-wash);
+  --color-signal: var(--signal);
+  --color-signal-wash: var(--signal-wash);
+  --color-ad: var(--ad);
+  --color-ad-ink: var(--ad-ink);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-muted: var(--chart-muted);
+  --color-chart-grid: var(--chart-grid);
+
+  /* next/font injects the family names; system fallbacks show while loading. */
+  --font-serif: var(--font-source-serif), "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-sans: "Muomalat Okina Sans", var(--font-plex-sans), "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* Type scale — fluid between 360px and 1280px viewports. */
+  --text-micro: 0.75rem; /* 12 — kickers, labels (uppercase) */
+  --text-micro--line-height: 1.25;
+  --text-micro--letter-spacing: 0.07em;
+  --text-meta: 0.8125rem; /* 13 — timestamps, captions */
+  --text-meta--line-height: 1.4;
+  --text-ui: 0.9375rem; /* 15 — interface copy */
+  --text-ui--line-height: 1.45;
+  --text-data: 0.875rem; /* 14 — tables, figures */
+  --text-data--line-height: 1.4;
+  --text-body: clamp(1.125rem, 1.076rem + 0.217vw, 1.25rem); /* 18 → 20 article body */
+  --text-body--line-height: 1.68;
+  --text-standfirst: clamp(1.1875rem, 1.09rem + 0.435vw, 1.4375rem); /* 19 → 23 */
+  --text-standfirst--line-height: 1.42;
+  --text-lead: 1.0625rem; /* 17 — interview questions, rail headlines, term links; line-height inherits */
+  --text-h4: clamp(1.0625rem, 1.014rem + 0.217vw, 1.1875rem); /* 17 → 19 compact headline */
+  --text-h4--line-height: 1.28;
+  --text-h3: clamp(1.25rem, 1.152rem + 0.435vw, 1.5rem); /* 20 → 24 story headline */
+  --text-h3--line-height: 1.22;
+  --text-h2: clamp(1.5rem, 1.304rem + 0.87vw, 2rem); /* 24 → 32 section / subhead */
+  --text-h2--line-height: 1.15;
+  --text-h1: clamp(1.875rem, 1.484rem + 1.739vw, 2.875rem); /* 30 → 46 article headline */
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.012em;
+  --text-display: clamp(2.125rem, 1.587rem + 2.391vw, 3.5rem); /* 34 → 56 lead story */
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.018em;
+  --text-numeral: clamp(2.5rem, 2.11rem + 1.739vw, 3.5rem); /* 40 → 56 big figures */
+  --text-numeral--line-height: 1;
+
+  --breakpoint-xs: 25rem; /* 400 */
+  --container-measure: 42rem; /* article column, ≈ 66 characters */
+  --container-page: 80rem; /* 1280 */
+}
+
+/* Plex Sans spaces ʻ and ʼ like 600-unit modifiers, which splits Uzbek
+   words ("O ʻ zbekiston"). This 1 KB patch face supplies just those two
+   code points with word-internal spacing (scripts/fonts/fix-okina.py). */
+@font-face {
+  font-family: "Muomalat Okina Sans";
+  src: url("/fonts/okina-sans.woff2") format("woff2");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+02BB-02BC;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+
+@layer base {
+  html {
+    background-color: var(--paper);
+    color: var(--ink);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: 4.5rem; /* sticky header */
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-ui);
+    line-height: var(--text-ui--line-height);
+    background-color: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-wrap: break-word;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--emerald-wash);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--emerald);
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  /* Links default to inheriting; components decide on underline. */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  table {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ── Utilities ────────────────────────────────────────────────────────── */
+
+/* Page container: 16px gutters on phones, 24px tablet, 32px desktop. */
+@utility wrap {
+  width: 100%;
+  max-width: var(--container-page);
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media (width >= 48rem) {
+    padding-inline: 1.5rem;
+  }
+  @media (width >= 80rem) {
+    padding-inline: 2rem;
+  }
+}
+
+/* Serif for display; optical size follows the size class automatically. */
+@utility font-display {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  font-feature-settings: "kern", "liga";
+}
+
+/* Tabular, lining figures: tables, timestamps, prices. Plex digits are
+   tabular by default; Source Serif needs the feature. */
+@utility figures {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Small uppercase label used for rubric kickers and UI captions. */
+@utility label-caps {
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  line-height: var(--text-micro--line-height);
+  letter-spacing: var(--text-micro--letter-spacing);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Headline link: ink at rest, emerald underline on hover/focus. */
+@utility headline-link {
+  color: var(--ink);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+  transition: text-decoration-color 120ms ease;
+  &:hover,
+  &:focus-visible {
+    text-decoration-color: var(--emerald);
+  }
+}
+
+/* Body link inside running text. */
+@utility text-link {
+  color: var(--emerald);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: color-mix(in srgb, var(--emerald) 45%, transparent);
+  &:hover {
+    color: var(--emerald-ink);
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Glossary reference inside running text: dotted, quieter than a link. */
+@utility term-link {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: var(--brass);
+  &:hover {
+    color: var(--emerald);
+    text-decoration-color: var(--emerald);
+  }
+}
+
+/* Horizontal scroller without a visible scrollbar (rubric strip). */
+@utility scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Hairline grid helpers: dividers between grid children without cards. */
+@utility rule-t {
+  border-top: 1px solid var(--rule);
+}
+@utility rule-b {
+  border-bottom: 1px solid var(--rule);
+}
+@utility rule-ink {
+  border-top: 2px solid var(--ink);
+}
+
+/* Visually hidden but available to assistive tech. */
+@utility sr-only-focusable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  &:focus,
+  &:focus-visible {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 100;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0.625rem 1rem;
+    clip: auto;
+    white-space: normal;
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+
+/* ── Girih ornament ───────────────────────────────────────────────────── */
+/* One eight-point star-and-cross lattice, drawn once as a mask so it takes
+   the current token colour in either theme. Used only for section
+   dividers, the club header and the 404 page. */
+
+.girih {
+  --girih-size: 40px;
+  --girih-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23000' stroke-width='1' stroke-linejoin='round'%3E%3Cpath d='M20 0 25.86 5.86 34.14 5.86 34.14 14.14 40 20 34.14 25.86 34.14 34.14 25.86 34.14 20 40 14.14 34.14 5.86 34.14 5.86 25.86 0 20 5.86 14.14 5.86 5.86 14.14 5.86Z'/%3E%3Cpath d='M20 5.5 24.1 10.1 30.25 9.75 29.9 15.9 34.5 20 29.9 24.1 30.25 30.25 24.1 29.9 20 34.5 15.9 29.9 9.75 30.25 10.1 24.1 5.5 20 10.1 15.9 9.75 9.75 15.9 10.1Z'/%3E%3Cpath d='M34.14 5.86 40 0M5.86 5.86 0 0M34.14 34.14 40 40M5.86 34.14 0 40'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: var(--emerald);
+  opacity: var(--girih-opacity);
+  -webkit-mask-image: var(--girih-mask);
+  mask-image: var(--girih-mask);
+  -webkit-mask-size: var(--girih-size) var(--girih-size);
+  mask-size: var(--girih-size) var(--girih-size);
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.girih--brass {
+  background-color: var(--brass);
+}
+
+/* ── Article body ─────────────────────────────────────────────────────── */
+
+.article-body {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  color: var(--ink);
+  hyphens: manual;
+}
+
+.article-body > * + * {
+  margin-top: 1.15em;
+}
+
+.article-body > :not(.breakout) {
+  max-width: var(--container-measure);
+}
+
+.article-body > h2 {
+  margin-top: 2em;
+  font-size: var(--text-h3);
+  line-height: var(--text-h3--line-height);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.article-body > h3 {
+  margin-top: 1.6em;
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.article-body > h2 + *,
+.article-body > h3 + * {
+  margin-top: 0.6em;
+}
+
+.article-body strong {
+  font-weight: 600;
+}
+
+/* Prose lists only: Blocks.tsx renders them as direct children of
+   .article-body. Lists inside components (chart legends, bar charts,
+   factboxes) keep their own styling. */
+.article-body > ul,
+.article-body > ol {
+  padding-left: 1.25em;
+}
+
+.article-body > ul {
+  list-style: none;
+}
+
+.article-body > ul > li {
+  position: relative;
+}
+
+.article-body > ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.05em;
+  top: 0.72em;
+  width: 0.38em;
+  height: 0.38em;
+  background: var(--brass);
+  transform: rotate(45deg);
+}
+
+.article-body > ol {
+  list-style: decimal;
+}
+
+.article-body > ol > li::marker {
+  font-family: var(--font-sans);
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.article-body > :is(ul, ol) > li + li {
+  margin-top: 0.45em;
+}
+
+/* Breakout blocks (tables, charts, figures) sit wider than the measure on
+   desktop but stay inside the gutters on phones. */
+.article-body > .breakout {
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .article-body {
+    font-size: 11pt;
+  }
+}
+
+/* ── Theme toggle icons (pure CSS, no hydration mismatch) ─────────────── */
+.theme-toggle .when-dark {
+  display: none;
+}
+:root[data-theme="dark"] .theme-toggle .when-dark {
+  display: inline-flex;
+}
+:root[data-theme="dark"] .theme-toggle .when-light {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .when-dark {
+    display: inline-flex;
+  }
+  :root:not([data-theme="light"]) .theme-toggle .when-light {
+    display: none;
+  }
+}
+
+/* ── Front page: compact wordmark appears in the sticky bar once the
+   masthead has scrolled away (scroll-driven, where supported). ───────── */
+.sticky-reveal {
+  display: none;
+}
+@supports (animation-timeline: scroll()) {
+  @media (width >= 48rem) {
+    .sticky-reveal {
+      display: inline-flex;
+      animation: sticky-reveal linear both;
+      animation-timeline: scroll(root);
+      animation-range: 120px 200px;
+    }
+  }
+}
+@keyframes sticky-reveal {
+  from {
+    opacity: 0;
+    max-width: 0;
+    margin-right: -1.5rem;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    max-width: 10rem;
+    margin-right: 0;
+    visibility: visible;
+  }
+}
+
+/* Interview turns breathe more than paragraphs. */
+.article-body > .qa + .qa,
+.article-body > .qa + p,
+.article-body > p + .qa {
+  margin-top: 1.9em;
+}

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<defs>
+<pattern id="lat1" patternUnits="userSpaceOnUse" x="216" y="150" width="64" height="64"><rect x="0" y="0" width="64" height="64" fill="#E4DCC8"/><rect x="5" y="5" width="54" height="54" fill="#0F6B5C"/><polygon points="5,5 59,5 55,9 9,9 9,55 5,59" fill="#2E8574"/><polygon points="32,9 55,32 32,55 9,32" fill="#E4DCC8"/><polygon points="55,32 32,55 32,49 49,32" fill="#7FAE9F"/><line x1="32" y1="9" x2="32" y2="55" stroke="#EFE9DC" stroke-width="1"/><line x1="9" y1="32" x2="55" y2="32" stroke="#EFE9DC" stroke-width="1"/></pattern>
+<pattern id="w2" patternUnits="userSpaceOnUse" x="236" y="628" width="42" height="300">
+  <line x1="0.8" y1="0" x2="0.8" y2="300" stroke="#2E8574" stroke-width="1.5"/><line x1="0" y1="0.8" x2="42" y2="0.8" stroke="#2E8574" stroke-width="1.2"/>
+</pattern>
+<pattern id="h3" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(90)">
+  <line x1="5" y1="-1" x2="5" y2="11" stroke="#E4DCC8" stroke-width="1"/>
+</pattern>
+</defs>
+<rect x="0" y="0" width="1200" height="800" fill="#FAF8F3"/>
+<circle cx="170" cy="214" r="70" fill="#B0843A"/>
+<rect x="196" y="106" width="940" height="26" fill="#10201D"/>
+<rect x="200" y="132" width="932" height="482" fill="#E4DCC8"/>
+<rect x="216" y="150" width="896" height="448" fill="url(#lat1)"/>
+<line x1="200" y1="132" x2="1132" y2="132" stroke="#10201D" stroke-width="1"/>
+<line x1="200" y1="614" x2="1132" y2="614" stroke="#10201D" stroke-width="1"/>
+<rect x="1112" y="132" width="20" height="482" fill="#7FAE9F"/>
+<rect x="236" y="614" width="876" height="104" fill="#10201D"/>
+<rect x="236" y="628" width="876" height="90" fill="url(#w2)"/>
+<line x1="236" y1="660" x2="1112" y2="660" stroke="#2E8574" stroke-width="1.5"/>
+<rect x="236" y="614" width="30" height="104" fill="#E4DCC8"/>
+<rect x="258" y="614" width="8" height="104" fill="#7FAE9F"/>
+<rect x="364" y="614" width="30" height="104" fill="#E4DCC8"/>
+<rect x="386" y="614" width="8" height="104" fill="#7FAE9F"/>
+<rect x="492" y="614" width="30" height="104" fill="#E4DCC8"/>
+<rect x="514" y="614" width="8" height="104" fill="#7FAE9F"/>
+<rect x="620" y="614" width="30" height="104" fill="#E4DCC8"/>
+<rect x="642" y="614" width="8" height="104" fill="#7FAE9F"/>
+<rect x="748" y="614" width="30" height="104" fill="#E4DCC8"/>
+<rect x="770" y="614" width="8" height="104" fill="#7FAE9F"/>
+<rect x="876" y="614" width="30" height="104" fill="#E4DCC8"/>
+<rect x="898" y="614" width="8" height="104" fill="#7FAE9F"/>
+<rect x="1004" y="614" width="30" height="104" fill="#E4DCC8"/>
+<rect x="1026" y="614" width="8" height="104" fill="#7FAE9F"/>
+<rect x="620" y="614" width="140" height="10" fill="#E4DCC8"/>
+<rect x="600" y="718" width="180" height="8" fill="#E4DCC8"/>
+<rect x="588" y="726" width="204" height="8" fill="#E4DCC8"/>
+<rect x="0" y="718" width="1200" height="82" fill="#EFE9DC"/>
+<line x1="0" y1="718" x2="1200" y2="718" stroke="#10201D" stroke-width="1.5"/>
+<rect x="0" y="742" width="1200" height="58" fill="url(#h3)"/>
+<rect x="250" y="696" width="66" height="22" fill="#2E8574" rx="11"/>
+<rect x="330" y="696" width="66" height="22" fill="#2E8574" rx="11"/>
+<rect x="410" y="696" width="66" height="22" fill="#2E8574" rx="11"/>
+<rect x="800" y="696" width="66" height="22" fill="#2E8574" rx="11"/>
+<rect x="880" y="696" width="66" height="22" fill="#2E8574" rx="11"/>
+<rect x="960" y="696" width="66" height="22" fill="#2E8574" rx="11"/>
+<line x1="1158" y1="360" x2="1158" y2="718" stroke="#10201D" stroke-width="2"/>
+<path d="M1158 300C1184 390 1184 560 1158 640C1132 560 1132 390 1158 300Z" fill="#0F6B5C"/>
+<line x1="1158" y1="340" x2="1158" y2="630" stroke="#2E8574" stroke-width="1"/>
+<line x1="1184" y1="420" x2="1184" y2="718" stroke="#10201D" stroke-width="2"/>
+<path d="M1184 360C1206 450 1206 560 1184 640C1162 560 1162 450 1184 360Z" fill="#2E8574"/>
+<line x1="1184" y1="400" x2="1184" y2="630" stroke="#0F6B5C" stroke-width="1"/>
+<line x1="70" y1="440" x2="70" y2="718" stroke="#10201D" stroke-width="2"/>
+<path d="M70 380C98 470 98 560 70 640C42 560 42 470 70 380Z" fill="#2E8574"/>
+<line x1="70" y1="420" x2="70" y2="630" stroke="#0F6B5C" stroke-width="1"/>
+<line x1="110" y1="490" x2="110" y2="718" stroke="#10201D" stroke-width="2"/>
+<path d="M110 430C132 520 132 560 110 640C88 560 88 520 110 430Z" fill="#0F6B5C"/>
+<line x1="110" y1="470" x2="110" y2="630" stroke="#2E8574" stroke-width="1"/>
+</svg>
