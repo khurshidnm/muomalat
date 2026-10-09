@@ -24,3 +24,6 @@ __pycache__/
 /media
 *.sqlite
 *.sqlite3
+
+# Phase 0 experiments (throwaway)
+/.spike
