@@ -75,6 +75,7 @@ export function Footer({ locale }: { locale: Locale }) {
           <ul className="space-y-2">
             <li><Link href={href(locale, paths.about())} prefetch={false} className={link}>{t.nav.about}</Link></li>
             <li><Link href={href(locale, paths.policy())} prefetch={false} className={link}>{t.nav.policy}</Link></li>
+            <li><Link href={href(locale, paths.privacy())} prefetch={false} className={link}>{t.nav.privacy}</Link></li>
             <li><Link href={href(locale, paths.advertise())} prefetch={false} className={link}>{t.nav.advertise}</Link></li>
             <li><Link href={href(locale, paths.contact())} prefetch={false} className={link}>{t.nav.contact}</Link></li>
             <li>

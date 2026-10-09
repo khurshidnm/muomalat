@@ -32,6 +32,8 @@ import { Navigation } from './payload/globals/Navigation'
 import { SiteSettings } from './payload/globals/SiteSettings'
 import { i18n } from './payload/i18n'
 import { inlineEditor } from './payload/lexical/editors'
+import { personalDataEndpoints } from './payload/personalData/endpoints'
+import { startupGuard } from './payload/security/startupGuard'
 
 const root = process.cwd()
 const cmsUrl = process.env.CMS_URL || 'http://cms.localhost:3000'
@@ -91,6 +93,14 @@ export default buildConfig({
     // One zone: every date-time with `timezone: true` is shown and entered in
     // Tashkent time and the zone picker is read-only (CMS-SPEC §3.1).
     timezones: tashkentTimezone,
+    // Gravatar would send a hash of every staff address to a third party, and the CMS CSP blocks it (§12.4).
+    avatar: 'default',
+    components: {
+      // Overdue and open second reads of urgent stories (§5.4).
+      beforeDashboard: ['/payload/admin/SecondReads#SecondReads'],
+      // The red read-only banner (§12.10); renders nothing in normal operation.
+      header: ['/payload/admin/ReadOnlyBanner#ReadOnlyBanner'],
+    },
   },
   // Uzbek admin interface, Russian base for keys Payload adds later (§6.6).
   i18n,
@@ -130,6 +140,8 @@ export default buildConfig({
     PublishEvents,
   ],
   globals: [HomePage, Navigation, AdSlots, SiteSettings, EditorialRules],
+  // Admin-only export and erasure by e-mail for rights requests (§13.3).
+  endpoints: personalDataEndpoints,
   plugins: [redirects],
   /**
    * Saved list views (articles `enableQueryPresets`, §4.2): every staff
@@ -162,4 +174,9 @@ export default buildConfig({
     migrationDir: path.resolve(root, 'src/migrations'),
   }),
   sharp,
+  // Expected refusals are not server faults: no stack trace at error level. Keys are `error.name`, which for
+  // our APIError subclasses is the class name; Payload's type lists only its own error names.
+  loggingLevels: { ReadOnlyError: 'info', EdgeIdentityError: 'warn' } as Partial<Record<'APIError', 'info' | 'warn'>>,
+  // Exits in SITE_ENV=production on any unsafe setting (CMS-SPEC §12.1).
+  onInit: (payload) => startupGuard(payload),
 })

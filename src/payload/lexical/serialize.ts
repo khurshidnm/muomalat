@@ -226,7 +226,7 @@ function image(fields: Record<string, unknown>, ctx: SerializeCtx, where: string
   const id = idOf(fields.image)
   const m = id !== undefined ? ctx.mediaById.get(id) : undefined
   if (!m) {
-    ctx.warn('ART-13', `${where}: rasm topilmadi (${String(id)})`)
+    ctx.warn('ART-13', id === undefined ? `${where}: rasm tanlanmagan` : `${where}: rasm topilmadi (#${String(id)}, oʻchirilgan boʻlishi mumkin)`)
     return undefined
   }
   const loc = ctx.locale

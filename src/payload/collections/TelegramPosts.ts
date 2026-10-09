@@ -134,6 +134,7 @@ export const TelegramPosts: CollectionConfig = {
     {
       name: 'history',
       label: 'Tarix',
+      labels: { singular: 'Yozuv', plural: 'Yozuvlar' },
       type: 'array',
       access: systemFieldAccess,
       admin: { readOnly: true, description: 'Yuborilgan va tahrirlangan har bir matn.' },

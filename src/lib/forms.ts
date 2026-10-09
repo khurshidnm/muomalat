@@ -1,15 +1,25 @@
 /**
  * Shared form plumbing for server actions. Actions return error *codes*;
  * client components map them to localised messages (forms.ts messages).
- * There is no backend yet: successful submissions are only acknowledged.
+ * Valid submissions are stored through src/payload/personalData; a response
+ * never echoes stored data, only what the person typed after an error.
+ * This module is imported by client components: keep it free of server code.
  */
 export type FieldError = 'required' | 'email' | 'phone' | 'consent'
+
+/**
+ * Not about one field: too many submissions (app rate limit, CMS-SPEC §12.3)
+ * or the store could not take the submission. The form shows its error
+ * summary either way; components may show a specific message for these.
+ */
+export type FormError = 'rate' | 'unavailable'
 
 export interface FormState {
   status: 'idle' | 'success' | 'error'
   errors: Record<string, FieldError>
   /** Echo of submitted values so fields keep their content after an error. */
   values: Record<string, string>
+  formError?: FormError
 }
 
 export const initialFormState: FormState = { status: 'idle', errors: {}, values: {} }

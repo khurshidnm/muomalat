@@ -97,8 +97,10 @@ export const Users: CollectionConfig = {
     // An active staff account may open the admin.
     admin: withEdge(({ req }) => userRole(req) !== undefined),
     create: withEdge(isAdmin),
+    // §4.2: editors see the names and roles of everyone, so they can assign a story or a translation and see
+    // who approved it; the personal fields stay with the person, the editor-in-chief and admin (field access).
     read: withEdge(({ req }) => {
-      if (hasRole(req, 'admin', 'eic')) return true
+      if (hasRole(req, 'admin', 'eic', 'editor')) return true
       if (userRole(req) && req.user) return { id: { equals: req.user.id } }
       return false
     }),
@@ -112,6 +114,10 @@ export const Users: CollectionConfig = {
     unlock: withEdge(isAdmin),
   },
   fields: [
+    // Merged into Payload's built-in email field. §4.2 gives editors the names
+    // and roles of other staff, not their addresses (§13.1): the address is read
+    // by the account holder, the editor-in-chief and admin only.
+    { name: 'email', type: 'email', access: { read: personalRead } },
     { name: 'name', label: 'Ism', type: 'text', required: true },
     {
       name: 'role',
@@ -157,6 +163,7 @@ export const Users: CollectionConfig = {
     {
       name: 'declaredInterests',
       label: 'Manfaatlar toʻqnashuvi deklaratsiyasi',
+      labels: { singular: 'Manfaat', plural: 'Manfaatlar' },
       type: 'array',
       access: { read: personalRead, create: personalRead, update: selfOrRoles('admin') },
       admin: {

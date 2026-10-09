@@ -5,7 +5,14 @@
  * data, the Uzbek interface strings (src/i18n/messages/*), the image library
  * and site constants; then checks the generated Cyrillic (/kr) output.
  *
+ * The rules live in src/content/rules.ts, shared with the CMS validation
+ * concern (CMS-SPEC §7.1). This file only walks the mock data and prints.
+ *
  * Optional scope argument: articles | glossary | market | club | messages | kr
+ *
+ * TODO(§7.1): `--source=payload` reads published content through the
+ * Payload content adapter (wave 3) and runs the `all` rule scope; the worker
+ * then runs it nightly and posts a summary to the editor-in-chief.
  */
 import { yangiliklar } from '../src/content/data/articles/yangiliklar'
 import { tahlil } from '../src/content/data/articles/tahlil'
@@ -31,6 +38,7 @@ import {
   getRubrics,
   getTags,
 } from '../src/content'
+import { ARABIC, checkArticle, checkKr, checkText, isoTz, KR_SKIP, type Finding } from '../src/content/rules'
 import { pick, type MessageSet, type MessageTree } from '../src/i18n/messages'
 import { deepCyrillic } from '../src/i18n/translit'
 import * as aboutModule from '../src/i18n/messages/about'
@@ -54,9 +62,13 @@ const errors: string[] = []
 const warnings: string[] = []
 const err = (m: string) => errors.push(m)
 const warn = (m: string) => warnings.push(m)
+/** Findings from rules.ts, each printed as `<prefix>: <message>`. */
+const report = (prefix: string, findings: Finding[]) => {
+  for (const f of findings) (f.level === 'error' ? err : warn)(`${prefix}: ${f.message}${f.excerpt ? ` — «${f.excerpt}»` : ''}`)
+}
 
 const articles = [...yangiliklar, ...tahlil, ...intervyu, ...izoh, ...dunyo]
-const only = process.argv[2] // optional: articles | glossary | market | club
+const only = process.argv.slice(2).find((a) => !a.startsWith('--')) // optional: articles | glossary | market | club
 
 // ── string walkers ────────────────────────────────────────────────────────
 function walk(value: unknown, path: string, visit: (s: string, p: string) => void, skip = new Set(['translations', 'labels', 'aliases', 'src', 'url', 'slug', 'id'])) {
@@ -67,39 +79,9 @@ function walk(value: unknown, path: string, visit: (s: string, p: string) => voi
   }
 }
 
-const BAD_OKINA = /[oOgG]['‘’`ʼʽ]/ // o' g' with wrong mark
-const BAD_TUTUQ = /[A-Za-z]['\u2019`](?=[A-Za-z])|[A-FH-NP-Za-fh-np-z]\u02BB(?=[A-Za-z])/ // apostrophe used as tutuq (should be ʼ U+02BC)
-const BANNED = [/qurʼ?on/i, /qur'on/i, /\boyat/i, /\bhadis/i, /\bsura\b/i, /paygʻambar/i, /\balloh/i, /\bmasjid/i, /\bnamoz/i, /\bduo\b/i, /\bimom\b/i]
-const REVIEW = [/fatvo/i, /\bharom\b/i, /\bhalol\b/i, /\bjoiz\b/i]
-/** The editorial disclaimer ("we issue no fatvo") names the word to deny it: not a ruling. */
-const DISCLAIMER = /(chiqarmay|chiqarilmay|bermay|bermaydi)/i
-/** Common words that start like an organisation name (alifbo = alphabet). */
-const ORG_FALSE_FRIENDS: Record<string, RegExp> = { alif: /(^|[^a-zʻ])alifbo/gi }
-const REAL_ORGS = [
-  'hamkorbank', 'ipoteka', 'kapitalbank', 'asaka', 'agrobank', 'orient finans', 'davr bank', 'turonbank', 'turon bank', 'trastbank', 'ravnaq',
-  'universal bank', 'madad', 'tenge', 'kdb', 'ziraat', 'anorbank', 'anor bank', 'garant bank', 'tbc', 'uzum', 'hayot bank', 'saderat', 'poytaxt bank',
-  'apex bank', 'octobank', 'smartbank', 'yangi bank', 'asia alliance', 'infinbank', 'aloqabank', 'mikrokreditbank', 'xalq banki', 'milliy bank', 'nbu',
-  'sqb', 'sanoatqurilish', 'qishloq qurilish', 'alif', 'alfa-bank', 'ipak yoʻli', 'hi-tech bank', 'markaziy bank', 'al rajhi', 'dubai islamic',
-  'maybank', 'cimb', 'kuwait finance', 'kfh', 'islom taraqqiyot banki', 'islamic development bank', 'isdb', 'ifc', 'osiyo taraqqiyot', 'jahon banki',
-  'world bank', 'xvf', 'imf', 'moody', 'fitch', 's&p', 'lseg', 'refinitiv', 'bloomberg', 'reuters', 'nasdaq', 'toshkent fond birjasi', 'uzse',
-]
-
+/** The mock site is a demo: every real organisation name warns (TXT-5). */
 function textChecks(label: string, obj: unknown) {
-  walk(obj, label, (s, p) => {
-    if (BAD_OKINA.test(s)) err(`${p}: use ʻ (U+02BB) in oʻ/gʻ → "${s.match(BAD_OKINA)?.[0]}" in "${s.slice(0, 80)}"`)
-    if (BAD_TUTUQ.test(s) && !/https?:/.test(s)) warn(`${p}: apostrophe between letters — tutuq should be ʼ (U+02BC): "${s.slice(0, 80)}"`)
-    for (const re of BANNED) if (re.test(s)) err(`${p}: banned religious term ${re} in "${s.slice(0, 100)}"`)
-    for (const re of REVIEW) if (re.test(s) && !DISCLAIMER.test(s)) warn(`${p}: review wording ${re} (no rulings): "${s.slice(0, 100)}"`)
-    const low = s.toLowerCase()
-    for (const name of REAL_ORGS) if (new RegExp(`(^|[^a-zʻ])${name.replace(/[.*+?^${}()|[\]\\&]/g, '\\$&')}`, 'i').test(low.replace(ORG_FALSE_FRIENDS[name] ?? /$^/, ' '))) warn(`${p}: mentions real organisation "${name}": "${s.slice(0, 100)}"`)
-    if (/\s{2,}/.test(s.trim())) warn(`${p}: double space`)
-    if (/ ,|\s\./.test(s) && !/\d \./.test(s)) warn(`${p}: space before punctuation: "${s.slice(0, 60)}"`)
-    if (/"/.test(s)) warn(`${p}: straight double quote — use «guillemets»: "${s.slice(0, 60)}"`)
-    // Months: standard Uzbek Latin spelling and the hyphenated day form (8-oktabr).
-    if (/\b(oktyabr|sentyabr|noyabr[ʼ']|yanvar[ʼ']|fevral[ʼ']|aprel[ʼ']|iyun[ʼ']|iyul[ʼ'])/i.test(s)) err(`${p}: month spelling — use sentabr/oktabr: "${s.slice(0, 80)}"`)
-    if (/\b\d{4} yil/.test(s)) warn(`${p}: year needs a hyphen (2026-yil): "${s.slice(0, 60)}"`)
-    if (/\b\d{1,2} (yanvar|fevral|mart|aprel|may|iyun|iyul|avgust|sentabr|oktabr|noyabr|dekabr)/i.test(s)) warn(`${p}: date needs a hyphen (8-oktabr): "${(s.match(/\b\d{1,2} \w+/) ?? [''])[0]}"`)
-  })
+  walk(obj, label, (s, p) => report(p, checkText(s, p, { demoMode: true })))
 }
 
 const tagSlugs = new Set(tags.map((t) => t.slug))
@@ -109,57 +91,38 @@ const imageSrcs = new Set(Object.values(images).map((i) => i.src))
 const ids = new Set<string>()
 const slugs = new Set<string>()
 
-function checkImage(p: string, src?: string) {
-  if (!src) return
-  if (!imageSrcs.has(src)) err(`${p}: image ${src} is not in the image registry`)
-  else if (!existsSync(join(process.cwd(), 'public', src))) warn(`${p}: image file public${src} not generated yet`)
+/** Mock images come from the image registry and are generated into public/. */
+function checkImage(src?: string): Finding[] {
+  if (!src) return []
+  if (!imageSrcs.has(src)) return [{ rule: 'IMG', level: 'error', path: 'image', message: `${src} rasmi rasm roʻyxatida yoʻq` }]
+  if (!existsSync(join(process.cwd(), 'public', src))) return [{ rule: 'IMG', level: 'warning', path: 'image', message: `public${src} fayli hali yaratilmagan (npm run images)` }]
+  return []
 }
-
-const isoTz = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?\+05:00$/
 
 if (!only || only === 'articles') {
   for (const a of articles) {
     const p = `article ${a.id}`
-    if (ids.has(a.id)) err(`${p}: duplicate id`)
+    if (ids.has(a.id)) err(`${p}: takroriy ID`)
     ids.add(a.id)
     const key = `${a.rubric}/${a.slug}`
-    if (slugs.has(key)) err(`${p}: duplicate slug ${key}`)
+    if (slugs.has(key)) err(`${p}: takroriy slug ${key}`)
     slugs.add(key)
-    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(a.slug)) err(`${p}: slug must be lower-case ascii with hyphens: ${a.slug}`)
-    if (!isoTz.test(a.publishedAt)) err(`${p}: publishedAt must be ISO with +05:00: ${a.publishedAt}`)
-    if (Date.parse(a.publishedAt) > NOW) err(`${p}: publishedAt is in the future`)
-    if (a.updatedAt && (!isoTz.test(a.updatedAt) || Date.parse(a.updatedAt) < Date.parse(a.publishedAt) || Date.parse(a.updatedAt) > NOW)) err(`${p}: bad updatedAt`)
-    for (const t of a.tags) if (!tagSlugs.has(t)) err(`${p}: unknown tag ${t}`)
-    for (const t of a.terms ?? []) if (termSlugs.size && !termSlugs.has(t)) err(`${p}: unknown glossary term ${t}`)
-    for (const au of a.authors) if (!authorSlugs.has(au)) err(`${p}: unknown author ${au}`)
-    if (!a.sources.length) err(`${p}: needs at least one source (Manbalar)`)
-    checkImage(p, a.image?.src)
-    checkImage(p, a.interviewee?.portrait?.src)
-    for (const b of a.body) {
-      if (b.type === 'figure') checkImage(p, b.image.src)
-      if (b.type === 'term' && termSlugs.size && !termSlugs.has(b.slug)) err(`${p}: term block unknown slug ${b.slug}`)
-      if (b.type === 'table') for (const r of b.rows) if (r.length !== b.columns.length) err(`${p}: table "${b.caption}" row length ${r.length} ≠ ${b.columns.length} columns`)
-      if (b.type === 'chart' && b.chart.kind === 'line') for (const s of b.chart.series) if (s.values.length !== b.chart.xLabels.length) err(`${p}: line chart series "${s.name}" length mismatch`)
-      const texts = b.type === 'p' || b.type === 'callout' ? [b.text] : b.type === 'list' ? b.items : b.type === 'qa' ? b.answer : []
-      for (const t of texts) for (const m of t.matchAll(/\[\[([^|\]]+)\|/g)) if (termSlugs.size && !termSlugs.has(m[1])) err(`${p}: inline glossary link to unknown term ${m[1]}`)
-    }
-    if (a.rubric === 'intervyu' && (!a.interviewee || !a.body.some((b) => b.type === 'qa'))) err(`${p}: interviews need interviewee and qa blocks`)
-    if (a.rubric === 'tahlil' && !a.body.some((b) => b.type === 'table' || b.type === 'chart')) warn(`${p}: analysis without table or chart`)
+    report(p, checkArticle(a, { scope: 'legacy', now: NOW, known: { tags: tagSlugs, terms: termSlugs, authors: authorSlugs }, image: checkImage }))
     textChecks(p, a)
   }
-  for (const a of articles) for (const r of a.related ?? []) if (!ids.has(r)) err(`article ${a.id}: related id ${r} does not exist`)
+  for (const a of articles) for (const r of a.related ?? []) if (!ids.has(r)) err(`article ${a.id}: aloqador maqola ${r} topilmadi`)
 }
 
 if (!only || only === 'glossary') {
   const seen = new Set<string>()
   for (const t of glossary) {
     const p = `term ${t.slug}`
-    if (seen.has(t.slug)) err(`${p}: duplicate`)
+    if (seen.has(t.slug)) err(`${p}: takroriy atama`)
     seen.add(t.slug)
-    for (const r of t.related) if (!termSlugs.has(r)) err(`${p}: related term ${r} does not exist`)
+    for (const r of t.related) if (!termSlugs.has(r)) err(`${p}: aloqador atama ${r} topilmadi`)
     for (const s of [...t.definition, t.origin, ...t.practice, t.example?.text ?? ''])
-      for (const m of s.matchAll(/\[\[([^|\]]+)\|/g)) if (!termSlugs.has(m[1])) err(`${p}: inline link to unknown term ${m[1]}`)
-    if (/[؀-ۿ]/.test(JSON.stringify(t))) err(`${p}: no Arabic script — use Latin transliteration`)
+      for (const m of s.matchAll(/\[\[([^|\]]+)\|/g)) if (!termSlugs.has(m[1])) err(`${p}: lugʻat havolasi topilmagan atamaga olib boradi: ${m[1]}`)
+    if (ARABIC.test(JSON.stringify(t))) err(`${p}: arab yozuvi ishlatilgan: lotin transliteratsiyasidan foydalaning`)
     textChecks(p, t)
   }
 }
@@ -167,14 +130,14 @@ if (!only || only === 'glossary') {
 if (!only || only === 'market') {
   for (const i of institutions) {
     const p = `institution ${i.id}`
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(i.statusDate) || Date.parse(i.statusDate) > NOW) err(`${p}: statusDate must be YYYY-MM-DD and not in the future`)
-    if (i.type === 'window' && !i.parent) err(`${p}: Islamic window needs a parent`)
-    if (i.articleId && ids.size && !ids.has(i.articleId)) err(`${p}: articleId ${i.articleId} does not exist`)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(i.statusDate) || Date.parse(i.statusDate) > NOW) err(`${p}: holat sanasi YYYY-MM-DD shaklida va kelajakda emas boʻlsin`)
+    if (i.type === 'window' && !i.parent) err(`${p}: islom oynasi uchun bosh bank kerak`)
+    if (i.articleId && ids.size && !ids.has(i.articleId)) err(`${p}: maqola ${i.articleId} topilmadi`)
     textChecks(p, i)
   }
   for (const m of milestones) {
-    if (!/^\d{4}-\d{2}(-\d{2})?$/.test(m.date)) err(`milestone ${m.title}: bad date`)
-    if (m.articleId && ids.size && !ids.has(m.articleId)) err(`milestone ${m.title}: articleId does not exist`)
+    if (!/^\d{4}-\d{2}(-\d{2})?$/.test(m.date)) err(`milestone ${m.title}: sana notoʻgʻri`)
+    if (m.articleId && ids.size && !ids.has(m.articleId)) err(`milestone ${m.title}: maqola topilmadi`)
     textChecks(`milestone ${m.date}`, m)
   }
 }
@@ -182,11 +145,11 @@ if (!only || only === 'market') {
 if (!only || only === 'club') {
   for (const e of clubEvents) {
     const p = `event ${e.slug}`
-    if (!isoTz.test(e.startsAt) || !isoTz.test(e.endsAt)) err(`${p}: startsAt/endsAt must be ISO with +05:00`)
+    if (!isoTz.test(e.startsAt) || !isoTz.test(e.endsAt)) err(`${p}: boshlanish va tugash vaqti ISO shaklida +05:00 bilan boʻlsin`)
     const future = Date.parse(e.startsAt) > NOW
-    if ((e.status === 'upcoming') !== future) err(`${p}: status ${e.status} does not match date`)
-    checkImage(p, e.image?.src)
-    for (const s of e.speakers) checkImage(p, s.portrait?.src)
+    if ((e.status === 'upcoming') !== future) err(`${p}: «${e.status}» holati sanaga mos emas`)
+    report(p, checkImage(e.image?.src))
+    for (const s of e.speakers) report(p, checkImage(s.portrait?.src))
     textChecks(p, e)
   }
 }
@@ -218,7 +181,7 @@ for (const [file, mod] of Object.entries(MESSAGE_MODULES))
 
 // Every message file must be imported above, so a new one cannot skip the checks.
 for (const f of readdirSync(join(process.cwd(), 'src/i18n/messages')))
-  if (f.endsWith('.ts') && !(f.slice(0, -3) in MESSAGE_MODULES)) err(`src/i18n/messages/${f}: not covered — import it in scripts/validate-content.ts`)
+  if (f.endsWith('.ts') && !(f.slice(0, -3) in MESSAGE_MODULES)) err(`src/i18n/messages/${f}: tekshirilmaydi — uni scripts/validate-content.ts ga import qiling`)
 
 /** Arguments tried on message functions: counts first, then a word in the edition's script. */
 const sampleArgs = (script: 'latin' | 'cyrillic'): unknown[][] => {
@@ -257,66 +220,21 @@ if (!only || only === 'messages') {
 }
 
 // ── Cyrillic edition (/kr) ────────────────────────────────────────────────
-// The /kr pages are transliterated from Uzbek Latin (src/i18n/translit.ts).
-// These checks run on that output, so transliteration slips show up here.
-
-/** Keys whose values are identifiers or other-language text, not Cyrillic prose. */
-const KR_SKIP = new Set([
-  'translations', 'labels', 'aliases', 'id', 'slug', 'rubric', 'src', 'url', 'href', 'email', 'telegram', 'contentLang',
-  'publishedAt', 'updatedAt', 'date', 'startsAt', 'endsAt', 'statusDate', 'type', 'status', 'kind', 'category', 'authors',
-  'tags', 'terms', 'related', 'articleId', 'align', 'format', 'orientation',
-])
-/** Latin runs allowed in Cyrillic text: the brand, acronyms (AAOIFI, SMS), placeholder letters (Tijorat banki E). */
-const KR_LATIN_OK = /^(?:Muomalat[a-zʻʼ]*|[A-Z][A-Z0-9]+|[A-Z])$/
-/** Latin kept on purpose by a `kr` override, by path prefix. */
-const KR_LATIN_INTENDED: [string, string[]][] = [
-  // The name study quotes the Latin spellings of the name on purpose.
-  ['messages about.aboutMessages.kr.name.', ['o', 'muomala', 'muamalat']],
-  // An English search example: the glossary also matches English names.
-  ['messages glossary.glossaryMessages.kr.filter.searchPlaceholder', ['lease']],
-]
-const DOMAIN = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:\/\S*)?$/i
-/** Loanword stems the rules get wrong: Russian spelling keeps ц and ь in these words. */
-const KR_BANNED: [RegExp, string][] = [
-  [/тенденс/i, 'тенденция'],
-  [/филтр/i, 'фильтр'],
-  [/^профил$/i, 'профиль'],
-  [/^мебел$/i, 'мебель'],
-  [/^сех(?:$|[игдлн])/i, 'цех'],
-  [/потенс/i, 'потенциал'],
-  [/конференс/i, 'конференция'],
-  [/ссенар/i, 'сценарий'],
-  [/ксия/i, '-кция (акция, функция)'],
-]
+// The /kr pages are transliterated from Uzbek Latin (src/i18n/translit.ts);
+// checkKr runs on that output. Repeats of one issue are counted, and every
+// issue is an error here (the CMS shows them as warnings, §7.2).
 
 const krFindings = new Map<string, { path: string; count: number }>()
-function krFinding(key: string, path: string) {
-  const f = krFindings.get(key)
-  if (f) f.count++
-  else krFindings.set(key, { path, count: 1 })
-}
-
 function krChecks(label: string, obj: unknown) {
   walk(
     obj,
     label,
     (raw, p) => {
-      // Markup targets stay Latin by design; check only the visible labels.
-      // {en:…} marks foreign words that translit copies unchanged, so skip them.
-      const s = raw
-        .replace(/\[\[[^|\]]+\|([^\]]+)\]\]/g, '$1')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/\{en:[^}]+\}/g, '')
-      if (/[ʻʼ]/.test(s)) krFinding(`ʻ/ʼ left in Cyrillic: "${(s.match(/\S*[ʻʼ]\S*/) ?? [''])[0]}"`, p)
-      const intended = KR_LATIN_INTENDED.find(([prefix]) => p.startsWith(prefix))?.[1] ?? []
-      for (const token of s.split(/\s+/)) {
-        const core = token.replace(/^[«“"(\[]+|[»”".,;:!?)\]]+$/g, '')
-        if (/^(?:https?:|www\.)|@/.test(core) || DOMAIN.test(core)) continue // URLs, domains, e-mail addresses, @handles
-        for (const run of core.match(/[A-Za-z][A-Za-z0-9ʻʼ]*/g) ?? [])
-          if (!KR_LATIN_OK.test(run) && !intended.includes(run)) krFinding(`Latin word in Cyrillic text: "${run}"`, p)
+      for (const f of checkKr(raw, p)) {
+        const seen = krFindings.get(f.message)
+        if (seen) seen.count++
+        else krFindings.set(f.message, { path: p, count: 1 })
       }
-      for (const word of s.match(/[А-Яа-яЁёЎўҚқҒғҲҳ]+/g) ?? [])
-        for (const [re, fix] of KR_BANNED) if (re.test(word)) krFinding(`loanword spelling "${word}" (→ ${fix})`, p)
     },
     KR_SKIP,
   )

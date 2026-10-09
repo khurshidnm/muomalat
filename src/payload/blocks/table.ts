@@ -20,6 +20,7 @@ export const table: Block = {
     {
       name: 'columns',
       label: 'Ustunlar',
+      labels: { singular: 'Ustun', plural: 'Ustunlar' },
       type: 'array',
       required: true,
       admin: { description: 'Har bir ustun uchun bitta qator, chapdan oʻngga.' },

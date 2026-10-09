@@ -5,7 +5,7 @@ import { fieldRoles, hiddenUnless, requestsAccess, systemFieldAccess } from '../
 import { REL } from '../fields/relations'
 import { hooksFor } from '../hooks'
 
-export const REQUEST_KINDS = ['error_report', 'refutation', 'reply', 'removal', 'other'] as const
+export const REQUEST_KINDS = ['error_report', 'refutation', 'reply', 'removal', 'personal_data', 'other'] as const
 export type RequestKind = (typeof REQUEST_KINDS)[number]
 
 const DAY = 24 * 60 * 60 * 1000
@@ -13,7 +13,8 @@ const DAY = 24 * 60 * 60 * 1000
 /**
  * Response deadline from the date received (CMS-SPEC §3.15; Media Law
  * Art. 34): refutation and reply one calendar month, error report 3 days,
- * removal 14 days. `other` has no statutory deadline.
+ * removal 14 days. A personal-data rights request (§13.3) gets 14 calendar
+ * days, the internal target of 10 working days. `other` has no deadline.
  */
 export function requestDueAt(kind: string | null | undefined, receivedAt: string | Date | null | undefined): string | null {
   if (!receivedAt) return null
@@ -29,6 +30,7 @@ export function requestDueAt(kind: string | null | undefined, receivedAt: string
     case 'error_report':
       return new Date(at.getTime() + 3 * DAY).toISOString()
     case 'removal':
+    case 'personal_data':
       return new Date(at.getTime() + 14 * DAY).toISOString()
     default:
       return null
@@ -74,7 +76,8 @@ export const Requests: CollectionConfig = {
     useAsTitle: 'summary',
     defaultColumns: ['summary', 'kind', 'status', 'assignedTo', 'dueAt', 'receivedAt'],
     hidden: hiddenUnless('reporter', 'editor', 'eic', 'admin'),
-    description: 'Xatolar, raddiya, javob va olib tashlash talablari reyestri (OAV toʻgʻrisidagi qonun, 34-modda).',
+    description:
+      'Xatolar, raddiya, javob va olib tashlash talablari (OAV toʻgʻrisidagi qonun, 34-modda) hamda shaxsga doir maʼlumotlar boʻyicha soʻrovlar reyestri.',
   },
   access: requestsAccess,
   disableDuplicate: true,
@@ -91,6 +94,7 @@ export const Requests: CollectionConfig = {
         { label: 'Raddiya', value: 'refutation' },
         { label: 'Javob', value: 'reply' },
         { label: 'Olib tashlash talabi', value: 'removal' },
+        { label: 'Shaxsga doir maʼlumotlar boʻyicha soʻrov', value: 'personal_data' },
         { label: 'Boshqa', value: 'other' },
       ] satisfies { label: string; value: RequestKind }[],
       access: { update: desk },

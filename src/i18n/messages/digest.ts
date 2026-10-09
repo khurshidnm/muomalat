@@ -112,7 +112,7 @@ const uz = {
         },
         privacy: {
           q: 'Elektron pochta manzilimdan qanday foydalanasiz?',
-          a: 'Manzilingizdan faqat dayjestni yuborish uchun foydalanamiz. Uni reklama beruvchilarga yoki boshqa uchinchi shaxslarga bermaymiz va sotmaymiz. Manzilingizni roʻyxatdan butunlay oʻchirishni istasangiz, [«Aloqa» sahifasi](/aloqa) orqali yozing.',
+          a: 'Manzilingizdan faqat dayjestni yuborish uchun foydalanamiz. Uni reklama beruvchilarga yoki boshqa uchinchi shaxslarga bermaymiz va sotmaymiz. Manzilingizni roʻyxatdan butunlay oʻchirishni istasangiz, [maxfiylik sahifasidagi soʻrov shakli](/maxfiylik#sorov) orqali yozing.',
         },
         unsubscribe: {
           q: 'Obunani qanday bekor qilaman?',
@@ -246,7 +246,7 @@ export const digestMessages = defineMessages({
           },
           privacy: {
             q: 'Как вы используете мой адрес электронной почты?',
-            a: 'Мы используем адрес только для рассылки дайджеста. Мы не передаём и не продаём его рекламодателям или другим третьим лицам. Если хотите, чтобы адрес полностью удалили из списка, напишите нам через [страницу «Контакты»](/aloqa).',
+            a: 'Мы используем адрес только для рассылки дайджеста. Мы не передаём и не продаём его рекламодателям или другим третьим лицам. Если хотите, чтобы адрес полностью удалили из списка, воспользуйтесь [формой запроса на странице конфиденциальности](/maxfiylik#sorov).',
           },
           unsubscribe: {
             q: 'Как отписаться?',
@@ -377,7 +377,7 @@ export const digestMessages = defineMessages({
           },
           privacy: {
             q: 'How do you use my email address?',
-            a: 'We use your address only to send the digest. We do not give or sell it to advertisers or any other third party. To have your address removed from the list entirely, write to us via the [contact page](/aloqa).',
+            a: 'We use your address only to send the digest. We do not give or sell it to advertisers or any other third party. To have your address removed from the list entirely, use the [request form on our privacy page](/maxfiylik#sorov).',
           },
           unsubscribe: {
             q: 'How do I unsubscribe?',

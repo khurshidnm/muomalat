@@ -1,5 +1,8 @@
 import type { Access, FieldAccess, Where } from 'payload'
+import { isolateObjectProperty } from 'payload'
 
+import { editRefusal } from '../hooks/workflow/editRules'
+import type { WorkflowState } from '../hooks/workflow/shared'
 import { anonymousRead, PUBLISHED } from './editorial'
 import { hasRole, type Role, userRole, withEdge } from './roles'
 
@@ -82,8 +85,48 @@ const writeArticle: Access = ({ req, data }) => {
   if (DRAFT_WRITERS.includes(role)) return !wantsPublish(data)
   return false
 }
+
+/**
+ * The admin form's permission (§4.3: "an async access function that loads the
+ * draft and returns a boolean would also make the admin show the form
+ * read-only"). When Payload computes a document's permissions, for the edit
+ * view and `/api/articles/access/:id`, update access also asks the workflow's
+ * edit rule against the latest version: a reporter on a story in edit, an
+ * editor on a sponsored story, anyone but the editor-in-chief on a legal hold
+ * then gets a read-only form instead of an autosave that fails every two
+ * seconds. Payload passes `collectionConfig` only on that path
+ * (utilities/getEntityPermissions, 3.90.2); a real write gets the plain
+ * boolean above and the hooks refuse it with their own message.
+ */
+const updateArticle: Access = async (args) => {
+  if (!writeArticle(args)) return false
+  const { req, id } = args
+  const permissionCheck = (args as { collectionConfig?: unknown }).collectionConfig !== undefined
+  if (!permissionCheck || id === undefined || id === null || !req.user) return true
+  const doc = (await req.payload.findByID({
+    collection: 'articles',
+    id,
+    draft: true,
+    depth: 0,
+    trash: true,
+    overrideAccess: true,
+    disableErrors: true,
+    req: isolateObjectProperty(req, ['locale', 'fallbackLocale']),
+  })) as Record<string, unknown> | null
+  if (!doc) return true
+  return (
+    editRefusal({
+      role: userRole(req),
+      actor: req.user.id,
+      state: (doc.workflowStatus as WorkflowState | undefined) ?? 'idea',
+      doc,
+      locale: (req.locale as string | undefined) ?? 'uz',
+      sponsored: Boolean((doc.sponsored as { enabled?: boolean } | undefined)?.enabled),
+    }) === null
+  )
+}
 export const articlesCreate: Access = withEdge(writeArticle)
-export const articlesUpdate: Access = withEdge(writeArticle)
+export const articlesUpdate: Access = withEdge(updateArticle)
 
 /**
  * Trash and permanent delete share this function: a trash call carries

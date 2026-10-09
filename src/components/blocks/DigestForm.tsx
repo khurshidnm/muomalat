@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { subscribeDigest } from '@/app/actions'
-import { EMAIL_MAX, initialFormState } from '@/lib/forms'
+import { EMAIL_MAX, initialFormState, type FormError } from '@/lib/forms'
 import { Field, FormStatus, TextInput } from '@/components/forms/Field'
 import { Button } from '@/components/ui/Button'
 
@@ -13,6 +13,8 @@ export interface DigestFormText {
   sending: string
   success: string
   errorSummary: string
+  /** Rate limit or store unreachable (lib/forms FormError). */
+  formErrors?: Record<FormError, string>
   errors: { required: string; email: string }
   note: string
   /** Label of the hidden spam-trap field. */
@@ -69,7 +71,14 @@ export function DigestForm({ text, idPrefix = 'digest' }: { text: DigestFormText
         <label htmlFor={`${idPrefix}-website`}>{text.honeypot}</label>
         <input id={`${idPrefix}-website`} name="website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
       </div>
-      <FormStatus status={state.status} success={text.success} errorSummary={text.errorSummary} attempt={state} />
+      <FormStatus
+        status={state.status}
+        success={text.success}
+        errorSummary={text.errorSummary}
+        attempt={state}
+        formError={state.formError}
+        formErrors={text.formErrors}
+      />
       {/* The note doubles as the field's description (aria-describedby → `${id}-hint`). */}
       <p id={`${id}-hint`} className="text-[0.75rem] text-ink-3">
         {text.note}

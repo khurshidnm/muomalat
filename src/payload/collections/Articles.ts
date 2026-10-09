@@ -25,6 +25,7 @@ import { slugField } from '../fields/slug'
 import { system, systemFields } from '../fields/system'
 import { translationGroup } from '../fields/translation'
 import { hooksFor } from '../hooks'
+import { articleEndpoints } from '../endpoints'
 import { articleEditor } from '../lexical/editors'
 import { forEachNode, type LexicalState } from '../lexical/serialize'
 
@@ -98,20 +99,33 @@ function everyLocale(
   return codes.map((l) => (l === req.locale ? siblingData[name] : (siblingDocWithLocales?.[name] as Record<string, unknown> | undefined)?.[l]))
 }
 
-/** `_authorUsers`: the staff accounts linked to the bylines (authors.user), for access checks. */
+/**
+ * `_authorUsers`: the staff accounts linked to the bylines (authors.user), for
+ * access checks. Both the live byline and its latest draft count: a link an
+ * admin has saved but not yet published must already make that person an
+ * author, or the two-person rule would not see them.
+ */
 const linkAuthorUsers: FieldHook = async ({ siblingData, req }) => {
   const authorIds = idsOf(siblingData?.authors)
   if (!authorIds.length) return []
-  const { docs } = await req.payload.find({
-    collection: REL.authors,
-    where: { id: { in: authorIds } },
-    depth: 0,
-    pagination: false,
-    overrideAccess: true,
-    req: isolated(req),
-    select: { user: true } as never,
-  })
-  return [...new Set(docs.map((d) => idOf((d as { user?: unknown }).user)).filter((x): x is Id => x !== undefined))]
+  const users = new Set<Id>()
+  for (const draft of [false, true]) {
+    const { docs } = await req.payload.find({
+      collection: REL.authors,
+      where: { id: { in: authorIds } },
+      depth: 0,
+      pagination: false,
+      draft,
+      overrideAccess: true,
+      req: isolated(req),
+      select: { user: true } as never,
+    })
+    for (const d of docs) {
+      const id = idOf((d as { user?: unknown }).user)
+      if (id !== undefined) users.add(id)
+    }
+  }
+  return [...users]
 }
 
 /**
@@ -189,8 +203,17 @@ const stampKrCheck =
     return kind === 'by' ? (req.user?.id ?? null) : new Date().toISOString()
   }
 
+// ── admin components (CMS-SPEC §3.3, §5.2, §5.10, §6.3, §7.3) ────────────────
+// `ui` fields render a component and store nothing: no column, no migration, no generated type.
+const ADMIN = '/payload/admin'
+const workflowPanels: Field[] = [
+  { name: 'workflowActions', type: 'ui', admin: { position: 'sidebar', components: { Field: `${ADMIN}/WorkflowActions#WorkflowActions` } } },
+  { name: 'checksPanel', type: 'ui', admin: { position: 'sidebar', components: { Field: `${ADMIN}/ChecksPanel#ChecksPanel` } } },
+]
+
 // ── field groups ────────────────────────────────────────────────────────────
 const sidebar: Field[] = [
+  ...workflowPanels,
   {
     name: 'rubric',
     label: 'Rubrika',
@@ -241,7 +264,10 @@ const sidebar: Field[] = [
     type: 'relationship',
     relationTo: REL.users,
     access: { read: staffField },
-    admin: { position: 'sidebar', description: '«Gʻoya» va «Qoralama» bosqichlarida maqola uchun javob beradi.' },
+    // Whoever opens "new story" owns it at once (§4.2 "own"): a reporter can move their own idea on without
+    // first filling in this field; an editor commissioning a story picks the reporter here.
+    defaultValue: ({ user }) => (user as { id?: number } | null | undefined)?.id,
+    admin: { position: 'sidebar', description: '«Gʻoya» va «Qoralama» bosqichlarida maqola uchun javob beradi. Yangi maqolada uni yaratgan xodim.' },
   },
   system({
     name: 'deskEditor',
@@ -285,7 +311,11 @@ const contentTab: Field[] = [
     label: 'Sarlavha',
     type: 'text',
     localized: true,
-    admin: { description: 'Faqat oddiy matn. 80 belgidan oshsa ogohlantirish, 140 dan oshsa chop etilmaydi.' },
+    admin: {
+      description: 'Faqat oddiy matn. 80 belgidan oshsa ogohlantirish, 140 dan oshsa chop etilmaydi.',
+      // The list cell shows the embargo badge in front of the title and links to the story itself.
+      components: { Cell: `${ADMIN}/EmbargoBadge#TitleCell`, afterInput: [`${ADMIN}/CharCounter#CharCounter`] },
+    },
   },
   {
     name: 'kicker',
@@ -300,7 +330,10 @@ const contentTab: Field[] = [
     label: 'Lid',
     type: 'textarea',
     localized: true,
-    admin: { description: 'Sarlavha ostidagi bir-ikki gap. 300 belgidan oshsa ogohlantirish, 500 dan oshsa chop etilmaydi.' },
+    admin: {
+      description: 'Sarlavha ostidagi bir-ikki gap. 300 belgidan oshsa ogohlantirish, 500 dan oshsa chop etilmaydi.',
+      components: { afterInput: [`${ADMIN}/CharCounter#LeadCounter`] },
+    },
   },
   { name: 'body', label: 'Matn', type: 'richText', editor: articleEditor, localized: true },
   {
@@ -420,7 +453,10 @@ const publishingTab: Field[] = [
     label: 'Embargo',
     type: 'group',
     access: { read: staffField },
-    admin: { description: 'Embargo amalda boʻlsa maqola chop etilmaydi va Telegramga yuborilmaydi.' },
+    admin: {
+      description: 'Embargo amalda boʻlsa maqola chop etilmaydi va Telegramga yuborilmaydi.',
+      components: { Cell: `${ADMIN}/EmbargoBadge#EmbargoCell` },
+    },
     fields: [
       dateTime({
         name: 'until',
@@ -458,6 +494,8 @@ const publishingTab: Field[] = [
       dateTime({ name: 'dueAt', label: 'Muddat', access: { create: publishersField, update: publishersField } }),
       system({ name: 'doneBy', label: 'Oʻqigan', type: 'relationship', relationTo: REL.users }),
       system(timestamp({ name: 'doneAt', label: 'Oʻqilgan vaqt' })),
+      // Set once by the worker when the 30 minutes pass, so a restart never alerts the editor-in-chief twice.
+      system(timestamp({ name: 'escalatedAt', label: 'Bosh muharrirga yuborilgan vaqt' })),
       {
         name: 'outcome',
         label: 'Natija',
@@ -492,6 +530,7 @@ const publishingTab: Field[] = [
   system({
     name: 'workflowHistory',
     label: 'Holatlar tarixi',
+    labels: { singular: 'Holat oʻzgarishi', plural: 'Holat oʻzgarishlari' },
     type: 'array',
     access: { read: staffField },
     admin: { initCollapsed: true },
@@ -617,6 +656,23 @@ const sponsoredTab: Field[] = [
         admin: { description: 'Material kimning buyurtmasi bilan va kim tomonidan tayyorlanganini aytadi.' },
       },
       { name: 'contractRef', label: 'Shartnoma raqami', type: 'text', access: sponsoredInternal },
+      {
+        name: 'returnPhraseOverride',
+        label: 'Daromad vaʼdasi tekshiruvini chetlab oʻtish',
+        type: 'checkbox',
+        access: { read: sponsoredInternalReadField, create: eicField, update: eicField },
+        admin: {
+          description:
+            'Faqat bosh muharrir, sababi bilan: masalan, ibora vaʼda emas, ogohlantirish ichida kelgan boʻlsa («daromad kafolatlanmaydi»). Har bir chop etishda jurnalga yoziladi.',
+        },
+      },
+      {
+        name: 'returnPhraseOverrideReason',
+        label: 'Chetlab oʻtish sababi',
+        type: 'textarea',
+        access: { read: sponsoredInternalReadField, create: eicField, update: eicField },
+        admin: { condition: (_, sibling) => Boolean(sibling?.returnPhraseOverride) },
+      },
       dateTime({ name: 'campaignStart', label: 'Kampaniya boshlanishi', access: sponsoredInternal }),
       dateTime({ name: 'campaignEnd', label: 'Kampaniya tugashi', access: sponsoredInternal }),
       system({ name: 'approvedBy', label: 'Tasdiqlagan bosh muharrir', type: 'relationship', relationTo: REL.users, access: { read: sponsoredInternalReadField } }),
@@ -632,9 +688,13 @@ const sponsoredTab: Field[] = [
   },
 ]
 
-const translationTab: Field[] = [translationGroup()]
+const translationTab: Field[] = [
+  { name: 'translationStatus', type: 'ui', admin: { components: { Field: `${ADMIN}/TranslationStatus#TranslationStatus` } } },
+  translationGroup(),
+]
 
 const cyrillicTab: Field[] = [
+  { name: 'krPreview', type: 'ui', admin: { components: { Field: `${ADMIN}/KrPreview#KrPreview` } } },
   {
     name: 'kr',
     label: 'Kirill nashri',
@@ -671,6 +731,7 @@ const seoTab: Field[] = [
   system({
     name: 'slugHistory',
     label: 'Avvalgi manzillar',
+    labels: { singular: 'Avvalgi manzil', plural: 'Avvalgi manzillar' },
     type: 'array',
     admin: { description: 'Chop etilgandan keyin oʻzgargan manzillar; ulardan yangi manzilga yoʻnaltiriladi.' },
     fields: [
@@ -821,6 +882,8 @@ const internalTab: Field[] = [
     relationTo: REL.users,
     hasMany: true,
     index: true,
+    // Staff account ids never reach the public read (A3); reporters' read rule filters on it as staff.
+    access: { read: staffField },
     hooks: { beforeChange: [linkAuthorUsers] },
     admin: { hidden: true },
   }),
@@ -853,6 +916,10 @@ export const Articles: CollectionConfig = {
     // The built-in Copy to locale publishes at once and copies the translation status (PHASE0 item 16).
     disableCopyToLocale: true,
     livePreview: livePreviewFor('articles'),
+    components: {
+      // The embargo banner, which also prefixes the browser tab title with "EMBARGO · " (§5.10).
+      edit: { beforeDocumentControls: [`${ADMIN}/EmbargoBanner#EmbargoBanner`] },
+    },
   },
   versions: { drafts: { autosave: { interval: 2000 } }, maxPerDoc: 0 },
   lockDocuments: { duration: 600 },
@@ -868,6 +935,8 @@ export const Articles: CollectionConfig = {
     delete: articlesDelete,
   },
   hooks: hooksFor('articles'),
+  // Workflow transitions, the copy-from-Uzbek action and the validation checks (§5.2, §3.3, §7.3).
+  endpoints: articleEndpoints,
   fields: [
     ...sidebar,
     {

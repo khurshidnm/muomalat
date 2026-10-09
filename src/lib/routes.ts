@@ -21,6 +21,9 @@ export const paths = {
   /** Contact form with a topic preselected, e.g. 'tuzatish' for error reports. */
   contactTopic: (topic: string) => `/aloqa?mavzu=${encodeURIComponent(topic)}#xabar`,
   corrections: () => '/biz-haqimizda#tuzatishlar',
+  /** Privacy notice (CMS-SPEC §13.2) and its rights-request form (§13.3). */
+  privacy: () => '/maxfiylik',
+  privacyRequest: () => '/maxfiylik#sorov',
   search: (q?: string) => (q ? `/qidiruv?q=${encodeURIComponent(q)}` : '/qidiruv'),
   tag: (slug: string) => `/mavzu/${slug}`,
   author: (slug: string) => `/muallif/${slug}`,

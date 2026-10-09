@@ -101,15 +101,16 @@ export const Navigation: GlobalConfig = {
   access: navigationAccess,
   versions: { drafts: true, max: 0 },
   fields: [
-    { name: 'header', label: 'Yuqori menyu', type: 'array', fields: itemFields },
+    { name: 'header', label: 'Yuqori menyu', labels: { singular: 'Menyu bandi', plural: 'Menyu bandlari' }, type: 'array', fields: itemFields },
     {
       name: 'footer',
       label: 'Pastki menyu',
+      labels: { singular: 'Ustun', plural: 'Ustunlar' },
       type: 'array',
       admin: { description: 'Har bir qator — bitta ustun.' },
       fields: [
         { name: 'title', label: 'Ustun sarlavhasi', type: 'text', localized: true },
-        { name: 'items', label: 'Bandlar', type: 'array', fields: itemFields },
+        { name: 'items', label: 'Bandlar', labels: { singular: 'Band', plural: 'Bandlar' }, type: 'array', fields: itemFields },
       ],
     },
   ],

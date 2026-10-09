@@ -148,7 +148,7 @@ export interface Article {
    */
   workflowStatus: 'idea' | 'draft' | 'in_edit' | 'ready' | 'scheduled' | 'published' | 'hold' | 'withdrawn';
   /**
-   * «Gʻoya» va «Qoralama» bosqichlarida maqola uchun javob beradi.
+   * «Gʻoya» va «Qoralama» bosqichlarida maqola uchun javob beradi. Yangi maqolada uni yaratgan xodim.
    */
   assignee?: (number | null) | User;
   /**
@@ -304,6 +304,7 @@ export interface Article {
     dueAt_tz?: SupportedTimezones;
     doneBy?: (number | null) | User;
     doneAt?: string | null;
+    escalatedAt?: string | null;
     outcome?: ('ok' | 'minor_fix' | 'correction') | null;
   };
   /**
@@ -386,6 +387,11 @@ export interface Article {
      */
     disclosure?: string | null;
     contractRef?: string | null;
+    /**
+     * Faqat bosh muharrir, sababi bilan: masalan, ibora vaʼda emas, ogohlantirish ichida kelgan boʻlsa («daromad kafolatlanmaydi»). Har bir chop etishda jurnalga yoziladi.
+     */
+    returnPhraseOverride?: boolean | null;
+    returnPhraseOverrideReason?: string | null;
     campaignStart?: string | null;
     campaignStart_tz?: SupportedTimezones;
     campaignEnd?: string | null;
@@ -1041,7 +1047,7 @@ export interface GlossaryTerm {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Xatolar, raddiya, javob va olib tashlash talablari reyestri (OAV toʻgʻrisidagi qonun, 34-modda).
+ * Xatolar, raddiya, javob va olib tashlash talablari (OAV toʻgʻrisidagi qonun, 34-modda) hamda shaxsga doir maʼlumotlar boʻyicha soʻrovlar reyestri.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "requests".
@@ -1051,7 +1057,7 @@ export interface Request {
   /**
    * Muxbir faqat «Xato haqida xabar» kirita oladi.
    */
-  kind: 'error_report' | 'refutation' | 'reply' | 'removal' | 'other';
+  kind: 'error_report' | 'refutation' | 'reply' | 'removal' | 'personal_data' | 'other';
   article?: (number | null) | Article;
   /**
    * Shaxsiy maʼlumot: saqlash muddati tugagach oʻchiriladi.
@@ -1352,7 +1358,7 @@ export interface ClubApplication {
   consent: {
     given: boolean;
     /**
-     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     * Masalan, club-2026-10-v1 (src/payload/personalData/consent.ts).
      */
     textVersion: string;
     locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
@@ -1401,7 +1407,7 @@ export interface DigestSubscriber {
   consent: {
     given: boolean;
     /**
-     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     * Masalan, club-2026-10-v1 (src/payload/personalData/consent.ts).
      */
     textVersion: string;
     locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
@@ -1453,7 +1459,7 @@ export interface ContactMessage {
   consent: {
     given: boolean;
     /**
-     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     * Masalan, club-2026-10-v1 (src/payload/personalData/consent.ts).
      */
     textVersion: string;
     locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
@@ -1504,7 +1510,7 @@ export interface AdvertisingRequest {
   consent: {
     given: boolean;
     /**
-     * Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).
+     * Masalan, club-2026-10-v1 (src/payload/personalData/consent.ts).
      */
     textVersion: string;
     locale?: ('uz' | 'kr' | 'ru' | 'en') | null;
@@ -1938,6 +1944,7 @@ export interface ArticlesSelect<T extends boolean = true> {
         dueAt_tz?: T;
         doneBy?: T;
         doneAt?: T;
+        escalatedAt?: T;
         outcome?: T;
       };
   changeNote?:
@@ -1995,6 +2002,8 @@ export interface ArticlesSelect<T extends boolean = true> {
         keyTerms?: T;
         disclosure?: T;
         contractRef?: T;
+        returnPhraseOverride?: T;
+        returnPhraseOverrideReason?: T;
         campaignStart?: T;
         campaignStart_tz?: T;
         campaignEnd?: T;

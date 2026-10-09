@@ -121,6 +121,7 @@ export const Institutions: CollectionConfig = {
     system({
       name: 'statusHistory',
       label: 'Holatlar tarixi',
+      labels: { singular: 'Holat oʻzgarishi', plural: 'Holat oʻzgarishlari' },
       type: 'array',
       hooks: { beforeChange: [appendStatusHistory] },
       admin: { initCollapsed: true, description: 'Holat yoki sana oʻzgarib chop etilganda avvalgi qiymatlar avtomatik qoʻshiladi.' },

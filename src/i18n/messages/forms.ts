@@ -20,8 +20,15 @@ const uz = {
     phone: 'Telefon raqamini +998 bilan boshlab kiriting.',
     consent: 'Davom etish uchun roziligingiz kerak.',
   },
+  /** Not about one field (lib/forms FormError): too many attempts, or the store is unreachable. */
+  formErrors: {
+    rate: 'Juda koʻp urinish boʻldi. Birozdan keyin qayta yuboring.',
+    unavailable: 'Hozir yuborib boʻlmadi. Birozdan keyin qayta urinib koʻring yoki «Aloqa» sahifasidagi elektron pochtaga yozing.',
+  },
   success: 'Rahmat! Soʻrovingiz qabul qilindi.',
-  demoNote: 'Sinov rejimi: maʼlumotlar hech qayerga yuborilmaydi.',
+  /** Under the consent box: where the privacy notice is (CMS-SPEC §13.2). */
+  privacyNote: 'Maʼlumotlaringiz qanday saqlanishi va qachon oʻchirilishi:',
+  privacyLink: 'maxfiylik siyosati',
   /** Label of the hidden spam-trap field (never shown; bots fill it). */
   honeypot: 'Bu maydonni boʻsh qoldiring',
 } as const
@@ -47,8 +54,13 @@ export const formMessages = defineMessages({
       phone: 'Введите номер телефона, начиная с +998.',
       consent: 'Для продолжения нужно ваше согласие.',
     },
+    formErrors: {
+      rate: 'Слишком много попыток. Повторите чуть позже.',
+      unavailable: 'Сейчас отправить не удалось. Попробуйте чуть позже или напишите на почту со страницы «Контакты».',
+    },
     success: 'Спасибо! Ваш запрос принят.',
-    demoNote: 'Тестовый режим: данные никуда не отправляются.',
+    privacyNote: 'Как мы храним и когда удаляем ваши данные:',
+    privacyLink: 'политика конфиденциальности',
     honeypot: 'Оставьте это поле пустым',
   },
   en: {
@@ -70,8 +82,13 @@ export const formMessages = defineMessages({
       phone: 'Please enter a phone number starting with +998.',
       consent: 'We need your consent to continue.',
     },
+    formErrors: {
+      rate: 'Too many attempts. Please try again in a little while.',
+      unavailable: 'We could not send this just now. Please try again later, or write to the email address on our contact page.',
+    },
     success: 'Thank you! Your request has been received.',
-    demoNote: 'Preview mode: nothing is sent anywhere.',
+    privacyNote: 'How we store your data and when we delete it:',
+    privacyLink: 'privacy policy',
     honeypot: 'Leave this field empty',
   },
 })

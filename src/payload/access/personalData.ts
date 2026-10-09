@@ -8,7 +8,7 @@ import { denyField, hiddenUnless, systemFieldAccess } from './system'
  * Access for the four personal-data collections (CMS-SPEC §3.14, §4.2, §13.5).
  *
  * - Nobody creates through Payload: the site's server actions call
- *   createSubmission() in src/content/personal-data.ts, the only place that
+ *   createSubmission() in src/payload/personalData (the store), the only place that
  *   writes with `overrideAccess: true`.
  * - Reporters never see any of it; editors see only the newsroom topics of
  *   contact messages (the Bloomberg terminal lesson, §13.5).
@@ -120,7 +120,7 @@ export const consentField: Field = {
       label: 'Rozilik matni versiyasi',
       type: 'text',
       required: true,
-      admin: { description: 'Masalan, club-2026-10-v1 (src/i18n/messages/privacy.ts).' },
+      admin: { description: 'Masalan, club-2026-10-v1 (src/payload/personalData/consent.ts).' },
     },
     formLocaleField('locale', 'Til'),
     { name: 'at', label: 'Vaqti', type: 'date', required: true, admin: { date: { pickerAppearance: 'dayAndTime' } } },

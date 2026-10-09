@@ -290,7 +290,8 @@ export const uzOverrides: DeepPartial<DefaultTranslationsObject> = {
     addBelow: 'Pastga qoʻshish',
     addFilter: 'Filtr qoʻshish',
     adminTheme: 'Interfeys mavzusi',
-    all: 'Hammasi',
+    // Composed as «{{all}} {{label}}» on the list tab: «Barcha Maqolalar», not «Hammasi Maqolalar».
+    all: 'Barcha',
     allCollections: 'Barcha toʻplamlar',
     allLocales: 'Barcha tillar',
     and: 'va',
@@ -468,7 +469,7 @@ export const uzOverrides: DeepPartial<DefaultTranslationsObject> = {
     schedulePublishFor: '{{title}} uchun chop etishni rejalashtirish',
     searchBy: 'Qidirish: {{label}}',
     select: 'Tanlash',
-    selectAll: 'Hammasini tanlash {{count}} {{label}}',
+    selectAll: '{{label}}: hammasini tanlash ({{count}} ta)',
     selectAllRows: 'Barcha qatorlarni tanlash',
     selectedCount: '{{count}} ta {{label}} tanlandi',
     selectLabel: '{{label}} tanlang',
@@ -626,7 +627,9 @@ export const uzOverrides: DeepPartial<DefaultTranslationsObject> = {
     autosave: 'Avtosaqlash',
     autosavedSuccessfully: 'Avtomatik saqlandi.',
     autosavedVersion: 'Avtomatik saqlangan versiya',
-    changed: 'Oʻzgartirilgan',
+    // The document header reads «Saytda: …»: Payload's own status, kept apart from the workflow states
+    // (Gʻoya, Qoralama, Tahrirda…), which have a badge of their own in the sidebar.
+    changed: 'Chop etilgan, yangi oʻzgarishlar chop etilmagan',
     changedFieldsCount_one: '{{count}} ta maydon oʻzgargan',
     changedFieldsCount_other: '{{count}} ta maydon oʻzgargan',
     compareVersion: 'Versiyani quyidagi bilan solishtirish:',
@@ -641,10 +644,12 @@ export const uzOverrides: DeepPartial<DefaultTranslationsObject> = {
     currentlyPublished: 'Hozir chop etilgan',
     currentlyViewing: 'Hozir koʻrilmoqda',
     currentPublishedVersion: 'Joriy chop etilgan versiya',
-    draft: 'Qoralama',
+    draft: 'Chop etilmagan',
     draftHasPublishedVersion: 'Qoralama (chop etilgan versiyasi bor)',
     draftSavedSuccessfully: 'Qoralama muvaffaqiyatli saqlandi.',
-    lastSavedAgo: 'Oxirgi marta {{distance}} oldin saqlandi',
+    // date-fns has no Uzbek locale Payload can load (dateFNSKey is 'ru'), so a relative «{{distance}}» would
+    // read «меньше минуты» in the middle of an Uzbek sentence. The header already shows the exact time.
+    lastSavedAgo: 'Avtomatik saqlandi',
     modifiedOnly: 'Faqat oʻzgarganlar',
     moreVersions: 'Boshqa versiyalar...',
     noFurtherVersionsFound: 'Boshqa versiyalar topilmadi',
@@ -677,7 +682,7 @@ export const uzOverrides: DeepPartial<DefaultTranslationsObject> = {
     showingVersionsFor: 'Versiyalar koʻrsatilmoqda:',
     showLocales: 'Tillarni koʻrsatish:',
     specificVersion: 'Muayyan versiya',
-    status: 'Holat',
+    status: 'Saytda',
     unpublish: 'Chop etishni bekor qilish',
     unpublished: 'Chop etilmagan',
     unpublishedSuccessfully: 'Chop etish muvaffaqiyatli bekor qilindi.',

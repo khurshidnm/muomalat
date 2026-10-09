@@ -5,6 +5,7 @@ import { sendAdvertisingEnquiry } from '@/lib/actions/contact'
 import { Checkbox, Field, FormStatus, Select, TextArea, TextInput } from '@/components/forms/Field'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import type { FormError } from '@/lib/forms'
 import { FIELD_MAX, initialContactState, type ContactFieldError } from '@/components/pages/contact/options'
 import { AD_BUDGETS, AD_FORMATS, AD_MESSAGE_MAX, type AdBudget, type AdFormatOption } from './options'
 
@@ -30,7 +31,12 @@ export interface AdvertiseFormText {
   sending: string
   success: string
   errorSummary: string
-  demoNote: string
+  /** Rate limit or store unreachable (lib/forms FormError). */
+  formErrors: Record<FormError, string>
+  /** Under the submit button: where the privacy notice is (CMS-SPEC §13.2). */
+  privacyNote: string
+  privacyLink: string
+  privacyHref: string
   errors: Record<ContactFieldError, string>
 }
 
@@ -152,7 +158,7 @@ export function AdvertiseForm({ text, idPrefix = 'reklama' }: { text: AdvertiseF
         <Checkbox id={id('consent')} name="consent" required label={text.consent} defaultChecked={v.consent === 'on'} error={err('consent')} />
       </div>
 
-      <FormStatus status={state.status} success={text.success} errorSummary={text.errorSummary} />
+      <FormStatus status={state.status} success={text.success} errorSummary={text.errorSummary} formError={state.formError} formErrors={text.formErrors} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
         <Button type="submit" size="lg" aria-disabled={pending || undefined} className="w-full sm:w-auto">
@@ -160,7 +166,12 @@ export function AdvertiseForm({ text, idPrefix = 'reklama' }: { text: AdvertiseF
         </Button>
         <p className="flex items-start gap-1.5 text-meta text-ink-3">
           <Icon name="info" size={16} className="mt-px shrink-0" />
-          {text.demoNote}
+          <span>
+            {text.privacyNote}{' '}
+            <a href={text.privacyHref} className="text-link font-medium">
+              {text.privacyLink}
+            </a>
+          </span>
         </p>
       </div>
     </form>

@@ -65,6 +65,7 @@ export const AdSlots: GlobalConfig = {
     {
       name: 'slots',
       label: 'Joylar',
+      labels: { singular: 'Reklama joyi', plural: 'Reklama joylari' },
       type: 'array',
       admin: { initCollapsed: true },
       fields: [

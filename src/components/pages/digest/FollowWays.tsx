@@ -3,6 +3,7 @@ import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { digestMessages } from '@/i18n/messages/digest'
 import { formMessages } from '@/i18n/messages/forms'
+import { href, paths } from '@/lib/routes'
 import { site } from '@/content/data/site'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { Placeholder } from '@/components/ui/Placeholder'
@@ -115,6 +116,7 @@ export function FollowWays({ locale }: { locale: Locale }) {
             sending: d.sending,
             success: d.success,
             errorSummary: f.errors.summary,
+            formErrors: f.formErrors,
             errors: { required: f.errors.required, email: f.errors.email },
             note: d.note,
             honeypot: f.honeypot,
@@ -122,7 +124,12 @@ export function FollowWays({ locale }: { locale: Locale }) {
         />
         <p className="mt-3 flex items-start gap-1.5 border-t border-rule pt-3 text-[0.75rem] text-ink-3">
           <Icon name="info" size={14} className="mt-px shrink-0" />
-          {f.demoNote}
+          <span>
+            {f.privacyNote}{' '}
+            <a href={href(locale, paths.privacy())} className="text-link font-medium">
+              {f.privacyLink}
+            </a>
+          </span>
         </p>
       </Way>
       <Way

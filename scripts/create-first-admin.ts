@@ -53,6 +53,8 @@ try {
     collection: 'users',
     data: { email, name, role, active: true, password },
     overrideAccess: true,
+    // A trusted in-process caller: the audit row names this script, not a public visitor (§9.1).
+    context: { trustedInternal: true, auditActor: 'system:admin-create' },
   })
   console.log(`Created ${role} account ${user.email} (id ${user.id}).`)
   console.log(`Password (shown once, store it in a password manager): ${password}`)

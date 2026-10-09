@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { applyToClub, type ClubFormState } from '@/lib/actions/club'
-import { EMAIL_MAX, FIELD_MAX } from '@/lib/forms'
+import { EMAIL_MAX, FIELD_MAX, type FormError } from '@/lib/forms'
 import { Checkbox, Field, Select, TextArea, TextInput } from '@/components/forms/Field'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
@@ -46,9 +46,14 @@ export interface ClubFormText {
   sending: string
   success: string
   errorSummary: string
+  /** Rate limit or store unreachable (lib/forms FormError). */
+  formErrors: Record<FormError, string>
   errorList: string
   errors: { required: string; email: string; phone: string; consent: string; select: string; interest: string }
-  demoNote: string
+  /** Next to the submit button: where the privacy notice is (CMS-SPEC §13.2). */
+  privacyNote: string
+  privacyLink: string
+  privacyHref: string
 }
 
 const initialState: ClubFormState = { status: 'idle', errors: {}, values: {}, n: 0 }
@@ -109,7 +114,7 @@ export function ClubForm({ text, permalink }: { text: ClubFormText; permalink: s
           <div ref={outcome} tabIndex={-1} className="border-l-2 border-signal bg-signal-wash px-4 py-3 text-meta text-signal">
             <p className="flex items-start gap-2 font-semibold">
               <Icon name="alert" size={18} className="mt-px shrink-0" />
-              {text.errorSummary}
+              {(state.formError && text.formErrors[state.formError]) || text.errorSummary}
             </p>
             {invalid.length ? (
               <>
@@ -284,7 +289,12 @@ export function ClubForm({ text, permalink }: { text: ClubFormText; permalink: s
         </Button>
         <p id="club-form-note" className="flex items-start gap-1.5 text-meta text-ink-3">
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {text.demoNote}
+          <span>
+            {text.privacyNote}{' '}
+            <a href={text.privacyHref} className="text-link font-medium">
+              {text.privacyLink}
+            </a>
+          </span>
         </p>
       </div>
     </form>

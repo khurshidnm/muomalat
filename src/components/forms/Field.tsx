@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import type { FormError } from '@/lib/forms'
 
 /**
  * Form primitives with visible labels, hints and inline errors wired to
@@ -156,11 +157,16 @@ export function FormStatus({
   success,
   errorSummary,
   attempt,
+  formError,
+  formErrors,
 }: {
   status: string
   success: string
   errorSummary: string
   attempt?: unknown
+  /** An error that is not about one field (rate limit, store unreachable): its own message, not "check the fields". */
+  formError?: FormError
+  formErrors?: Record<FormError, string>
 }) {
   const ok = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
@@ -177,7 +183,9 @@ export function FormStatus({
           {success}
         </p>
       ) : status === 'error' ? (
-        <p className="border-l-2 border-signal bg-signal-wash px-3 py-2.5 text-meta font-medium text-signal">{errorSummary}</p>
+        <p className="border-l-2 border-signal bg-signal-wash px-3 py-2.5 text-meta font-medium text-signal">
+          {(formError && formErrors?.[formError]) || errorSummary}
+        </p>
       ) : null}
     </div>
   )

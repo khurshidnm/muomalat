@@ -41,7 +41,10 @@ function formText(locale: Locale, next?: EventView): ClubFormText {
     errorSummary: f.errors.summary,
     errorList: c.errorList,
     errors: { ...f.errors, select: c.errors.select, interest: c.errors.interest },
-    demoNote: f.demoNote,
+    formErrors: f.formErrors,
+    privacyNote: f.privacyNote,
+    privacyLink: f.privacyLink,
+    privacyHref: href(locale, paths.privacy()),
   }
 }
 

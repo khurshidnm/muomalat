@@ -81,6 +81,7 @@ export const HomePage: GlobalConfig = {
     {
       name: 'pinned',
       label: 'Muhim',
+      labels: { singular: 'Muhim maqola', plural: 'Muhim maqolalar' },
       type: 'array',
       maxRows: 3,
       admin: { description: 'Belgilangan muddatgacha yuqorida turadi.' },

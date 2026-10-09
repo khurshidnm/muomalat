@@ -190,6 +190,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   add(paths.about(), { changeFrequency: 'yearly', priority: 0.4 })
   add(paths.advertise(), { changeFrequency: 'yearly', priority: 0.3 })
   add(paths.contact(), { changeFrequency: 'yearly', priority: 0.3 })
+  add(paths.privacy(), { changeFrequency: 'yearly', priority: 0.2 })
 
   // Topic and author listings (only those with at least one story; empty ones are noindex)
   for (const tag of getTags('uz')) {

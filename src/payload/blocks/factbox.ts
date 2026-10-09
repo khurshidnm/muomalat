@@ -9,6 +9,7 @@ export const factbox: Block = {
     {
       name: 'items',
       label: 'Koʻrsatkichlar',
+      labels: { singular: 'Koʻrsatkich', plural: 'Koʻrsatkichlar' },
       type: 'array',
       required: true,
       minRows: 2,

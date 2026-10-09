@@ -28,6 +28,7 @@ export function DigestSignup({ locale, id = 'digest', className = '' }: { locale
           sending: d.sending,
           success: d.success,
           errorSummary: f.errors.summary,
+          formErrors: f.formErrors,
           errors: { required: f.errors.required, email: f.errors.email },
           note: d.note,
           honeypot: f.honeypot,

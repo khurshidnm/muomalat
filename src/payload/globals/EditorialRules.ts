@@ -23,6 +23,7 @@ const domainName: TextFieldSingleValidation = (value) =>
 const patternList = (name: string, label: string, description: string): Field => ({
   name,
   label,
+  labels: { singular: 'Andoza', plural: 'Andozalar' },
   type: 'array',
   admin: { description },
   fields: [
@@ -68,6 +69,7 @@ export const EditorialRules: GlobalConfig = {
             {
               name: 'realOrgNames',
               label: 'Haqiqiy tashkilot nomlari',
+              labels: { singular: 'Tashkilot nomi', plural: 'Tashkilot nomlari' },
               type: 'array',
               admin: { description: 'Matnda uchrasa, «Haqida/Eslatilgan» maydoniga belgilash taklif qilinadi (TXT-5).' },
               fields: [{ name: 'name', label: 'Nomi', type: 'text', required: true }],
@@ -75,6 +77,7 @@ export const EditorialRules: GlobalConfig = {
             {
               name: 'houseSpellings',
               label: 'Tahririyat imlosi',
+              labels: { singular: 'Imlo qoidasi', plural: 'Imlo qoidalari' },
               type: 'array',
               admin: { description: 'Masalan: som → soʻm (TXT-10).' },
               fields: [
@@ -91,6 +94,7 @@ export const EditorialRules: GlobalConfig = {
             {
               name: 'expectedReturnPhrases',
               label: 'Daromad vaʼdasi iboralari',
+              labels: { singular: 'Ibora', plural: 'Iboralar' },
               type: 'array',
               // Default version-table names exceed Postgres's 63-character identifier limit.
               dbName: 'editorial_rules_return_phrases',
@@ -126,6 +130,7 @@ export const EditorialRules: GlobalConfig = {
             {
               name: 'officialSourceDomains',
               label: 'Rasmiy manba domenlari',
+              labels: { singular: 'Domen', plural: 'Domenlar' },
               type: 'array',
               dbName: 'editorial_rules_source_domains',
               admin: {
@@ -154,6 +159,7 @@ export const EditorialRules: GlobalConfig = {
             {
               name: 'translitExceptions',
               label: 'Transliteratsiya istisnolari',
+              labels: { singular: 'Istisno', plural: 'Istisnolar' },
               type: 'array',
               fields: [
                 {
@@ -174,6 +180,7 @@ export const EditorialRules: GlobalConfig = {
             {
               name: 'translitKeep',
               label: 'Oʻzgarmaydigan soʻzlar',
+              labels: { singular: 'Soʻz', plural: 'Soʻzlar' },
               type: 'array',
               admin: { description: 'Lotin harflarida qoladigan qisqartmalar, masalan AAOIFI.' },
               fields: [{ name: 'term', label: 'Soʻz', type: 'text', required: true }],

@@ -238,6 +238,7 @@ export const SiteSettings: GlobalConfig = {
                 {
                   name: 'inviteLinks',
                   label: 'Taklif havolalari',
+                  labels: { singular: 'Taklif havolasi', plural: 'Taklif havolalari' },
                   type: 'array',
                   access: writers('admin'),
                   admin: { description: 'Kanal egasi Telegram ilovasida yaratadi; bot taklif havolasi yarata olmaydi.' },
@@ -383,6 +384,7 @@ export const SiteSettings: GlobalConfig = {
                 {
                   name: 'alertRecipients',
                   label: 'Ogohlantirish oluvchilar',
+                  labels: { singular: 'Oluvchi', plural: 'Oluvchilar' },
                   type: 'array',
                   // The default version-table name is longer than Postgres's 63-character limit.
                   dbName: 'site_settings_alert_recipients',

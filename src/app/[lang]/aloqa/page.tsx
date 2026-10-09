@@ -304,7 +304,10 @@ export default async function ContactPage({ params }: Params) {
               sending: t.actions.sending,
               success: m.form.success,
               errorSummary: f.errors.summary,
-              demoNote: f.demoNote,
+              formErrors: f.formErrors,
+              privacyNote: f.privacyNote,
+              privacyLink: f.privacyLink,
+              privacyHref: href(locale, paths.privacy()),
               errors: { ...f.errors, choose: m.form.choose, url: m.form.urlError },
             }}
           />
