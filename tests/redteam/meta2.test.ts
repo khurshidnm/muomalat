@@ -18,7 +18,7 @@ describe('built-in Copy-to-locale is disabled where it would publish or copy a s
   it('articles, authors and media set disableCopyToLocale', async () => {
     const payload = await testPayload()
     for (const slug of ['articles', 'authors', 'media']) {
-      expect([slug, payload.collections[slug].config.admin?.disableCopyToLocale]).toEqual([slug, true])
+      expect([slug, payload.collections[slug as keyof typeof payload.collections].config.admin?.disableCopyToLocale]).toEqual([slug, true])
     }
   })
 
@@ -36,7 +36,7 @@ describe('Duplicate is disabled where a copy would carry a record it must not', 
   it('articles and requests set disableDuplicate', async () => {
     const payload = await testPayload()
     for (const slug of ['articles', 'requests']) {
-      expect([slug, payload.collections[slug].config.disableDuplicate]).toEqual([slug, true])
+      expect([slug, payload.collections[slug as keyof typeof payload.collections].config.disableDuplicate]).toEqual([slug, true])
     }
   })
 })

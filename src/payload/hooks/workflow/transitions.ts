@@ -461,7 +461,7 @@ export async function availableTransitions(s: Save): Promise<{ id: TransitionId;
 
 /** Resolve the request body's `to` (or `action`) to a transition for the current state. */
 export function resolveTransition(state: WorkflowState, body: { to?: string; action?: string }): TransitionDef | undefined {
-  if (body.action && body.action in TRANSITIONS) {
+  if (body.action && Object.hasOwn(TRANSITIONS, body.action)) {
     const def = TRANSITIONS[body.action as TransitionId]
     return def.from.includes(state) ? def : undefined
   }

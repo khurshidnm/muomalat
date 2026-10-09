@@ -691,6 +691,7 @@ export interface Media {
    * Rasmda nima muhimligini yozing. Diagramma rasmi uchun raqamlar jadvalda boʻladi. Oʻzbekchasi shart, agar rasm bezak uchun boʻlmasa.
    */
   alt?: string | null;
+  uploadedBy?: (number | null) | User;
   /**
    * Rasm hech qanday maʼlumot bermasa belgilang: saytda alt="" bilan chiqadi va muqobil matn talab qilinmaydi.
    */
@@ -2145,6 +2146,7 @@ export interface TagsSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  uploadedBy?: T;
   decorative?: T;
   caption?: T;
   credit?: T;

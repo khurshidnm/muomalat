@@ -3,6 +3,8 @@ import path from 'node:path'
 import sharp from 'sharp'
 
 import { hasRole, isStaff, withEdge } from '../access/roles'
+import { forbidden, wctx } from '../hooks/workflow/shared'
+import { system } from '../fields/system'
 import { REL } from '../fields/relations'
 import { displayFields, rightsFields } from '../fields/rights'
 import { hooksFor } from '../hooks'
@@ -64,6 +66,28 @@ export const Media: CollectionConfig = {
     adminThumbnail: 'thumb',
   },
   hooks: hooksFor('media', {
+    // Who uploaded an image is set here, never by the client. A reporter or the
+    // commercial desk edits only images they uploaded; editors and the
+    // editor-in-chief edit any (red team, pass 2).
+    beforeChange: [
+      ({ data, originalDoc, operation, req }) => {
+        if (wctx(req).importing) return data
+        if (operation === 'create') {
+          if (req.user) data.uploadedBy = req.user.id
+          return data
+        }
+        if (originalDoc) data.uploadedBy = originalDoc.uploadedBy ?? null
+        const role = (req.user as { role?: string } | null)?.role
+        if (req.user && (role === 'reporter' || role === 'commercial')) {
+          const owner = originalDoc?.uploadedBy
+          const ownerId = owner && typeof owner === 'object' ? owner.id : owner
+          if (ownerId == null || String(ownerId) !== String(req.user.id)) {
+            throw forbidden('Rasm maʼlumotlarini faqat uni yuklagan xodim yoki muharrir oʻzgartiradi.')
+          }
+        }
+        return data
+      },
+    ],
     beforeOperation: [
       async ({ args, operation }) => {
         const file = args.req?.file
@@ -85,6 +109,7 @@ export const Media: CollectionConfig = {
       localized: true,
       admin: { description: 'Rasmda nima muhimligini yozing. Diagramma rasmi uchun raqamlar jadvalda boʻladi. Oʻzbekchasi shart, agar rasm bezak uchun boʻlmasa.' },
     },
+    system({ name: 'uploadedBy', label: 'Yuklagan', type: 'relationship', relationTo: REL.users, index: true }),
     ...displayFields(),
     { type: 'collapsible', label: 'Foydalanish huquqlari', fields: rightsFields() },
     {

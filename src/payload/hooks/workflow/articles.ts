@@ -38,6 +38,7 @@ export const articleBeforeChange: CollectionBeforeChangeHook = async ({ collecti
 
   if (s.trashing || s.untrashing) {
     await trashRules(s)
+    rejectContentOnTrash(s)
     return data
   }
 
@@ -57,6 +58,23 @@ export const articleBeforeChange: CollectionBeforeChangeHook = async ({ collecti
   else if (s.publishing) await publishRules(s)
   else if (!s.transition) await approvalFollowsContent(s)
   return data
+}
+
+const TRASH_ONLY = new Set(['deletedAt', 'updatedAt'])
+
+/**
+ * A trash or restore-from-trash write moves the story and nothing else: it
+ * skips the field rules below, so any other field that differs from the
+ * stored story is refused rather than let past them.
+ */
+function rejectContentOnTrash(s: Save) {
+  if (s.system) return
+  for (const [k, v] of Object.entries(s.data)) {
+    if (TRASH_ONLY.has(k)) continue
+    if (JSON.stringify(v ?? null) !== JSON.stringify(s.original[k] ?? null)) {
+      throw forbidden('Savatga tashlash yoki savatdan tiklash bilan birga boshqa maydonni oʻzgartirib boʻlmaydi.')
+    }
+  }
 }
 
 /** Workflow state that belongs to the story, not to a version: a restore keeps today's (§5.12). */
