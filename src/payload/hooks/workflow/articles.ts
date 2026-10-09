@@ -60,6 +60,20 @@ export const articleBeforeChange: CollectionBeforeChangeHook = async ({ collecti
   return data
 }
 
+/** A value without the nulls and empty groups Payload fills in around it, so only a real change differs. */
+function bare(v: unknown): unknown {
+  if (Array.isArray(v)) return v.length ? v.map(bare) : undefined
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, x] of Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) {
+      const b = bare(x)
+      if (b !== undefined) out[k] = b
+    }
+    return Object.keys(out).length ? out : undefined
+  }
+  return v === null || v === '' || v === false ? undefined : v
+}
+
 const TRASH_ONLY = new Set(['deletedAt', 'updatedAt'])
 
 /**
@@ -71,8 +85,8 @@ function rejectContentOnTrash(s: Save) {
   if (s.system) return
   for (const [k, v] of Object.entries(s.data)) {
     if (TRASH_ONLY.has(k)) continue
-    if (JSON.stringify(v ?? null) !== JSON.stringify(s.original[k] ?? null)) {
-      throw forbidden('Savatga tashlash yoki savatdan tiklash bilan birga boshqa maydonni oʻzgartirib boʻlmaydi.')
+    if (JSON.stringify(bare(v)) !== JSON.stringify(bare(s.original[k]))) {
+      throw forbidden(`Savatga tashlash yoki savatdan tiklash bilan birga boshqa maydonni oʻzgartirib boʻlmaydi (${k}).`)
     }
   }
 }

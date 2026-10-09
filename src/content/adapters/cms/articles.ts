@@ -67,7 +67,7 @@ export async function fetchArticleDocs(payload: Payload, reader: Reader, where?:
     fallbackLocale: false,
     depth: 0,
     pagination: false,
-    sort: '-publishedAt',
+    sort: ['-publishedAt', 'id'],
     select: ARTICLE_SELECT as never,
     ...(where ? { where } : {}),
     ...readAs(reader),

@@ -131,6 +131,31 @@ function commercialBylines(value: unknown): unknown {
   return out
 }
 
+/**
+ * Differences that are by design. `translations` is the mock's raw ru/en data;
+ * no page reads it (the views carry the localised text). Lists are summaries in
+ * the CMS (§8.1: no body, no sources), so only the single-story functions
+ * compare those two.
+ */
+const FULL_STORY = new Set(['getArticle', 'getArticleById'])
+function byDesign(value: unknown, fn: string): unknown {
+  const walk = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(walk)
+    if (!isObj(v)) return v
+    const out: Record<string, unknown> = {}
+    for (const [k, x] of Object.entries(v)) out[k] = walk(x)
+    if (isArticle(out)) {
+      delete out.translations
+      if (!FULL_STORY.has(fn)) {
+        delete out.body
+        delete out.sources
+      }
+    }
+    return out
+  }
+  return walk(value)
+}
+
 async function viewParity(payload: Payload, mockMod: Adapter, cmsMod: Adapter): Promise<Section[]> {
   // Payload id ↔ mock id, from what the importer wrote (read only).
   const legacy = async (collection: 'articles' | 'institutions') => {
@@ -197,7 +222,7 @@ async function viewParity(payload: Payload, mockMod: Adapter, cmsMod: Adapter): 
         if (m.error !== cms.error) s.differences.push({ key: c.label, differences: [{ path: '(call)', mock: m.error ?? 'ok', cms: cms.error ?? 'ok' }] })
         continue
       }
-      const diffs: Difference[] = compare(commercialBylines(m.value), commercialBylines(normalize(cms.value, maps)), compareOptions)
+      const diffs: Difference[] = compare(byDesign(commercialBylines(m.value), c.fn), byDesign(commercialBylines(normalize(cms.value, maps)), c.fn), compareOptions)
       if (diffs.length) s.differences.push({ key: c.label, differences: diffs })
     }
   }
