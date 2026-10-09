@@ -30,6 +30,15 @@ export const hasRole = (req: PayloadRequest, ...roles: Role[]) => {
   return role !== undefined && roles.includes(role)
 }
 
+/**
+ * Every collection and global access function is wrapped in withEdge (CMS-SPEC
+ * §4.3). The security concern fills in the Cloudflare Access identity check and
+ * the read-only switch; until then it passes through.
+ */
+export const withEdge =
+  <A extends Access>(fn: A): A =>
+  ((args: Parameters<A>[0]) => fn(args)) as A
+
 export const isAdmin: Access = ({ req }) => hasRole(req, 'admin')
 export const isStaff: Access = ({ req }) => userRole(req) !== undefined
 export const denyAll: Access = () => false
