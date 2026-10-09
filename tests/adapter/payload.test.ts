@@ -40,7 +40,16 @@ afterAll(async () => {
 })
 
 const legacyOf = (id: string) => [...seeded.articles.entries()].find(([, v]) => String(v) === id)?.[0] ?? id
-const stem = (src: string) => src.replace(/^.*\//, '').replace(/(-[0-9a-f]{12})?(-\d+x\d+)?\.(webp|svg)$/, '')
+/** The library file behind a URL: /images/bank-hall.svg and /api/media/file/bank-hall-<alt hash>[-<n>]-1600x1067.webp → bank-hall. */
+const stem = (src: string) =>
+  src.startsWith('/api/media/file/')
+    ? src
+        .replace(/^.*\//, '')
+        .replace(/\.webp$/, '')
+        .replace(/-\d+x\d+$/, '')
+        .replace(/-\d+$/, '')
+        .replace(/-[0-9a-f]{12}$/, '')
+    : src.replace(/^.*\//, '').replace(/\.svg$/, '')
 const ratio = (i: ImageRef) => Math.round((i.width / i.height) * 100) / 100
 
 /** A view with CMS ids and files mapped to the mock's, and the CMS-only fields (§3.17) left out. */
@@ -128,21 +137,29 @@ describe('the seeded mock stories (parity, §11.4)', () => {
   })
 
   it('reads the glossary, vocabulary, market map and club as the mock adapter does', async () => {
+    // Other test files share the database: compare the seeded records only.
+    const only = <T,>(list: T[], keys: Set<string>, key: (x: T) => string) => list.filter((x) => keys.has(key(x)))
     for (const l of locales) {
-      expect(await cms.getGlossary(l), l).toEqual(mock.getGlossary(l))
-      expect((await cms.getAuthors(l)).map((a) => ({ ...a, isTeam: undefined, commercial: a.commercial })), l).toEqual(
+      const terms = new Set(mock.getGlossary('uz').map((t) => t.slug))
+      expect(only(await cms.getGlossary(l), terms, (t) => t.slug), l).toEqual(mock.getGlossary(l))
+      const bylines = new Set(mock.getAuthors('uz').map((a) => a.slug))
+      expect(only(await cms.getAuthors(l), bylines, (a) => a.slug).map((a) => ({ ...a, isTeam: undefined, commercial: a.commercial })), l).toEqual(
         mock.getAuthors(l).map((a) => ({ ...a, commercial: a.commercial ?? (a.slug === 'hamkorlik' ? true : undefined) })),
       )
-      expect(await cms.getTags(l), l).toEqual(mock.getTags(l))
+      const topics = new Set(mock.getTags('uz').map((t) => t.slug))
+      expect(only(await cms.getTags(l), topics, (t) => t.slug), l).toEqual(mock.getTags(l))
       expect(await cms.getRubrics(l), l).toEqual(mock.getRubrics(l))
-      const inst = await cms.getInstitutions(l)
+      const names = new Set(mock.getInstitutions(l).map((i) => i.name))
+      const inst = only(await cms.getInstitutions(l), names, (i) => i.name)
       expect(inst.map((i) => ({ ...i, id: undefined, articleId: i.articleId ? legacyOf(i.articleId) : undefined })), l).toEqual(
         mock.getInstitutions(l).map((i) => ({ ...i, id: undefined, articleId: i.articleId && SEED_ARTICLES.includes(i.articleId) ? i.articleId : undefined })),
       )
-      expect((await cms.getMilestones(l)).map((x) => ({ ...x, articleId: x.articleId ? legacyOf(x.articleId) : undefined })), l).toEqual(
+      const titles = new Set(mock.getMilestones(l).map((x) => x.title))
+      expect(only(await cms.getMilestones(l), titles, (x) => x.title).map((x) => ({ ...x, articleId: x.articleId ? legacyOf(x.articleId) : undefined })), l).toEqual(
         mock.getMilestones(l).map((x) => ({ ...x, articleId: x.articleId && SEED_ARTICLES.includes(x.articleId) ? x.articleId : undefined })),
       )
-      const events = await cms.getClubEvents(l)
+      const meetings = new Set(mock.getClubEvents('uz').map((e) => e.slug))
+      const events = only(await cms.getClubEvents(l), meetings, (e) => e.slug)
       const img = (i?: ImageRef) => i && { ...i, src: stem(i.src), width: ratio(i), height: undefined, creator: undefined }
       const norm = (e: (typeof events)[number]) => ({ ...e, image: img(e.image), speakers: e.speakers.map((s) => ({ ...s, portrait: img(s.portrait) })) })
       expect(events.map(norm), l).toEqual(mock.getClubEvents(l).map(norm))
