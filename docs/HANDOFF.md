@@ -35,9 +35,11 @@ green state is commit `b2228a7`.
 - Red-team pass 2: all six findings fixed (trash/restore rejects other
   changed fields; `media.uploadedBy` and migration `20261009_150000_wave3`;
   `Object.hasOwn` in `resolveTransition`).
-- Full suite on a fresh DB: 693-694 of 694 pass. In two of three runs one or
-  two home-page-global tests (`write2`, `pipeline`) failed; they pass alone
-  and together. Intermittent under full-suite load, cause not found.
+- Full suite on a fresh DB: 694/694. The earlier intermittent failures
+  (`write2`, `pipeline`) came from test files sharing the one home-page
+  document: some park an invalid draft in it on purpose, and Payload validates
+  the whole document on each write. `vitest.config.ts` now runs the nine files
+  that write home-page one after another (project `home-page`).
 
 Next: the independent security review, then the final local end-to-end test.
 
