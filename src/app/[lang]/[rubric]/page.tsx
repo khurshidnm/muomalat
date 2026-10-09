@@ -6,7 +6,8 @@ import { RubricListing, rubricMetadata, rubricParams } from '@/components/listin
 
 type Params = { params: Promise<{ lang: string; rubric: string }> }
 
-export const dynamicParams = false
+/** Seconds; new stories reach the front sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 600
 
 export function generateStaticParams() {
   return rubricParams()

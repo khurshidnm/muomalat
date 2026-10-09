@@ -19,6 +19,8 @@ import { getLatestIssue, getPreviousIssues, nextIssueAt } from '@/components/pag
 
 // Only the four editions from the layout exist; anything else is a 404.
 export const dynamicParams = false
+/** Seconds: the issue preview follows the article feed (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
 type Params = { params: Promise<{ lang: string }> }
 
@@ -39,8 +41,8 @@ export default async function DigestPage({ params }: Params) {
   const d = pick(digestMessages, locale)
   const p = d.page
 
-  const issue = getLatestIssue(locale)
-  const previous = getPreviousIssues(locale, 3)
+  const issue = await getLatestIssue(locale)
+  const previous = await getPreviousIssues(locale, 3)
   const nextAt = nextIssueAt()
   const faq: FaqItem[] = FAQ_ORDER.map((id) => ({ id, ...p.faq.items[id] }))
 

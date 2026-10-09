@@ -1,5 +1,5 @@
 import { localeMeta, localePath, type ContentLang, type Locale } from '@/i18n/config'
-import { CONTENT_NOW, getAuthors, type ClubEvent, type Localized } from '@/content'
+import { contentNow, getAuthors, type ClubEvent, type Localized } from '@/content'
 import { site } from '@/content/data/site'
 import { formatDate, tashkentDay, tashkentParts } from '@/lib/format'
 import { absoluteUrl, paths } from '@/lib/routes'
@@ -23,7 +23,7 @@ export function eventDate(event: ClubEvent, locale: Locale) {
 }
 
 /** Whole days from the content clock to the meeting day (0 = today). */
-export function daysUntil(iso: string, now = CONTENT_NOW): number {
+export function daysUntil(iso: string, now = contentNow()): number {
   const a = Date.parse(`${tashkentDay(now)}T12:00:00+05:00`)
   const b = Date.parse(`${tashkentDay(iso)}T12:00:00+05:00`)
   return Math.round((b - a) / 86_400_000)
@@ -39,14 +39,14 @@ export function slotIso(event: ClubEvent, time: string): string {
  * listed speakers. Resolved against the newsroom's authors for a role line.
  */
 /** `lang` is the language of the role text: author profiles are translated, the meeting itself is not. */
-export function eventHost(
+export async function eventHost(
   event: EventView,
   locale: Locale,
-): { name: string; role?: string; lang?: ContentLang; slug?: string } | undefined {
+): Promise<{ name: string; role?: string; lang?: ContentLang; slug?: string } | undefined> {
   const listed = new Set(event.speakers.map((s) => s.name))
   const name = event.agenda.find((a) => a.speaker && !listed.has(a.speaker))?.speaker
   if (!name) return undefined
-  const author = getAuthors(locale).find((a) => a.name === name)
+  const author = (await getAuthors(locale)).find((a) => a.name === name)
   return { name, role: author?.role, lang: author?.contentLang, slug: author?.slug }
 }
 

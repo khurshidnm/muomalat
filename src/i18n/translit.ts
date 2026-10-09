@@ -52,6 +52,41 @@ const SOFT_END = new Set([
   'avtomobil', 'profil', 'mebel',
 ])
 
+/**
+ * Exceptions maintained by the editor-in-chief in the CMS (editorial-rules
+ * global, `translitExceptions` and `translitKeep`; CMS-SPEC §3.16, §6.4).
+ * They extend the lists above and can never remove a built-in rule: a stem
+ * that is already built in keeps its built-in spelling. Loaded by the
+ * Payload content adapter; empty with mock content.
+ */
+let stems: [string, string][] = STEMS
+let softEnd: ReadonlySet<string> = SOFT_END
+let keepWords: ReadonlySet<string> = new Set()
+
+export interface TranslitExceptions {
+  exceptions?: { latin?: string | null; cyrillic?: string | null; softEnd?: boolean | null }[] | null
+  keep?: (string | null | undefined)[] | null
+}
+
+/** Replace the editor-maintained exceptions (undefined clears them). Built-in rules always apply. */
+export function setTranslitExceptions(rules: TranslitExceptions | undefined) {
+  const builtIn = new Set(STEMS.map(([latin]) => latin))
+  const extra: [string, string][] = []
+  const soft = new Set(SOFT_END)
+  for (const e of rules?.exceptions ?? []) {
+    const latin = e.latin?.trim().toLowerCase()
+    const cyrillic = e.cyrillic?.trim().toLowerCase()
+    if (!latin || !cyrillic || !/^[a-zʻʼ'‘’`]+$/.test(latin) || builtIn.has(latin)) continue
+    builtIn.add(latin)
+    extra.push([latin, cyrillic])
+    if (e.softEnd) soft.add(latin)
+  }
+  // Longest first, as the built-in list is written.
+  stems = extra.length ? [...STEMS, ...extra].sort((a, b) => b[0].length - a[0].length) : STEMS
+  softEnd = soft
+  keepWords = new Set((rules?.keep ?? []).map((w) => w?.trim()).filter((w): w is string => Boolean(w)))
+}
+
 const SINGLE: Record<string, string> = {
   a: 'а', b: 'б', d: 'д', e: 'е', f: 'ф', g: 'г', h: 'ҳ', i: 'и', j: 'ж', k: 'к',
   l: 'л', m: 'м', n: 'н', o: 'о', p: 'п', q: 'қ', r: 'р', s: 'с', t: 'т', u: 'у',
@@ -90,10 +125,10 @@ function translitWord(word: string): string {
     }
     // Loanword stems
     let matched = false
-    for (const [stem, cyr] of STEMS) {
+    for (const [stem, cyr] of stems) {
       if (lower.startsWith(stem, i)) {
         let rep = cyr
-        if (SOFT_END.has(stem) && i + stem.length === word.length) rep += 'ь'
+        if (softEnd.has(stem) && i + stem.length === word.length) rep += 'ь'
         out += caseOf(i, stem.length, rep)
         i += stem.length
         matched = true
@@ -164,7 +199,7 @@ function translitPlain(text: string): string {
       const core = chunk.replace(/^[«"(\[]+|[»".,;:!?)\]]+$/g, '')
       const host = prevWord
       prevWord = core
-      if (KEEP.test(core)) return chunk
+      if (KEEP.test(core) || keepWords.has(core)) return chunk
       if (/^[A-Z]$/.test(core) && LABEL_HOST.test(host)) return chunk
       return chunk.replace(WORD, (w) => translitWord(w))
     })

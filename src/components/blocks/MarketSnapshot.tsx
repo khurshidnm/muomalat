@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { homeMessages } from '@/i18n/messages/home'
-import { getInstitutions, CONTENT_NOW, type LicenceStatus } from '@/content'
+import { getInstitutions, contentNow, type LicenceStatus } from '@/content'
 import { formatDate } from '@/lib/format'
 import { href, paths } from '@/lib/routes'
 import { Icon } from '@/components/ui/Icon'
@@ -16,9 +16,9 @@ const ORDER: LicenceStatus[] = ['granted', 'review', 'applied', 'announced']
  * mid-word, and each stat pins its numeral to the bottom so all four share a
  * baseline whatever the label length.
  */
-export function MarketSnapshot({ locale }: { locale: Locale }) {
+export async function MarketSnapshot({ locale }: { locale: Locale }) {
   const t = pick(homeMessages, locale).market
-  const list = getInstitutions(locale)
+  const list = await getInstitutions(locale)
   const counts = Object.fromEntries(ORDER.map((s) => [s, list.filter((i) => i.status === s).length])) as Record<LicenceStatus, number>
   return (
     <section aria-labelledby="market-snapshot" className="wrap">
@@ -30,7 +30,7 @@ export function MarketSnapshot({ locale }: { locale: Locale }) {
             </Link>
           </h2>
           <p className="mt-1 text-meta text-ink-3">
-            {t.intro} {keepNumberWords(t.asOf(formatDate(CONTENT_NOW, locale, 'dayMonth')))}
+            {t.intro} {keepNumberWords(t.asOf(formatDate(contentNow(), locale, 'dayMonth')))}
           </p>
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4 lg:col-span-6">

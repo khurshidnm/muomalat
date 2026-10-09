@@ -37,7 +37,7 @@ import {
   getMilestones,
   getRubrics,
   getTags,
-} from '../src/content'
+} from '../src/content/adapters/mock'
 import { ARABIC, checkArticle, checkKr, checkText, isoTz, KR_SKIP, type Finding } from '../src/content/rules'
 import { pick, type MessageSet, type MessageTree } from '../src/i18n/messages'
 import { deepCyrillic } from '../src/i18n/translit'

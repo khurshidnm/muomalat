@@ -5,7 +5,7 @@ import { isLocale, locales, localePath, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { clubMessages } from '@/i18n/messages/club'
-import { getClubEvent, getClubEvents, getNextClubEvent } from '@/content'
+import { getClubEvent, getClubEvents, getNextClubEvent, isSlug, resolveMissing } from '@/content'
 import { absoluteUrl, href, paths } from '@/lib/routes'
 import { jsonLd, pageMetadata } from '@/lib/seo'
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs'
@@ -23,25 +23,32 @@ import { daysUntil, eventDate, eventLd, eventSnippet } from '@/components/club/e
 
 type Params = { params: Promise<{ lang: string; slug: string }> }
 
-export const dynamicParams = false
+/** Seconds; a change to the meeting reaches the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
-export function generateStaticParams() {
-  return locales.flatMap((lang) => getClubEvents(lang).map((e) => ({ lang, slug: e.slug })))
+export async function generateStaticParams() {
+  return (await Promise.all(locales.map(async (lang) => (await getClubEvents(lang)).map((e) => ({ lang, slug: e.slug }))))).flat()
 }
 
-function load(lang: string, slug: string) {
-  if (!isLocale(lang)) return undefined
+async function load(lang: string, slug: string) {
+  if (!isLocale(lang) || !isSlug(slug)) return undefined
   return getClubEvent(lang, slug)
+}
+
+/** Editions that carry the meeting's text: uz, kr, and ru/en where an approved translation is shown. */
+async function editions(slug: string): Promise<Locale[]> {
+  const own = await Promise.all((['ru', 'en'] as const).map(async (l) => ((await getClubEvent(l, slug))?.contentLang === l ? [l] : [])))
+  return ['uz', 'kr', ...own.flat()]
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { lang, slug } = await params
-  const e = load(lang, slug)
+  const e = await load(lang, slug)
   if (!e || !isLocale(lang)) return {}
   const m = pick(clubMessages, lang)
   const title = `${e.title} — ${m.title}`
-  // Meetings are written in Uzbek only: ru/en pages show the Uzbek text, so
-  // they point canonical to Uzbek and only uz/uz-Cyrl are declared editions.
+  // Meetings are written in Uzbek unless a translation is approved: a ru/en
+  // page showing the Uzbek text points canonical to Uzbek and is not an edition.
   const fallback = (lang === 'ru' || lang === 'en') && e.contentLang === 'uz'
   return {
     ...pageMetadata({
@@ -49,7 +56,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       path: paths.clubEvent(e.slug),
       title,
       description: eventSnippet(e),
-      languages: ['uz', 'kr'],
+      languages: await editions(e.slug),
       canonicalLocale: fallback ? 'uz' : undefined,
       images: [{ url: absoluteUrl(`${localePath(lang, paths.clubEvent(e.slug))}/opengraph-image`), width: 1200, height: 630, alt: e.title }],
     }),
@@ -59,8 +66,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function ClubEventPage({ params }: Params) {
   const { lang, slug } = await params
-  const event = load(lang, slug)
-  if (!event || !isLocale(lang)) notFound()
+  const event = await load(lang, slug)
+  if (!event || !isLocale(lang)) {
+    if (isLocale(lang) && isSlug(slug)) await resolveMissing(localePath(lang, paths.clubEvent(slug)))
+    notFound()
+  }
   const locale: Locale = lang
   const e = event
   const t = pick(commonMessages, locale)
@@ -69,8 +79,8 @@ export default async function ClubEventPage({ params }: Params) {
   const left = upcoming ? daysUntil(e.startsAt) : 0
   const join = href(locale, paths.clubJoin())
   const clubHref = href(locale, paths.club())
-  const next = upcoming ? undefined : getNextClubEvent(locale)
-  const others = getClubEvents(locale).filter((x) => x.slug !== e.slug).slice(0, 4)
+  const next = upcoming ? undefined : await getNextClubEvent(locale)
+  const others = (await getClubEvents(locale)).filter((x) => x.slug !== e.slug).slice(0, 4)
   const url = absoluteUrl(localePath(locale, paths.clubEvent(e.slug)))
 
   const ld = {
@@ -274,7 +284,7 @@ export default async function ClubEventPage({ params }: Params) {
 }
 
 /** Past-meeting rail: membership call to action and the next date. */
-function ClubJoin({ locale, next, id }: { locale: Locale; next?: ReturnType<typeof getNextClubEvent>; id: string }) {
+function ClubJoin({ locale, next, id }: { locale: Locale; next?: Awaited<ReturnType<typeof getNextClubEvent>>; id: string }) {
   const t = pick(commonMessages, locale)
   const m = pick(clubMessages, locale)
   const nd = next ? eventDate(next, locale) : undefined

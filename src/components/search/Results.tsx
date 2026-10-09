@@ -5,8 +5,7 @@ import { commonMessages } from '@/i18n/messages/common'
 import { marketMessages } from '@/i18n/messages/market'
 import { searchMessages } from '@/i18n/messages/search'
 import {
-  CONTENT_NOW,
-  getArticleById,
+  contentNow,
   type ArticleView,
   type GlossaryTerm,
   type Institution,
@@ -68,7 +67,7 @@ function storyExcerpt(a: ArticleView, words: readonly string[]): string {
 export function ArticleResult({ article: a, locale, words }: { article: ArticleView; locale: Locale; words: readonly string[] }) {
   const t = pick(commonMessages, locale)
   const url = href(locale, a.url)
-  const d = smartDate(a.publishedAt, locale, t.labels, CONTENT_NOW)
+  const d = smartDate(a.publishedAt, locale, t.labels, contentNow())
   return (
     <article className="grid gap-4 sm:grid-cols-[1fr_8.5rem] sm:gap-6">
       <div className="min-w-0">
@@ -177,7 +176,7 @@ export function TermMatch({ term, locale, words }: { term: Localized<GlossaryTer
 export function LicenceBadge({ status, date, locale }: { status: LicenceStatus; date: string; locale: Locale }) {
   const m = pick(searchMessages, locale).search
   const statuses = pick(marketMessages, locale).statuses
-  const sameYear = date.slice(0, 4) === CONTENT_NOW.slice(0, 4)
+  const sameYear = date.slice(0, 4) === contentNow().slice(0, 4)
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-meta">
       <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
@@ -197,14 +196,16 @@ export function InstitutionResult({
   institution: i,
   locale,
   words,
+  story,
 }: {
   institution: Localized<Institution>
   locale: Locale
   words: readonly string[]
+  /** The story covering the institution (`articleId`), read by the page. */
+  story?: ArticleView
 }) {
   const m = pick(searchMessages, locale).search
   const products = i.products.filter((p) => hasMatch(p, words))
-  const story = i.articleId ? getArticleById(locale, i.articleId) : undefined
   return (
     <article>
       <h3 lang={i.contentLang} className="font-serif text-lead leading-snug font-semibold">

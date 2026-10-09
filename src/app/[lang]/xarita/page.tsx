@@ -5,7 +5,7 @@ import { isLocale, localeMeta, localePath, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { marketMessages } from '@/i18n/messages/market'
-import { CONTENT_NOW, getArticleById, getArticlesByTag, getInstitutions, getMilestones, type ArticleView } from '@/content'
+import { contentNow, getArticleById, getArticlesByTag, getInstitutions, getMilestones, type ArticleView } from '@/content'
 import { site } from '@/content/data/site'
 import { formatDate } from '@/lib/format'
 import { absoluteUrl, href, paths } from '@/lib/routes'
@@ -26,6 +26,8 @@ import { Fill } from '@/components/market/fill'
 
 // Only the four editions from the layout exist; anything else is a 404.
 export const dynamicParams = false
+/** Seconds; market-map changes reach the page sooner through tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
 type Params = { params: Promise<{ lang: string }> }
 
@@ -42,10 +44,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 /** Stories on licensing first, then on Islamic windows; no duplicates, no partner content. */
-function relatedStories(locale: Locale, limit: number): ArticleView[] {
+async function relatedStories(locale: Locale, limit: number): Promise<ArticleView[]> {
   const seen = new Set<string>()
   const out: ArticleView[] = []
-  for (const a of [...getArticlesByTag(locale, 'litsenziyalash'), ...getArticlesByTag(locale, 'islom-oynasi')]) {
+  for (const a of [...(await getArticlesByTag(locale, 'litsenziyalash')), ...(await getArticlesByTag(locale, 'islom-oynasi'))]) {
     if (seen.has(a.id) || a.sponsored) continue
     seen.add(a.id)
     out.push(a)
@@ -60,14 +62,23 @@ export default async function MarketPage({ params }: Params) {
   const t = pick(commonMessages, locale)
   const m = pick(marketMessages, locale)
 
-  const institutions = getInstitutions(locale)
+  const institutions = await getInstitutions(locale)
   // City names are keyed by the Uzbek Latin source, so look them up on the uz record.
-  const source = new Map(getInstitutions('uz').map((i) => [i.id, i]))
+  const source = new Map((await getInstitutions('uz')).map((i) => [i.id, i]))
   const cityLang = locale === 'ru' || locale === 'en' ? locale : localeMeta[locale].htmlLang
   const cities = m.cities as Record<string, string>
 
+  const milestones = await getMilestones(locale)
+  // Stories linked from the table and the timeline, read once each.
+  const linked = new Map(
+    await Promise.all(
+      [...new Set([...institutions, ...milestones].map((x) => x.articleId).filter((id): id is string => !!id))].map(
+        async (id) => [id, await getArticleById(locale, id)] as const,
+      ),
+    ),
+  )
   const story = (id?: string) => {
-    const a = id ? getArticleById(locale, id) : undefined
+    const a = id ? linked.get(id) : undefined
     return a ? { href: href(locale, a.url), title: a.title, lang: a.contentLang } : undefined
   }
 
@@ -116,7 +127,6 @@ export default async function MarketPage({ params }: Params) {
         STATUS_RANK[a.status] - STATUS_RANK[b.status] || b.statusDate.localeCompare(a.statusDate) || a.name.localeCompare(b.name),
     )
 
-  const milestones = getMilestones(locale)
   const timeline: TimelineItem[] = milestones.map((x, i) => ({
     key: `${x.date}-${i}`,
     date: x.date,
@@ -128,10 +138,11 @@ export default async function MarketPage({ params }: Params) {
   }))
   const contentLang = milestones[0]?.contentLang ?? 'uz'
 
-  const related = relatedStories(locale, 4)
-  const asOfDate = formatDate(CONTENT_NOW, locale, 'date')
+  const related = await relatedStories(locale, 4)
+  const now = contentNow()
+  const asOfDate = formatDate(now, locale, 'date')
   const url = absoluteUrl(localePath(locale, PATH))
-  const firstDate = milestones[0]?.date ?? CONTENT_NOW.slice(0, 7)
+  const firstDate = milestones[0]?.date ?? now.slice(0, 7)
 
   const ld = {
     '@context': 'https://schema.org',
@@ -145,8 +156,8 @@ export default async function MarketPage({ params }: Params) {
         url,
         inLanguage: localeMeta[locale].htmlLang,
         isAccessibleForFree: true,
-        dateModified: CONTENT_NOW,
-        temporalCoverage: `${firstDate}/${CONTENT_NOW.slice(0, 10)}`,
+        dateModified: now,
+        temporalCoverage: `${firstDate}/${now.slice(0, 10)}`,
         spatialCoverage: { '@type': 'Place', name: m.country },
         keywords: [m.metaTitle, ...Object.values(m.types)],
         variableMeasured: [m.table.type, m.table.colCity, m.table.status, m.table.colProducts],
@@ -191,7 +202,7 @@ export default async function MarketPage({ params }: Params) {
             <p className="mt-3 max-w-[46rem] font-serif text-standfirst text-ink-2 md:mt-4">{m.standfirst}</p>
             <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-ink-3">
               <Icon name="calendar" size={15} className="shrink-0" />
-              <time dateTime={CONTENT_NOW} className="figures font-semibold text-ink">
+              <time dateTime={now} className="figures font-semibold text-ink">
                 {m.asOf(asOfDate)}
               </time>
               <span aria-hidden="true" className="hidden text-rule-strong sm:inline">
@@ -263,7 +274,7 @@ export default async function MarketPage({ params }: Params) {
       <div className="wrap mt-12 grid gap-12 md:mt-16 lg:grid-cols-12 lg:gap-x-8">
         <section id="xronologiya" aria-labelledby="xarita-timeline" className="scroll-mt-20 lg:col-span-8">
           <SectionHeader id="xarita-timeline" title={m.timeline.title} description={m.timeline.description} />
-          <MarketTimeline items={timeline} nowIso={CONTENT_NOW} nowText={asOfDate} text={m.timeline} lang={contentLang} />
+          <MarketTimeline items={timeline} nowIso={now} nowText={asOfDate} text={m.timeline} lang={contentLang} />
         </section>
 
         <section id="uslubiyat" aria-labelledby="xarita-method" className="scroll-mt-20 lg:col-span-4">
@@ -282,7 +293,7 @@ export default async function MarketPage({ params }: Params) {
                   template={m.method.updatesText}
                   values={[
                     <Placeholder key="c">{m.method.cadence}</Placeholder>,
-                    <time key="d" dateTime={CONTENT_NOW} className="figures whitespace-nowrap">
+                    <time key="d" dateTime={now} className="figures whitespace-nowrap">
                       {asOfDate}
                     </time>,
                   ]}

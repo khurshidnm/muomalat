@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
-import { CONTENT_NOW, type ArticleView } from '@/content'
+import { contentNow, type ArticleView } from '@/content'
 import { formatDate, smartDate, tashkentDay } from '@/lib/format'
 import { href, paths } from '@/lib/routes'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -12,13 +12,14 @@ import { keepNumberWords } from '@/components/ui/InlineText'
 /** "Soʻnggi yangiliklar": timestamped wire, grouped by day. */
 export function LatestFeed({ articles, locale, id = 'latest' }: { articles: ArticleView[]; locale: Locale; id?: string }) {
   const t = pick(commonMessages, locale)
+  const now = contentNow()
   let lastDay = ''
   return (
     <section aria-labelledby={id}>
       <SectionHeader id={id} title={t.labels.latest} href={href(locale, paths.rubric('yangiliklar'))} linkLabel={t.actions.all} />
       <ol className="mt-1">
         {articles.map((a) => {
-          const d = smartDate(a.publishedAt, locale, t.labels, CONTENT_NOW)
+          const d = smartDate(a.publishedAt, locale, t.labels, now)
           const day = tashkentDay(a.publishedAt)
           const showDay = day !== lastDay && (lastDay !== '' || !d.isToday)
           lastDay = day

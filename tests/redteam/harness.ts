@@ -200,3 +200,83 @@ export async function rejects(p: Promise<unknown>): Promise<string> {
 }
 
 export { isolateObjectProperty, type Payload, type PayloadRequest }
+
+// ---------------------------------------------------------------------------
+// Second red-team pass: workflow helpers, multipart REST, media.
+// ---------------------------------------------------------------------------
+
+/** A REST call with a multipart body (`_payload` JSON plus an optional file), the way the admin uploads. */
+export async function restForm(method: string, path: string, opts: { cookie?: string; payload?: unknown; file?: { data: Buffer; name: string; type: string }; origin?: string | null } = {}) {
+  await testPayload()
+  const form = new FormData()
+  if (opts.payload !== undefined) form.set('_payload', JSON.stringify(opts.payload))
+  if (opts.file) form.set('file', new Blob([new Uint8Array(opts.file.data)], { type: opts.file.type }), opts.file.name)
+  const headers = new Headers()
+  const origin = opts.origin === undefined ? CMS : opts.origin
+  if (origin) headers.set('Origin', origin)
+  if (opts.cookie) headers.set('Cookie', opts.cookie)
+  const res = await handleEndpoints({ config, request: new Request(CMS + path, { method, headers, body: form }) })
+  const text = await res.text()
+  let json: any
+  try {
+    json = JSON.parse(text)
+  } catch {
+    json = text
+  }
+  return { status: res.status, json }
+}
+
+/** The Local API as this user, with access enforced. */
+export const as = (u: U) => ({ user: u as never, overrideAccess: false as const })
+
+/** POST /api/articles/:id/transition with this cookie. */
+export const transition = (cookie: string, id: number, body: Doc) => rest('POST', `/api/articles/${id}/transition?locale=uz`, { cookie, body })
+
+export async function transitionOk(cookie: string, id: number, body: Doc) {
+  const r = await transition(cookie, id, body)
+  if (r.status !== 200) throw new Error(`transition ${JSON.stringify(body)}: ${r.status} ${JSON.stringify(r.json)}`)
+  return r
+}
+
+/** Latest version (draft: true) and the live main row, read with overrideAccess. */
+export const latestOf = (id: number, locale = 'uz') => findArticle(id, { draft: true, locale })
+export const liveOf = (id: number, locale = 'uz') => findArticle(id, { draft: false, locale })
+
+/** A story moved `draft → in_edit → ready` through the real endpoint: the owner submits, `approver` approves. */
+export async function readyStory(owner: U, ownerCookie: string, approverCookie: string, authors: number[], extra: Doc = {}): Promise<number> {
+  const id = (await makeStory(authors, { assignee: owner.id, ...extra })).id as number
+  await transitionOk(ownerCookie, id, { action: 'submit' })
+  await transitionOk(approverCookie, id, { action: 'approve' })
+  return id
+}
+
+/** Adds official source domains for the urgent fast path (never removes: files share the global). */
+export async function officialDomains(domains: string[]) {
+  const payload = await testPayload()
+  const current = ((await payload.findGlobal({ slug: 'editorial-rules', depth: 0, overrideAccess: true })) as Doc).officialSourceDomains as { domain: string }[] | undefined
+  const all = [...new Set([...(current ?? []).map((d) => d.domain), ...domains])]
+  await payload.updateGlobal({ slug: 'editorial-rules', data: { officialSourceDomains: all.map((domain) => ({ domain })) } as never, overrideAccess: true })
+}
+
+/** Raw SQL against the test database (fixtures that Payload cannot express, e.g. ageing a timestamp). */
+export async function sqlExec(q: unknown) {
+  const payload = await testPayload()
+  return (payload.db as unknown as { drizzle: { execute: (q: unknown) => Promise<{ rows?: Doc[] }> } }).drizzle.execute(q)
+}
+
+/** An 800×600 JPEG. */
+export async function jpeg(color = { r: 10, g: 80, b: 60 }) {
+  const sharp = (await import('sharp')).default
+  return sharp({ create: { width: 800, height: 600, channels: 3, background: color } }).jpeg().toBuffer()
+}
+
+/** A media item written with overrideAccess (fixture). */
+export async function mediaItem(extra: Doc = {}): Promise<Doc> {
+  const payload = await testPayload()
+  return (await payload.create({
+    collection: 'media',
+    overrideAccess: true,
+    data: { alt: 'Sinov rasmi', credit: 'Foto: Muomalat', rightsCategory: 'staff', ...extra } as never,
+    file: { data: await jpeg(), mimetype: 'image/jpeg', name: `rt-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`, size: 1 },
+  })) as Doc
+}

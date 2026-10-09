@@ -14,9 +14,12 @@ import {
   getTag,
   getTerm,
   isRubric,
+  isSlug,
+  resolveMissing,
   type ArticleView,
 } from '@/content'
 import { site } from '@/content/data/site'
+import { formatDate } from '@/lib/format'
 import { absoluteUrl, href, paths } from '@/lib/routes'
 import { jsonLd, pageMetadata, publisherLd } from '@/lib/seo'
 import { keepNumberWords } from '@/components/ui/InlineText'
@@ -37,67 +40,84 @@ import { AdSlot } from '@/components/blocks/AdSlot'
 
 type Params = { params: Promise<{ lang: string; rubric: string; slug: string }> }
 
-export const dynamicParams = false
+/** Seconds; a change to the story reaches the page sooner through its tags (CMS-SPEC §8.2). */
+export const revalidate = 3600
 
-export function generateStaticParams() {
-  return locales.flatMap((lang) => getArticles(lang).map((a) => ({ lang, rubric: a.rubric, slug: a.slug })))
+/** Stories prerendered at build time; any other published story renders on its first request. */
+const PRERENDERED = 50
+
+export async function generateStaticParams() {
+  const params = await Promise.all(
+    locales.map(async (lang) => (await getArticles(lang)).slice(0, PRERENDERED).map((a) => ({ lang, rubric: a.rubric, slug: a.slug }))),
+  )
+  return params.flat()
 }
 
-function load(lang: string, rubric: string, slug: string) {
-  if (!isLocale(lang) || !isRubric(rubric)) return undefined
+/** Route params are checked before any read (§8.1); an invalid one is a 404 without a query. */
+async function load(lang: string, rubric: string, slug: string) {
+  if (!isLocale(lang) || !isRubric(rubric) || !isSlug(slug)) return undefined
   return getArticle(lang, rubric, slug)
 }
 
-/** Editions that actually carry this story's text. */
-function editions(a: ArticleView): Locale[] {
-  return ['uz', 'kr', ...(['ru', 'en'] as const).filter((l) => a.translations?.[l])]
+/** Editions that actually carry this story's text: uz, kr, and ru/en where the translation is shown. */
+async function editions(a: ArticleView): Promise<Locale[]> {
+  const own = await Promise.all((['ru', 'en'] as const).map(async (l) => ((await getArticle(l, a.rubric, a.slug))?.contentLang === l ? [l] : [])))
+  return ['uz', 'kr', ...own.flat()]
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { lang, rubric, slug } = await params
-  const a = load(lang, rubric, slug)
+  const a = await load(lang, rubric, slug)
   if (!a || !isLocale(lang)) return {}
   const t = pick(commonMessages, lang)
   const fallback = (lang === 'ru' || lang === 'en') && a.contentLang === 'uz'
+  const withdrawnTitle = a.withdrawn?.hideTitle ? pick(articleMessages, lang).withdrawnTitle : undefined
   return pageMetadata({
     locale: lang,
     path: a.url,
-    title: a.title,
-    description: a.lead,
+    title: withdrawnTitle ?? a.title,
+    description: a.withdrawn ? a.withdrawn.notice : a.lead,
     type: 'article',
-    languages: editions(a),
+    languages: await editions(a),
     canonicalLocale: fallback ? 'uz' : undefined,
-    images: [{ url: absoluteUrl(`${localePath(lang, a.url)}/opengraph-image`), width: 1200, height: 630, alt: a.title }],
+    images: [{ url: absoluteUrl(`${localePath(lang, a.url)}/opengraph-image`), width: 1200, height: 630, alt: withdrawnTitle ?? a.title }],
     article: {
       publishedTime: a.publishedAt,
       modifiedTime: a.updatedAt ?? a.corrections?.at(-1)?.date,
       section: t.rubrics[a.rubric].name,
-      authors: a.authors.map((s) => getAuthor(lang, s)?.name ?? s),
-      tags: a.tags.map((s) => getTag(lang, s)?.label ?? s),
+      authors: await Promise.all(a.authors.map(async (s) => (await getAuthor(lang, s))?.name ?? s)),
+      tags: await Promise.all(a.tags.map(async (s) => (await getTag(lang, s))?.label ?? s)),
     },
+    // A withdrawn story stays at its address with the notice, out of search engines (§5.8).
+    noindex: Boolean(a.withdrawn || a.noindex),
   })
 }
 
 export default async function ArticlePage({ params }: Params) {
   const { lang, rubric, slug } = await params
-  const article = load(lang, rubric, slug)
-  if (!article || !isLocale(lang)) notFound()
+  const article = await load(lang, rubric, slug)
+  if (!article || !isLocale(lang)) {
+    if (isLocale(lang) && isRubric(rubric) && isSlug(slug)) await resolveMissing(localePath(lang, `/${rubric}/${slug}`))
+    notFound()
+  }
   const locale: Locale = lang
   const a = article
+  if (a.withdrawn) return <WithdrawnStory article={a} locale={locale} />
   const t = pick(commonMessages, locale)
   const m = pick(articleMessages, locale)
-  const authors = a.authors.map((s) => getAuthor(locale, s)).filter((x) => !!x)
-  const tags = a.tags.map((s) => getTag(locale, s)).filter((x) => !!x)
-  const terms = (a.terms ?? []).map((s) => getTerm(locale, s)).filter((x) => !!x)
-  const related = getRelated(locale, a, 4)
-  const mostRead = getMostRead(locale, 5).filter((x) => x.id !== a.id).slice(0, 4)
+  const authors = (await Promise.all(a.authors.map((s) => getAuthor(locale, s)))).filter((x) => !!x)
+  const tags = (await Promise.all(a.tags.map((s) => getTag(locale, s)))).filter((x) => !!x)
+  const terms = (await Promise.all((a.terms ?? []).map((s) => getTerm(locale, s)))).filter((x) => !!x)
+  const related = await getRelated(locale, a, 4)
+  const mostRead = (await getMostRead(locale, 5)).filter((x) => x.id !== a.id).slice(0, 4)
   const url = absoluteUrl(localePath(locale, a.url))
   const rubricName = t.rubrics[a.rubric].name
   const isInterview = a.rubric === 'intervyu'
   // Language of parts: the page chrome is in the edition's language (from <html>);
-  // only story text carries lang. `cl` is the language of the title, lead and
-  // body; `base` the language of fields that are never translated (sources,
-  // corrections, interviewee, sponsor note): Uzbek, or Cyrillic Uzbek on /kr.
+  // only story text carries lang. `cl` is the language of the title, lead,
+  // body, corrections and sponsor note (all translated with the story in the
+  // CMS); `base` the language of fields that are never translated (sources,
+  // interviewee): Uzbek, or Cyrillic Uzbek on /kr.
   const cl = a.contentLang
   const base = locale === 'kr' ? 'uz-Cyrl' : 'uz'
   const shareLabels = {
@@ -133,7 +153,7 @@ export default async function ArticlePage({ params }: Params) {
         headline: a.title,
         description: a.lead,
         inLanguage: a.contentLang,
-        datePublished: a.publishedAt,
+        datePublished: a.firstPublishedAt ?? a.publishedAt,
         dateModified: modified ?? a.publishedAt,
         articleSection: rubricName,
         keywords: tags.map((x) => x.label).join(', '),
@@ -141,7 +161,7 @@ export default async function ArticlePage({ params }: Params) {
         isAccessibleForFree: true,
         image: [absoluteUrl(`${localePath(locale, a.url)}/opengraph-image`)],
         author: authors.map((p) =>
-          p.slug === 'tahririyat' || p.slug === 'hamkorlik'
+          (p.isTeam ?? (p.slug === 'tahririyat' || p.slug === 'hamkorlik'))
             ? { '@type': 'Organization', name: p.name, url: absoluteUrl(localePath(locale, paths.author(p.slug))) }
             : { '@type': 'Person', name: p.name, jobTitle: p.role, url: absoluteUrl(localePath(locale, paths.author(p.slug))) },
         ),
@@ -194,7 +214,7 @@ export default async function ArticlePage({ params }: Params) {
                   <SponsorDisclosure
                     as="div"
                     sponsored={a.sponsored}
-                    contentLang={base}
+                    contentLang={cl}
                     showLabel={false}
                     labels={{ label: t.labels.sponsored, title: m.sponsorNoteTitle, partner: m.sponsorBadge }}
                   />
@@ -238,8 +258,11 @@ export default async function ArticlePage({ params }: Params) {
                   labels={{ by: t.labels.by, published: t.labels.published, updated: t.labels.updated, readingTime: t.labels.readingTime(a.readingMinutes) }}
                 />
               </div>
+              {/* One slot: an Uzbek original shown on ru/en, or a translation that lags an update of it (§6.3). */}
               {a.contentLang === 'uz' && (locale === 'ru' || locale === 'en') ? (
                 <p className="mt-3 text-meta text-ink-3">{t.labels.originalLanguage}</p>
+              ) : a.originalUpdatedAt ? (
+                <p className="mt-3 text-meta text-ink-3">{m.translationOutdated(formatDate(a.originalUpdatedAt, locale, 'date'))}</p>
               ) : null}
               <ShareBar url={url} title={a.title} labels={shareLabels} className="mt-4" />
             </div>
@@ -269,7 +292,7 @@ export default async function ArticlePage({ params }: Params) {
                 {a.sponsored ? (
                   <SponsorDisclosure
                     sponsored={a.sponsored}
-                    contentLang={base}
+                    contentLang={cl}
                     labels={{ label: t.labels.sponsored, title: m.sponsorNoteTitle, partner: m.sponsorBadge }}
                   />
                 ) : null}
@@ -277,7 +300,7 @@ export default async function ArticlePage({ params }: Params) {
                   <CorrectionNote
                     corrections={a.corrections}
                     locale={locale}
-                    contentLang={base}
+                    contentLang={cl}
                     labels={{ title: t.labels.correction, date: m.correctionDate }}
                   />
                 ) : null}
@@ -369,5 +392,62 @@ export default async function ArticlePage({ params }: Params) {
         </section>
       ) : null}
     </>
+  )
+}
+
+/**
+ * A withdrawn story (CMS-SPEC §5.8): the address stays, with the rubric, the
+ * title (unless the editor-in-chief hid it), the date and the newsroom's
+ * notice. No body, image, sharing or Telegram button; the page is noindex.
+ */
+function WithdrawnStory({ article: a, locale }: { article: ArticleView; locale: Locale }) {
+  const t = pick(commonMessages, locale)
+  const m = pick(articleMessages, locale)
+  const notice = a.withdrawn!
+  return (
+    <article data-article-id={a.id} className="pb-4">
+      <header>
+        <div className="wrap pt-5 pb-10 md:pt-9">
+          <div className="max-w-[52rem]">
+            <div className="mb-3">
+              <Kicker href={href(locale, paths.rubric(a.rubric))}>{t.rubrics[a.rubric].name}</Kicker>
+            </div>
+            {notice.hideTitle ? (
+              <h1 className="font-display text-h1 font-semibold text-ink">{m.withdrawnTitle}</h1>
+            ) : (
+              <h1 lang={a.contentLang} className="font-display text-h1 font-semibold text-ink">
+                {keepNumberWords(a.title)}
+              </h1>
+            )}
+            <p className="mt-3 text-meta text-ink-3">
+              <time dateTime={a.publishedAt} className="figures">
+                {formatDate(a.publishedAt, locale, 'date')}
+              </time>
+            </p>
+            <section aria-labelledby="olib-tashlandi" className="mt-6 max-w-measure border-l-2 border-signal bg-signal-wash px-4 py-3.5">
+              <h2 id="olib-tashlandi" className="label-caps flex items-center gap-1.5 text-signal">
+                <Icon name="alert" size={14} />
+                {m.withdrawn}
+              </h2>
+              {notice.notice ? (
+                <p lang={a.contentLang} className="mt-2 font-serif text-lead leading-relaxed text-ink">
+                  {notice.notice}
+                </p>
+              ) : null}
+              {notice.at ? (
+                <p className="mt-2 text-meta text-ink-3">
+                  <time dateTime={notice.at}>{formatDate(notice.at, locale, 'date')}</time>
+                </p>
+              ) : null}
+            </section>
+            <p className="mt-6 text-ui">
+              <Link href={href(locale, paths.rubric(a.rubric))} className="text-link">
+                {m.rubricAll(t.rubrics[a.rubric].name)}
+              </Link>
+            </p>
+          </div>
+        </div>
+      </header>
+    </article>
   )
 }
