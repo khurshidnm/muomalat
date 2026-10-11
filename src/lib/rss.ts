@@ -8,7 +8,7 @@
  *   the story's id, not its URL, so it survives a slug change.
  * - Read through the cached content functions, so the `articles` tag
  *   refreshes the feed (§8.4).
- * - Partner content is prefixed with the localized "Hamkorlik materiali:" label
+ * - Partner content is prefixed with the localized "Reklama · Hamkorlik materiali:" label
  *   so it is never mistaken for editorial copy in a reader or a Telegram bot.
  * - All dates are RFC 822 in Tashkent time (+0500).
  */

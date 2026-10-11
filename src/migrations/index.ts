@@ -17,7 +17,7 @@ export const migrations = [
   {
     up: migration_20261009_081822_wave2.up,
     down: migration_20261009_081822_wave2.down,
-    name: '20261009_081822_wave2'
+    name: '20261009_081822_wave2',
   },
   {
     up: migration_20261009_150000_wave3.up,

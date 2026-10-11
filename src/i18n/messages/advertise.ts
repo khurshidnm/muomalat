@@ -74,7 +74,7 @@ const uz = {
         spec: 'Maqola · sayt va Telegram',
         what: 'Hamkor buyurtmasi bilan tijorat boʻlimi tayyorlaydigan maqola: mahsulot, loyiha yoki kompaniya tajribasi haqida. Tahririyat jurnalistlari bunday materiallarni yozmaydi.',
         where: 'Saytdagi alohida sahifa, bosh sahifadagi hamkorlik bloki va Telegram kanaldagi eʼlon.',
-        label: '«Hamkorlik materiali» belgisi, alohida fon va hamkor nomi. Material boshida va oxirida kim buyurtma bergani va kim tayyorlagani yoziladi.',
+        label: '«Reklama · Hamkorlik materiali» belgisi, alohida fon va hamkor nomi. Material boshida va oxirida kim buyurtma bergani va kim tayyorlagani yoziladi.',
       },
       telegram: {
         name: 'Telegram post',
@@ -281,7 +281,7 @@ export const advertiseMessages = defineMessages({
           spec: 'Статья · сайт и Telegram',
           what: 'Статья, которую по заказу партнёра готовит коммерческий отдел: о продукте, проекте или опыте компании. Журналисты редакции такие материалы не пишут.',
           where: 'Отдельная страница на сайте, партнёрский блок на главной и анонс в Telegram-канале.',
-          label: 'Метка «Партнёрский материал», отдельный фон и название партнёра. В начале и в конце указано, кто заказал и кто подготовил материал.',
+          label: 'Метка «Реклама · Партнёрский материал», отдельный фон и название партнёра. В начале и в конце указано, кто заказал и кто подготовил материал.',
         },
         telegram: {
           name: 'Пост в Telegram',
@@ -477,7 +477,7 @@ export const advertiseMessages = defineMessages({
           spec: 'Article · website and Telegram',
           what: 'An article prepared by our commercial team on a partner’s behalf: about a product, a project or the company’s experience. Newsroom journalists never write these pieces.',
           where: 'Its own page on the website, the partner block on the front page and a post on our Telegram channel.',
-          label: 'A “Partner content” label, a distinct background and the partner’s name. The top and bottom of the piece say who commissioned it and who prepared it.',
+          label: 'An “Advertisement · Partner content” label, a distinct background and the partner’s name. The top and bottom of the piece say who commissioned it and who prepared it.',
         },
         telegram: {
           name: 'Telegram post',
