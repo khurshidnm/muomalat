@@ -67,7 +67,7 @@ describe('after commit', () => {
     await initTransaction(req)
     await payload.update({ collection: 'articles', id: a.id, data: { _status: 'published' }, draft: false, context: AS_IMPORT, overrideAccess: true, req })
     // Inside the transaction the row exists…
-    expect(await payload.count({ collection: 'publish-events', where: { docId: { equals: String(a.id) } }, overrideAccess: true, req })).toEqual({ totalDocs: 1 })
+    expect(await payload.count({ collection: 'publish-events', where: { and: [{ collection: { equals: 'articles' } }, { docId: { equals: String(a.id) } }] }, overrideAccess: true, req })).toEqual({ totalDocs: 1 })
     await killTransaction(req)
 
     // …and after the rollback it does not, and the story is still a draft.

@@ -6,6 +6,7 @@ import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { formMessages } from '@/i18n/messages/forms'
 import { advertiseMessages } from '@/i18n/messages/advertise'
+import { getSponsoredLabel } from '@/content'
 import { site } from '@/content/data/site'
 import { absoluteUrl, href, paths } from '@/lib/routes'
 import { jsonLd, pageMetadata, publisherLd } from '@/lib/seo'
@@ -91,7 +92,7 @@ export default async function AdvertisePage({ params }: Params) {
   const specimenText = {
     ...m.formats.specimens,
     advert: t.labels.advert,
-    sponsored: t.labels.sponsored,
+    sponsored: await getSponsoredLabel(locale),
     placeholder: ph,
   }
 

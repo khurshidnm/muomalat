@@ -2,6 +2,9 @@ import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // .next/standalone: server.js plus only the files it needs, for the
+  // production image (docker/Dockerfile, CMS-SPEC §15).
+  output: 'standalone',
   poweredByHeader: false,
   devIndicators: false,
   // The home directory holds an unrelated lockfile; pin the workspace root.

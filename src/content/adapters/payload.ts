@@ -22,6 +22,9 @@ import { cache } from 'react'
 
 import type { Locale } from '@/i18n/config'
 import { localePath, splitLocale } from '@/i18n/config'
+import { pick } from '@/i18n/messages'
+import { commonMessages } from '@/i18n/messages/common'
+import { toCyrillic } from '@/i18n/translit'
 import { TAG } from '@/payload/delivery/tags'
 import type { Article, Author, ClubEvent, GlossaryTerm, Institution, Milestone, RubricSlug, Tag } from '../types'
 import type { ArticleView, Localized, RubricView } from '../views'
@@ -402,3 +405,43 @@ export async function resolveRedirect(path: string): Promise<string | undefined>
 
 /** Refs for callers outside this module (tests). */
 export const _internal = { loadRefs: async (): Promise<Refs> => loadRefs(await payloadClient()) }
+
+// ── Site labels (site-settings) ───────────────────────────────────────────
+
+/** The `labels` group of site-settings, every locale; refreshed by the `settings` tag (§8.5). */
+const siteLabels = cache(() =>
+  cached(['site-labels'], { tags: [TAG.settings], revalidate: REVALIDATE.vocabulary }, async () => {
+    const payload = await payloadClient()
+    const settings = (await payload.findGlobal({
+      slug: 'site-settings',
+      depth: 0,
+      locale: 'all',
+      fallbackLocale: false,
+      select: { labels: true } as never,
+      ...readAs(PUBLIC),
+    })) as unknown as { labels?: { sponsored?: Partial<Record<'uz' | 'ru' | 'en', string | null>> | null } | null }
+    const sponsored = settings.labels?.sponsored ?? {}
+    return { sponsored: { uz: sponsored.uz ?? null, ru: sponsored.ru ?? null, en: sponsored.en ?? null } }
+  }),
+)
+
+/**
+ * The partner-content label the editor-in-chief sets in site-settings
+ * (`labels.sponsored`, which SP-7 keeps containing «Reklama»), for pages, RSS
+ * and link-preview cards. Empty, or unreadable, it is the interface message.
+ * The Cyrillic edition transliterates the Uzbek label; while that is the
+ * default wording it is the message set's own Cyrillic, exactly as before.
+ */
+export async function getSponsoredLabel(locale: Locale): Promise<string> {
+  const message = pick(commonMessages, locale).labels.sponsored
+  let stored: string | null
+  try {
+    stored = (await siteLabels()).sponsored[locale === 'kr' ? 'uz' : locale]
+  } catch {
+    return message
+  }
+  const label = stored?.trim()
+  if (!label) return message
+  if (locale !== 'kr') return label
+  return label === commonMessages.uz.labels.sponsored ? message : toCyrillic(label)
+}

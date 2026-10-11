@@ -164,6 +164,9 @@ const NO_DRAFTS = new Set(['media', 'telegram-posts'])
 
 /** beforeChange on the other collections: errors block a publish (every save, without drafts). */
 export const validateDoc: CollectionBeforeChangeHook = async ({ collection, data, originalDoc, req }) => {
+  // TELEGRAM (§10.3): the worker recording what Telegram did (status, message id, history) changes no caption,
+  // and a message already in the channel must always be recordable (src/payload/telegram/shared.ts). Server code only.
+  if (collection.slug === 'telegram-posts' && req.context?.telegramBookkeeping === true) return data
   const id = (originalDoc as Doc | undefined)?.id as Id | undefined
   const restoringAsDraft = req.context?.isRestoringVersion === true && draftArg(req) === true
   const publishing = NO_DRAFTS.has(collection.slug) || ((data as Doc)._status === 'published' && !restoringAsDraft)

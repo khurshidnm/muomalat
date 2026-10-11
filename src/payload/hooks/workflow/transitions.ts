@@ -1,4 +1,5 @@
 import { appendHistory } from './editing'
+import { embargoActive } from './embargo'
 import { editorialHash } from './hash'
 import { queueNotice } from './notify'
 import { isAuthorOrSubmitter, isOwner, type Save } from './save'
@@ -440,6 +441,8 @@ export async function availableTransitions(s: Save): Promise<{ id: TransitionId;
   for (const def of Object.values(TRANSITIONS)) {
     if (!def.from.includes(s.state)) continue
     if (def.id === 'urgent' && !s.merged.urgent) continue
+    // During an active embargo every publish is refused (./twoPerson, ./urgent): offer scheduling, not a button that fails.
+    if ((def.id === 'publish' || def.id === 'urgent') && embargoActive(s.merged, s.now)) continue
     if (def.id === 'secondRead') {
       const sr = (s.original.secondRead ?? {}) as Doc
       if (!sr.required || sr.doneAt) continue

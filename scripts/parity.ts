@@ -207,6 +207,7 @@ async function viewParity(payload: Payload, mockMod: Adapter, cmsMod: Adapter): 
     ...mock.clubEvents.map((e) => plain('getClubEvent', e.slug)),
     plain('getNextClubEvent'),
     plain('getPastClubEvents'),
+    plain('getSponsoredLabel'),
     ...QUERIES.map((q): Case => ({ fn: 'search', label: `search(${JSON.stringify(q)})`, args: (_s, l) => [l, l === 'kr' && /[a-zʻʼ]/i.test(q) ? toCyrillic(q) : q] })),
   ].filter((c) => !ONLY || ONLY.has(c.fn))
 

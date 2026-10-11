@@ -1,0 +1,47 @@
+# Local rehearsal of the production stack (docs/DEPLOY.md, "Rehearse locally").
+# Layered on docker/compose.prod.yml:
+#
+#   docker compose -p muomalat-prodtest --env-file .spike/deploy/.env.prodtest \
+#     -f docker/compose.prod.yml -f docker/compose.prodtest.yml up -d
+#
+# Differences from production:
+#   - the app is published on 127.0.0.1:3110 (loopback only); send the public
+#     or the CMS host name in the Host header, e.g.
+#       curl -H 'Host: muomalat.uz' http://127.0.0.1:3110/
+#   - no cloudflared (it is behind the "tunnel" profile here);
+#   - a local S3 server (rclone serve s3) stands in for the EU bucket, for the
+#     backups and the audit export.
+services:
+  cloudflared:
+    profiles: [tunnel]
+
+  app:
+    ports: ["127.0.0.1:3110:3000"]
+
+  s3:
+    image: ${MUOMALAT_BACKUP_IMAGE}
+    entrypoint: [/bin/sh, -c]
+    command:
+      - mkdir -p /backups/$${BACKUP_S3_BUCKET} /backups/muomalat-audit && exec rclone serve s3 /backups --addr :9000 --auth-key "$${BACKUP_S3_ACCESS_KEY_ID},$${BACKUP_S3_SECRET_ACCESS_KEY}"
+    environment:
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY}
+      HOME: /tmp
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:size=64m,uid=1001,gid=1001,mode=1777"]
+    volumes: [s3data:/backups]
+    networks: [edge]
+
+  backup:
+    depends_on:
+      s3: { condition: service_started }
+
+  worker:
+    depends_on:
+      s3: { condition: service_started }
+
+volumes:
+  s3data: {}

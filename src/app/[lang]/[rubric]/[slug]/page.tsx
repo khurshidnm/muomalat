@@ -11,6 +11,7 @@ import {
   getAuthor,
   getMostRead,
   getRelated,
+  getSponsoredLabel,
   getTag,
   getTerm,
   isRubric,
@@ -105,6 +106,7 @@ export default async function ArticlePage({ params }: Params) {
   if (a.withdrawn) return <WithdrawnStory article={a} locale={locale} />
   const t = pick(commonMessages, locale)
   const m = pick(articleMessages, locale)
+  const sponsoredLabel = a.sponsored ? await getSponsoredLabel(locale) : t.labels.sponsored
   const authors = (await Promise.all(a.authors.map((s) => getAuthor(locale, s)))).filter((x) => !!x)
   const tags = (await Promise.all(a.tags.map((s) => getTag(locale, s)))).filter((x) => !!x)
   const terms = (await Promise.all((a.terms ?? []).map((s) => getTerm(locale, s)))).filter((x) => !!x)
@@ -189,7 +191,7 @@ export default async function ArticlePage({ params }: Params) {
           <div className="wrap pt-5 pb-5 md:pt-9">
             <div className="max-w-[52rem]">
               <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                {a.sponsored ? <SponsoredLabel>{t.labels.sponsored}</SponsoredLabel> : null}
+                {a.sponsored ? <SponsoredLabel>{sponsoredLabel}</SponsoredLabel> : null}
                 <span className="inline-flex items-center gap-x-3">
                   <Kicker href={href(locale, paths.rubric(a.rubric))}>{rubricName}</Kicker>
                   {a.kicker && !a.sponsored ? (
@@ -216,7 +218,7 @@ export default async function ArticlePage({ params }: Params) {
                     sponsored={a.sponsored}
                     contentLang={cl}
                     showLabel={false}
-                    labels={{ label: t.labels.sponsored, title: m.sponsorNoteTitle, partner: m.sponsorBadge }}
+                    labels={{ label: sponsoredLabel, title: m.sponsorNoteTitle, partner: m.sponsorBadge }}
                   />
                 </div>
               ) : null}
@@ -293,7 +295,7 @@ export default async function ArticlePage({ params }: Params) {
                   <SponsorDisclosure
                     sponsored={a.sponsored}
                     contentLang={cl}
-                    labels={{ label: t.labels.sponsored, title: m.sponsorNoteTitle, partner: m.sponsorBadge }}
+                    labels={{ label: sponsoredLabel, title: m.sponsorNoteTitle, partner: m.sponsorBadge }}
                   />
                 ) : null}
                 {a.corrections?.length ? (

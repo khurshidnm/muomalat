@@ -1,4 +1,4 @@
-import { handleEndpoints } from 'payload'
+import { handleEndpoints, type Where } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import config from '@payload-config'
@@ -157,7 +157,10 @@ describe('staff roles (§13.5: not to the newsroom)', () => {
   it('pd.read is logged for a single-document read by staff, with no value from the record', async () => {
     const payload = await testPayload()
     const { user, cookie } = await login('admin')
-    const before = await payload.count({ collection: 'audit-log', where: { action: { equals: 'pd.read' } }, overrideAccess: true })
+    // Other files read personal data meanwhile (audit/personal.test.ts): count the rows about this file's two records only.
+    const about = (collection: string, id: number): Where => ({ and: [{ collection: { equals: collection } }, { docId: { equals: String(id) } }] })
+    const mine: Where = { and: [{ action: { equals: 'pd.read' } }, { or: [about('digest-subscribers', ids['digest-subscribers']), about('club-applications', ids['club-applications'])] }] }
+    const before = await payload.count({ collection: 'audit-log', where: mine, overrideAccess: true })
     const res = await rest('GET', `/api/digest-subscribers/${ids['digest-subscribers']}`, undefined, cookie)
     expect(res.status).toBe(200)
     await payload.findByID({ collection: 'club-applications', id: ids['club-applications'], overrideAccess: false, user })
@@ -166,13 +169,13 @@ describe('staff roles (§13.5: not to the newsroom)', () => {
     await payload.findByID({ collection: 'club-applications', id: ids['club-applications'], overrideAccess: true })
     const { docs } = await payload.find({
       collection: 'audit-log',
-      where: { action: { equals: 'pd.read' } },
+      where: mine,
       sort: '-id',
       limit: 10,
       overrideAccess: true,
     })
     const fresh = docs.slice(0, 2)
-    const after = await payload.count({ collection: 'audit-log', where: { action: { equals: 'pd.read' } }, overrideAccess: true })
+    const after = await payload.count({ collection: 'audit-log', where: mine, overrideAccess: true })
     expect(after.totalDocs - before.totalDocs).toBe(2)
     expect(fresh.map((d) => d.collection).sort()).toEqual(['club-applications', 'digest-subscribers'])
     for (const row of fresh) {

@@ -1,0 +1,41 @@
+#!/bin/sh
+# Make a database with the Muomalat roles and grants (CMS-SPEC §12.5). Used by
+# 01-roles.sh when the data volume is first created, and by hand inside the
+# postgres container for restore drills:
+#
+#   docker compose exec postgres /docker-entrypoint-initdb.d/create-database muomalat_restore
+#   create-database --existing <name>     only the grants, for a database that exists
+#
+# The schema owner (muomalat_owner) owns the database; the app role can read
+# and write rows but cannot change the schema, and the tables the owner
+# creates later (migrations) are granted to it automatically. The backup
+# role, where it exists, may connect; it reads through pg_read_all_data.
+# The postgres image ignores this file at init (no .sh suffix).
+set -eu
+existing=false
+if [ "${1:-}" = --existing ]; then existing=true; shift; fi
+db="${1:?usage: create-database [--existing] <name>}"
+case "$db" in *[!a-z0-9_]*) echo "create-database: lower-case letters, digits and _ only" >&2; exit 1 ;; esac
+su="${POSTGRES_USER:-postgres}"
+
+if [ "$existing" = false ]; then
+  psql -v ON_ERROR_STOP=1 --username "$su" --dbname postgres -qc "CREATE DATABASE $db OWNER muomalat_owner"
+fi
+psql -v ON_ERROR_STOP=1 --username "$su" --dbname postgres -q <<SQL
+REVOKE CONNECT ON DATABASE $db FROM PUBLIC;
+GRANT CONNECT ON DATABASE $db TO muomalat_app;
+DO \$\$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'muomalat_backup') THEN
+    GRANT CONNECT ON DATABASE $db TO muomalat_backup;
+  END IF;
+END \$\$;
+SQL
+psql -v ON_ERROR_STOP=1 --username "$su" --dbname "$db" -q <<SQL
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO muomalat_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE muomalat_owner IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO muomalat_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE muomalat_owner IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO muomalat_app;
+SQL
+echo "create-database: $db ready (owner muomalat_owner, data role muomalat_app)"

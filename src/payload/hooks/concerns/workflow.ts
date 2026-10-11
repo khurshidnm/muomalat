@@ -1,4 +1,5 @@
 import type { Concern } from '../index'
+import { telegramPostHooks } from '../telegram/posts'
 import { articleAfterChange, articleBeforeChange } from '../workflow/articles'
 import { globalRestoreGuard } from '../workflow/globalRestore'
 import { articleGuard, draftOnlyGuard } from '../workflow/guard'
@@ -44,6 +45,9 @@ export const workflow: Concern = {
     requests: { beforeOperation: [requestDecisionGuard], beforeChange: [stampRequestDecision] },
     rubrics: { beforeOperation: [draftOnlyGuard(['eic'])] },
     media: { beforeChange: [forceSponsoredMedia] },
+    // TELEGRAM (§10.3): approval (¬author, ≠ the caption's writer; ads and retractions by the editor-in-chief),
+    // cancel, the sponsored first line and caption checks. See src/payload/hooks/telegram/posts.ts.
+    'telegram-posts': telegramPostHooks,
   },
   globals: {
     'home-page': globalRestore,

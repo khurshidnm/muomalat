@@ -4,7 +4,7 @@ import { handleEndpoints, isolateObjectProperty, type Payload, type PayloadReque
 
 import config from '@payload-config'
 import type { Role } from '@/payload/access/roles'
-import { testPayload } from '../helpers/payload'
+import { addOfficialDomains, testPayload } from '../helpers/payload'
 
 /**
  * Red-team harness (CMS-SPEC §16). Every attack goes through one of two real
@@ -250,13 +250,8 @@ export async function readyStory(owner: U, ownerCookie: string, approverCookie: 
   return id
 }
 
-/** Adds official source domains for the urgent fast path (never removes: files share the global). */
-export async function officialDomains(domains: string[]) {
-  const payload = await testPayload()
-  const current = ((await payload.findGlobal({ slug: 'editorial-rules', depth: 0, overrideAccess: true })) as Doc).officialSourceDomains as { domain: string }[] | undefined
-  const all = [...new Set([...(current ?? []).map((d) => d.domain), ...domains])]
-  await payload.updateGlobal({ slug: 'editorial-rules', data: { officialSourceDomains: all.map((domain) => ({ domain })) } as never, overrideAccess: true })
-}
+/** Adds official source domains for the urgent fast path (never removes, and never loses another file's: tests/helpers/payload.ts). */
+export const officialDomains = (domains: string[]) => addOfficialDomains(domains)
 
 /** Raw SQL against the test database (fixtures that Payload cannot express, e.g. ageing a timestamp). */
 export async function sqlExec(q: unknown) {

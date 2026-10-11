@@ -1,0 +1,30 @@
+# Build context for docker/Dockerfile. Secrets, local data and anything the
+# image is rebuilt from stay out; `npm ci` makes node_modules inside the build.
+.git
+.github
+node_modules
+.next
+out
+coverage
+.spike
+.data
+media
+.vercel
+
+# Secrets and local settings: never in an image (CMS-SPEC §12.6)
+.env
+.env.*
+*.pem
+*.key
+
+# Not needed to build or run
+tests
+docs
+*.md
+!src/**/*.md
+.DS_Store
+npm-debug.log*
+*.tsbuildinfo
+next-env.d.ts
+scripts/contact-sheet.html
+scripts/fonts

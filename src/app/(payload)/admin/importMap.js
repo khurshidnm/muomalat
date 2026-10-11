@@ -20,6 +20,9 @@ import { EmbargoCell as EmbargoCell_c37e258b4413984e1b351a12d89ea6a3 } from '../
 import { TranslationStatus as TranslationStatus_ff7a6396fe58a1b3889ffe0f76e47a16 } from '../../../payload/admin/TranslationStatus'
 import { KrPreview as KrPreview_b57b4acc8e3292f800078593c034e51f } from '../../../payload/admin/KrPreview'
 import { EmbargoBanner as EmbargoBanner_d122c5530f85c289a2059f7cea2b9144 } from '../../../payload/admin/EmbargoBanner'
+import { TelegramPanel as TelegramPanel_4c704071c5a0b818e7b25821757c617e } from '../../../payload/admin/TelegramPanel'
+import { TelegramCaptionCounter as TelegramCaptionCounter_d695379912f683585612cb31c901a43f } from '../../../payload/admin/TelegramCaption'
+import { TelegramHistoryLabel as TelegramHistoryLabel_d695379912f683585612cb31c901a43f } from '../../../payload/admin/TelegramCaption'
 import { QueryPresetsAccessCell as QueryPresetsAccessCell_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
 import { QueryPresetsWhereCell as QueryPresetsWhereCell_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
 import { QueryPresetsWhereField as QueryPresetsWhereField_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
@@ -55,6 +58,9 @@ export const importMap = {
   "/payload/admin/TranslationStatus#TranslationStatus": TranslationStatus_ff7a6396fe58a1b3889ffe0f76e47a16,
   "/payload/admin/KrPreview#KrPreview": KrPreview_b57b4acc8e3292f800078593c034e51f,
   "/payload/admin/EmbargoBanner#EmbargoBanner": EmbargoBanner_d122c5530f85c289a2059f7cea2b9144,
+  "/payload/admin/TelegramPanel#TelegramPanel": TelegramPanel_4c704071c5a0b818e7b25821757c617e,
+  "/payload/admin/TelegramCaption#TelegramCaptionCounter": TelegramCaptionCounter_d695379912f683585612cb31c901a43f,
+  "/payload/admin/TelegramCaption#TelegramHistoryLabel": TelegramHistoryLabel_d695379912f683585612cb31c901a43f,
   "@payloadcms/next/client#QueryPresetsAccessCell": QueryPresetsAccessCell_2b8867833a34864a02ddf429b0728a40,
   "@payloadcms/next/client#QueryPresetsWhereCell": QueryPresetsWhereCell_2b8867833a34864a02ddf429b0728a40,
   "@payloadcms/next/client#QueryPresetsWhereField": QueryPresetsWhereField_2b8867833a34864a02ddf429b0728a40,

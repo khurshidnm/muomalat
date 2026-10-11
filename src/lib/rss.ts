@@ -9,13 +9,14 @@
  * - Read through the cached content functions, so the `articles` tag
  *   refreshes the feed (§8.4).
  * - Partner content is prefixed with the localized "Reklama · Hamkorlik materiali:" label
- *   so it is never mistaken for editorial copy in a reader or a Telegram bot.
+ *   (site-settings `labels.sponsored` with the CMS, getSponsoredLabel) so it is
+ *   never mistaken for editorial copy in a reader or a Telegram bot.
  * - All dates are RFC 822 in Tashkent time (+0500).
  */
 import { localeMeta, localePath, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
-import { getArticles, getAuthors, type ArticleView } from '@/content'
+import { getArticles, getAuthors, getSponsoredLabel, type ArticleView } from '@/content'
 import { site } from '@/content/data/site'
 import { plainText } from '@/components/ui/InlineText'
 import { tashkentParts } from '@/lib/format'
@@ -86,9 +87,9 @@ const common = (locale: Locale) => pick(commonMessages, locale)
 /** Stable across slug and rubric changes (H7). */
 export const rssGuid = (a: Pick<ArticleView, 'id'>) => `muomalat:article:${a.id}`
 
-function item(a: ArticleView, locale: Locale, t: ReturnType<typeof common>, authorNames: Map<string, string>): string[] {
+function item(a: ArticleView, locale: Locale, t: ReturnType<typeof common>, authorNames: Map<string, string>, sponsoredLabel: string): string[] {
   const link = absoluteUrl(localePath(locale, a.url))
-  const title = a.sponsored ? `${t.labels.sponsored}: ${text(a.title)}` : text(a.title)
+  const title = a.sponsored ? `${sponsoredLabel}: ${text(a.title)}` : text(a.title)
   const creators = a.authors.map((slug) => authorNames.get(slug) ?? slug)
   return block('item', [
     el('title', title),
@@ -115,6 +116,7 @@ export async function buildRss(locale: Locale): Promise<string> {
   const t = common(locale)
   const articles = (await getArticles(locale)).filter((a) => !a.noindex).slice(0, RSS_ITEM_LIMIT)
   const authorNames = new Map((await getAuthors(locale)).map((a) => [a.slug, a.name]))
+  const sponsoredLabel = await getSponsoredLabel(locale)
   const home = absoluteUrl(localePath(locale, paths.home()))
   const self = absoluteUrl(localePath(locale, paths.rss()))
   const title = `${site.name} — ${t.taglineInline}`
@@ -134,7 +136,7 @@ export async function buildRss(locale: Locale): Promise<string> {
     empty('atom:link', { href: self, rel: 'self', type: 'application/rss+xml' }),
     // RSS 2.0 allows GIF/JPEG/PNG up to 144px wide: the PNG touch icon, shown at 144.
     ...block('image', [el('url', absoluteUrl('/apple-icon')), el('title', title), el('link', home), el('width', '144'), el('height', '144')]),
-    ...articles.flatMap((a) => item(a, locale, t, authorNames)),
+    ...articles.flatMap((a) => item(a, locale, t, authorNames, sponsoredLabel)),
   ])
 
   const rss = block('rss', channel, {

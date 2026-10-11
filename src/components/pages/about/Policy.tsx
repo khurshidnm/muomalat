@@ -3,6 +3,7 @@ import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { aboutMessages } from '@/i18n/messages/about'
 import { commonMessages } from '@/i18n/messages/common'
+import { getSponsoredLabel } from '@/content'
 import { href, paths } from '@/lib/routes'
 import { Icon } from '@/components/ui/Icon'
 import { Kicker } from '@/components/ui/Kicker'
@@ -32,9 +33,10 @@ function LabelRow({ label, children }: { label: React.ReactNode; children: React
 }
 
 /** Editorial policy (#tahririyat-siyosati): six numbered clauses. */
-export function Policy({ id, locale }: { id: string; locale: Locale }) {
+export async function Policy({ id, locale }: { id: string; locale: Locale }) {
   const p = pick(aboutMessages, locale).policy
   const t = pick(commonMessages, locale)
+  const sponsoredLabel = await getSponsoredLabel(locale)
   const c = p.commercial
   const est = p.estimates
 
@@ -46,7 +48,7 @@ export function Policy({ id, locale }: { id: string; locale: Locale }) {
         <Prose paragraphs={[c.intro]} className="mt-3" />
         <dl className="mt-4 max-w-measure border-t border-rule">
           <LabelRow label={<Kicker>{c.editorialLabel}</Kicker>}>{c.editorial}</LabelRow>
-          <LabelRow label={<SponsoredLabel>{t.labels.sponsored}</SponsoredLabel>}>
+          <LabelRow label={<SponsoredLabel>{sponsoredLabel}</SponsoredLabel>}>
             {c.sponsored}{' '}
             <Link href={href(locale, paths.author('hamkorlik'))} className="text-link whitespace-nowrap">
               {c.authorLink}

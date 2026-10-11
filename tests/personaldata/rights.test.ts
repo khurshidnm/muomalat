@@ -83,6 +83,8 @@ describe('L5: admin export and deletion by e-mail cover all four collections and
     }
 
     const admin = await staffUser('admin')
+    // Other files write audit rows meanwhile (a pd.delete among them): look only at this admin's rows from here on.
+    const head = (await payload.find({ collection: 'audit-log', sort: '-id', limit: 1, depth: 0, overrideAccess: true })).docs[0]?.id ?? 0
     const exported = await store.exportPersonalData(email, { actor: admin, requestId: 7 })
     expect(exported.records['club-applications']).toHaveLength(1)
     expect(exported.records['digest-subscribers']).toHaveLength(1)
@@ -100,7 +102,7 @@ describe('L5: admin export and deletion by e-mail cover all four collections and
 
     const rows = await payload.find({
       collection: 'audit-log',
-      where: { action: { in: ['pd.export', 'pd.delete'] } },
+      where: { and: [{ id: { greater_than: head } }, { actorId: { equals: admin.id } }, { action: { in: ['pd.export', 'pd.delete'] } }] },
       sort: '-id',
       limit: 2,
       overrideAccess: true,
@@ -146,13 +148,15 @@ describe('§13.3: rights request through the site, verified by an e-mailed link'
     const payload = await testPayload()
     fromPage('/en/maxfiylik')
     const email = uniqueEmail('rights')
-    const before = await payload.count({ collection: 'requests', overrideAccess: true })
+    // Other files create requests items meanwhile: count the ones from this address.
+    const fromThem = { requesterContact: { equals: email } }
+    const before = await payload.count({ collection: 'requests', where: fromThem, overrideAccess: true })
 
     const bad = await requestDataRights(idle, form({ email, kind: 'everything' }))
     expect(bad).toMatchObject({ status: 'error', errors: { kind: 'choose' } })
     const state = await requestDataRights(idle, form({ email, kind: 'delete' }))
     expect(state).toEqual({ status: 'success', errors: {}, values: {}, n: 1 })
-    expect((await payload.count({ collection: 'requests', overrideAccess: true })).totalDocs).toBe(before.totalDocs)
+    expect((await payload.count({ collection: 'requests', where: fromThem, overrideAccess: true })).totalDocs).toBe(before.totalDocs)
 
     expect(sent).toHaveLength(1)
     expect(sent[0].to).toBe(email)

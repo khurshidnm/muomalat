@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { sql } from '@payloadcms/db-postgres'
 import sharp from 'sharp'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -12,24 +13,31 @@ import { readBack, type ReadBack } from '@/payload/import/readback'
 import { milestoneKey, mock } from '@/payload/import/source'
 import { editorialHash, translationHash } from '@/payload/hooks/workflow/hash'
 import { AD_SLOT_IDS, AD_SLOTS } from '@/payload/globals/AdSlots'
+import { setCacheImpl } from '@/content/adapters/cms/cache'
+import { validatePublished } from '@/payload/hooks/validate/published'
 import { testPayload } from '../helpers/payload'
 
 /**
  * The mock importer and its round trip (CMS-SPEC §11, acceptance group M).
  *
  * The import writes vocabulary and globals that other test files also use,
- * so this file runs in a database of its own: scripts/test-db.sh import makes
- * a fresh, migrated `muomalat_test_import` before Payload boots, whatever
- * DATABASE_URL the run was given. Uploads go to a temporary folder.
+ * so this file runs in a database of its own: scripts/test-db.sh makes a
+ * fresh, migrated `<run database>_import` (e.g. `muomalat_test_mine_import`)
+ * before Payload boots. Named after the run's database, so two runs at once
+ * never drop each other's. Uploads go to a temporary folder. Because nothing
+ * here touches the shared database, the file runs in parallel with the others.
  */
-vi.hoisted(async () => {
+// Awaited, so the database exists and DATABASE_URL points at it before the Payload config is imported.
+await vi.hoisted(async () => {
   const { execFileSync } = await import('node:child_process')
   const { mkdtempSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
   const { join } = await import('node:path')
-  const out = execFileSync('scripts/test-db.sh', ['import'], { encoding: 'utf8' })
+  const run = /\/muomalat_test_([a-z0-9_]+)(\?|$)/.exec(process.env.DATABASE_URL ?? '')?.[1] ?? 'default'
+  const suffix = `${run.slice(0, 40)}_import`
+  const out = execFileSync('scripts/test-db.sh', [suffix], { encoding: 'utf8' })
   const url = out.trim().split('\n').at(-1)!.replace(/^DATABASE_URL=/, '')
-  if (!/\/muomalat_test_import$/.test(url)) throw new Error(`unexpected test database: ${url}`)
+  if (!url.endsWith(`/muomalat_test_${suffix}`)) throw new Error(`unexpected test database: ${url}`)
   process.env.DATABASE_URL = url
   process.env.MEDIA_DIR = mkdtempSync(join(tmpdir(), 'muomalat-import-media-'))
 })
@@ -268,5 +276,44 @@ describe('the development import', () => {
     const on = await readBack(payload)
     expect(Object.keys(on.articles.find((a) => a.id === 'yn-01')?.translations ?? {}).sort()).toEqual(['en', 'ru'])
     expect(await count('articles')).toBe(SIZES.articles)
+  })
+})
+
+describe('npm run validate -- --source=payload (§7.1) on the imported content', () => {
+  it('reads every published record and reports no error', { timeout: LONG }, async () => {
+    setCacheImpl(async (fn) => fn())
+    try {
+      const report = await validatePublished(payload)
+      expect(report.counts).toEqual({
+        articles: SIZES.articles,
+        terms: SIZES['glossary-terms'],
+        institutions: SIZES.institutions,
+        milestones: SIZES.milestones,
+        clubEvents: SIZES['club-events'],
+      })
+      expect(report.errors).toEqual([])
+    } finally {
+      setCacheImpl(undefined)
+    }
+  })
+
+  it('finds what the CMS would refuse, in published content and in the Cyrillic edition', { timeout: LONG }, async () => {
+    // A value changed behind the hooks (a careless script, straight SQL): «o'z» with a straight apostrophe
+    // (TXT-1), and a loanword the transliteration spells wrong in the Cyrillic edition (KR-3).
+    const term = (await payload.find({ collection: 'glossary-terms', where: { legacyId: { exists: true } }, limit: 1, depth: 0, overrideAccess: true })).docs[0] as unknown as Doc
+    const before = (await payload.findByID({ collection: 'glossary-terms', id: term.id, locale: 'uz', depth: 0, overrideAccess: true })) as unknown as Doc
+    const db = payload.db as unknown as { drizzle: { execute: (q: unknown) => Promise<unknown> } }
+    const setShort = (text: unknown) => db.drizzle.execute(sql`UPDATE glossary_terms_locales SET short = ${String(text)} WHERE _parent_id = ${term.id} AND _locale = 'uz'`)
+    await setShort("Bank o'z konferensiyasini oʻtkazdi.")
+    setCacheImpl(async (fn) => fn())
+    try {
+      const glossary = await validatePublished(payload, 'glossary')
+      expect(glossary.errors.some((e) => e.startsWith(`term ${String(term.slug)} › short:`) && e.includes('ʻ'))).toBe(true)
+      const kr = await validatePublished(payload, 'kr')
+      expect(kr.errors.some((e) => e.startsWith('kr glossary') && e.includes('конференция'))).toBe(true)
+    } finally {
+      setCacheImpl(undefined)
+      await setShort(before.short)
+    }
   })
 })

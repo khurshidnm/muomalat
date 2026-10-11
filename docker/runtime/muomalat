@@ -1,0 +1,60 @@
+#!/bin/sh
+# Entry point of the production image (docker/Dockerfile). One image runs every
+# process of the stack (CMS-SPEC §15); the first argument picks which:
+#
+#   app                    the site and the CMS: Next's standalone server on :3000
+#   worker                 scheduler, publish outbox, retention, alerts (src/worker)
+#   migrate [status]       apply migrations as the owner role, then re-check grants
+#   admin-create --email … --name … [--role admin] [--additional]
+#                          create a CMS account; prints its password once
+#   seed [--all | --only=…] [--translations=…]
+#                          import the mock content (refused in SITE_ENV=production
+#                          except the vocabulary; staging and drills only)
+#   record-backup ok|fail "<summary>"
+#                          audit row for a backup run (docker/backup/backup.sh)
+#   healthcheck app|worker container healthchecks (docker/compose.prod.yml)
+#   sh                     a shell, for looking around
+set -eu
+cd /app
+
+usage() {
+  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' >&2
+}
+
+cmd="${1:-app}"
+[ "$#" -gt 0 ] && shift
+
+case "$cmd" in
+  app)
+    # Pages rendered at run time name the JS files of the build that made
+    # them: start with an empty page cache whenever the image changes.
+    pages=/app/.next/server/route-cache
+    if [ -w "$pages" ] && [ "$(cat "$pages/.build-id" 2>/dev/null)" != "$(cat .next/BUILD_ID)" ]; then
+      find "$pages" -mindepth 1 -delete
+      cp .next/BUILD_ID "$pages/.build-id"
+    fi
+    exec node server.js "$@" ;;
+  worker)
+    exec node --enable-source-maps --import ./docker/runtime/heartbeat.mjs src/worker/index.js "$@" ;;
+  migrate)
+    export DB_ROLE=owner
+    exec node --enable-source-maps docker/runtime/migrate.js "$@" ;;
+  admin-create)
+    exec node --enable-source-maps scripts/create-first-admin.js "$@" ;;
+  seed)
+    # The preflight (`npm run validate` on the mock data) needs the TypeScript
+    # sources; CI runs it on every commit, so the image skips it.
+    exec node --enable-source-maps scripts/import-mock.js --skip-validate "$@" ;;
+  record-backup)
+    exec node --enable-source-maps docker/runtime/record-audit.js "$@" ;;
+  healthcheck)
+    exec node docker/runtime/healthcheck.mjs "$@" ;;
+  sh|shell)
+    exec /bin/sh "$@" ;;
+  help|-h|--help)
+    usage ;;
+  *)
+    echo "muomalat: unknown command: $cmd" >&2
+    usage
+    exit 2 ;;
+esac

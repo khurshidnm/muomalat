@@ -386,4 +386,14 @@ describe('redirects (§8.8)', () => {
     expect(await cms.resolveRedirect(`/ru/yangiliklar/eski-${RUN}`)).toBe(`/ru/yangiliklar/${s.slug}`)
     expect(await cms.resolveRedirect(`/yangiliklar/hech-qachon-${RUN}`)).toBeUndefined()
   })
+
+  it('after a published story’s slug changes, its old address in every edition leads to the new one', async () => {
+    // The page answers that with permanentRedirect: 308 in Next (§8.8), checked against a running site.
+    const s = await story('kochdi')
+    const moved = `${s.slug}-yangi`
+    await payload.update({ ...write, collection: 'articles', id: Number(s.id), data: { slug: moved, _status: 'published' } as never, draft: false })
+    for (const prefix of ['', '/kr', '/ru', '/en']) {
+      expect([prefix, await cms.resolveRedirect(`${prefix}/yangiliklar/${s.slug}`)]).toEqual([prefix, `${prefix}/yangiliklar/${moved}`])
+    }
+  })
 })

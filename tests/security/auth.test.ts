@@ -16,7 +16,14 @@ import { account, login, rest, staffPassword } from './rest'
 afterAll(async () => (await testPayload()).destroy())
 afterEach(() => setBreachedRangeLookup(undefined))
 
-const ip = () => `198.51.100.${Math.floor(Math.random() * 250) + 1}`
+/**
+ * A client address no other test uses: the limiter counts per address for
+ * 15 minutes, so two tests drawing the same address (random addresses did,
+ * now and then) share a bucket and one gets an early 429. IPv6 documentation
+ * range, a block of its own for this file, numbered within the run.
+ */
+let ipCounter = 0
+const ip = () => `2001:db8:a11::${(++ipCounter).toString(16)}`
 const unknownEmail = () => `nobody-${randomBytes(4).toString('hex')}@test.muomalat.local`
 
 async function reporterAccount(tag: string) {

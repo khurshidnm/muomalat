@@ -66,6 +66,13 @@ const adminOnlyFieldsGuard: CollectionBeforeOperationHook = async ({ args, opera
 const personalRead = selfOrRoles('eic', 'admin')
 
 /**
+ * Account status and preferences: the account holder and the desk roles that
+ * manage assignments, as before every staff member could read the directory.
+ * A reporter or commercial reading a colleague gets the name and role only.
+ */
+const accountRead = selfOrRoles('editor', 'eic', 'admin')
+
+/**
  * Staff accounts (CMS-SPEC §3.13, §4.3, §12.2). Accounts are never deleted, so
  * bylines and audit history survive; leavers are switched to `active: false`.
  *
@@ -97,13 +104,11 @@ export const Users: CollectionConfig = {
     // An active staff account may open the admin.
     admin: withEdge(({ req }) => userRole(req) !== undefined),
     create: withEdge(isAdmin),
-    // §4.2: editors see the names and roles of everyone, so they can assign a story or a translation and see
-    // who approved it; the personal fields stay with the person, the editor-in-chief and admin (field access).
-    read: withEdge(({ req }) => {
-      if (hasRole(req, 'admin', 'eic', 'editor')) return true
-      if (userRole(req) && req.user) return { id: { equals: req.user.id } }
-      return false
-    }),
+    // §4.2: every active staff member sees the names and roles of the others, so a story's desk editor,
+    // approver or assignee shows by name rather than «Nomsiz - ID: n». What else a row shows is field access:
+    // personal fields stay with the person, the editor-in-chief and admin; status and preferences with the
+    // person and the desk (editor, editor-in-chief, admin).
+    read: withEdge(({ req }) => userRole(req) !== undefined),
     update: withEdge(({ req }) => {
       if (hasRole(req, 'admin')) return true
       if (userRole(req) && req.user) return { id: { equals: req.user.id } }
@@ -114,10 +119,10 @@ export const Users: CollectionConfig = {
     unlock: withEdge(isAdmin),
   },
   fields: [
-    // Merged into Payload's built-in email field. §4.2 gives editors the names
-    // and roles of other staff, not their addresses (§13.1): the address is read
-    // by the account holder, the editor-in-chief and admin only.
-    { name: 'email', type: 'email', access: { read: personalRead } },
+    // Merged into Payload's built-in email field. §4.2 gives every staff member
+    // the names and roles of the others, not their addresses (§13.1): the address
+    // is read by the account holder, the editor-in-chief and admin only.
+    { name: 'email', label: 'Elektron pochta', type: 'email', access: { read: personalRead } },
     { name: 'name', label: 'Ism', type: 'text', required: true },
     {
       name: 'role',
@@ -136,7 +141,7 @@ export const Users: CollectionConfig = {
       defaultValue: true,
       saveToJWT: true,
       admin: { description: 'Oʻchirilgan hisob tizimga kira olmaydi. Hisoblar oʻchirib tashlanmaydi.' },
-      access: { create: isAdminField, update: isAdminField },
+      access: { read: accountRead, create: isAdminField, update: isAdminField },
     },
     {
       name: 'author',
@@ -154,6 +159,7 @@ export const Users: CollectionConfig = {
       label: 'Asosiy til',
       type: 'select',
       defaultValue: 'uz',
+      access: { read: accountRead },
       options: [
         { label: 'Oʻzbekcha', value: 'uz' },
         { label: 'Русский', value: 'ru' },
@@ -201,7 +207,7 @@ export const Users: CollectionConfig = {
       name: 'offboardedAt',
       label: 'Ishdan ketgan sana',
       type: 'date',
-      access: { create: isAdminField, update: isAdminField },
+      access: { read: accountRead, create: isAdminField, update: isAdminField },
       admin: { position: 'sidebar' },
     },
     {
@@ -228,6 +234,17 @@ export const Users: CollectionConfig = {
         readOnly: true,
         description: 'Kirish boʻlgan mamlakatlar (ISO kodlari). Yangi mamlakatdan kirish ogohlantirish beradi.',
       },
+    },
+    // Payload's own timestamp field, declared here only to give it the rule of lastLoginAt: every login
+    // writes the row, so `updatedAt` tells when its holder last logged in. Same column and index as the
+    // field Payload would add.
+    {
+      name: 'updatedAt',
+      type: 'date',
+      index: true,
+      label: ({ t }) => t('general:updatedAt'),
+      access: { read: personalRead },
+      admin: { disableBulkEdit: true, hidden: true },
     },
   ],
   hooks: hooksFor('users', {

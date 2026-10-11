@@ -1,0 +1,59 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": ["Dependency updates (CMS-SPEC §12.8): every update waits 3 days after release and is merged by a person after CI and the smoke tests; nothing is merged automatically."],
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests", "docker:pinDigests"],
+  "timezone": "Asia/Tashkent",
+  "schedule": ["before 9am on monday"],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "automerge": false,
+  "platformAutomerge": false,
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies"],
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 9am on the first day of the month"], "automerge": false },
+  "vulnerabilityAlerts": {
+    "description": ["Security fixes are proposed at once, outside the weekly window; a person reviews and merges them (critical within 48 h, high within 7 days)."],
+    "labels": ["security"],
+    "schedule": ["at any time"],
+    "automerge": false
+  },
+  "packageRules": [
+    {
+      "description": ["Payload and every @payloadcms/* package move together, on one exact version (§1)."],
+      "groupName": "Payload",
+      "matchPackageNames": ["payload", "@payloadcms/**"],
+      "automerge": false
+    },
+    {
+      "description": ["Next with its React pair; read the Next release notes and node_modules/next/dist/docs before merging (AGENTS.md)."],
+      "groupName": "Next and React",
+      "matchPackageNames": ["next", "react", "react-dom", "@types/react", "@types/react-dom"],
+      "automerge": false
+    },
+    {
+      "description": ["Major versions one at a time, never grouped, never automatic."],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "automerge": false
+    },
+    {
+      "description": ["Node stays on the 24 LTS line (§1); Postgres stays on 17 (a major upgrade needs a dump and restore)."],
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["node", "postgres"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": ["Base images and pinned third-party images, grouped; the image is rebuilt monthly anyway."],
+      "groupName": "Docker images",
+      "matchDatasources": ["docker"],
+      "automerge": false
+    },
+    {
+      "description": ["GitHub Actions pinned by commit SHA."],
+      "groupName": "GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "automerge": false
+    }
+  ]
+}
