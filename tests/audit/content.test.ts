@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import type { AuditLog } from '@/payload-types'
-import { testPayload } from '../helpers/payload'
+import { addOfficialDomains, testPayload } from '../helpers/payload'
 import { account, actions, forDoc, headId, rows, tag } from './helpers'
 
 /**
@@ -144,9 +144,7 @@ describe('J1: content actions', () => {
     expect(list[1].changedPaths).toEqual(expect.arrayContaining(['legal.email.value', 'legal.meta.lastChangedAt']))
 
     // Added to what is there: other files (the urgent fast path) rely on the list while this runs.
-    const current = (await payload.findGlobal({ slug: 'editorial-rules', depth: 0, overrideAccess: true })).officialSourceDomains ?? []
-    const officialSourceDomains = [...current.map((d) => ({ domain: d.domain })), { domain: `${tag('d')}.uz` }]
-    await payload.updateGlobal({ slug: 'editorial-rules', data: { officialSourceDomains }, user: eic, overrideAccess: false })
+    await addOfficialDomains([`${tag('d')}.uz`], eic)
     const rules = await rows({ and: [{ id: { greater_than: from } }, { collection: { equals: 'editorial-rules' } }, { actorId: { equals: eic.id } }] })
     expect(actions(rules)).toEqual(['global.update'])
   })

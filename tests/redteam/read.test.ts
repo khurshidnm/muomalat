@@ -157,9 +157,14 @@ describe('other users’ declared interests (§4.2: only self, eic, admin)', () 
     expect(r.status).toBe(200)
     expect(interestValues(r.json.declaredInterests).length).toBeGreaterThan(0)
   })
-  it('a reporter cannot read another user at all', async () => {
+  it('a reporter reads another user’s name and role, and nothing personal (§4.2)', async () => {
     const r = await rest('GET', `/api/users/${reporter2.id}?depth=0`, { cookie: cookies.reporter })
-    expect(r.status === 403 || r.json?.id === undefined || Boolean(r.json?.errors)).toBe(true)
+    expect(r.status).toBe(200)
+    expect([r.json.name, r.json.role]).toEqual([reporter2.name, 'reporter'])
+    expect(interestValues(r.json.declaredInterests)).toEqual([])
+    for (const field of ['email', 'telegramUserId', 'lastLoginAt', 'lastLoginCountry', 'knownCountries', 'active', 'offboardedAt', 'preferredContentLocale']) {
+      expect([field, r.json[field] ?? null]).toEqual([field, null])
+    }
   })
 })
 

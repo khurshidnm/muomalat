@@ -52,13 +52,17 @@ export const AUDIT_ACTIONS = [
   // Globals
   'global.update',
   'global.publish',
-  // Telegram (Phase 2)
+  // Telegram (§10)
   'telegram.approve',
   'telegram.cancel',
   'telegram.send',
   'telegram.edit',
   'telegram.delete',
   'telegram.channel_admin_change',
+  // TELEGRAM (§10.5, §10.6): the bot's rights left the allow-list, and getUpdates answered 409 (a webhook, or
+  // another process polling with our token). Both alert at once (./alerts.ts).
+  'telegram.rights_check_failed',
+  'telegram.token_conflict',
   // Personal data
   'pd.read',
   'pd.export',
@@ -125,6 +129,8 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   'telegram.edit': 'Telegram posti tahrirlandi',
   'telegram.delete': 'Telegram posti oʻchirildi',
   'telegram.channel_admin_change': 'Telegram kanali adminlari oʻzgardi',
+  'telegram.rights_check_failed': 'Telegram boti huquqlari tekshiruvdan oʻtmadi: kanalga joylash toʻxtatildi',
+  'telegram.token_conflict': 'Telegram boti tokeni boshqa joyda ishlatilmoqda',
   'pd.read': 'Shaxsiy maʼlumot koʻrildi',
   'pd.export': 'Shaxsiy maʼlumot eksport qilindi',
   'pd.delete': 'Shaxsiy maʼlumot oʻchirildi',

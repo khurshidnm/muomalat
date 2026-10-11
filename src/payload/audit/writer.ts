@@ -44,8 +44,14 @@ import { hashRow } from './hash'
 
 /** pg_advisory_xact_lock key: "muom" in ASCII. */
 const CHAIN_LOCK_KEY = 0x6d756f6d
-/** Waiting longer than this for the chain lock fails the write instead of hanging. */
-const CHAIN_LOCK_TIMEOUT = '15s'
+/**
+ * Waiting longer than this for the chain lock fails the write instead of
+ * hanging. The test suite raises it (AUDIT_CHAIN_LOCK_TIMEOUT, set in
+ * tests/helpers/env.ts): its files write audit rows in parallel on one
+ * database, and under that load a writer can queue for longer than any real
+ * newsroom would make it wait.
+ */
+const CHAIN_LOCK_TIMEOUT = /^\d{1,6}(ms|s)$/.test(process.env.AUDIT_CHAIN_LOCK_TIMEOUT ?? '') ? process.env.AUDIT_CHAIN_LOCK_TIMEOUT! : '15s'
 
 export const AUDIT_SLUG = 'audit-log' as const
 

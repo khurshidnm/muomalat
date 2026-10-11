@@ -6,7 +6,7 @@ import config from '@payload-config'
 import type { Role } from '@/payload/access/roles'
 import { setNoticeTransport } from '@/payload/hooks/workflow/notify'
 import type { StaffNotice } from '@/payload/hooks/workflow/shared'
-import { testPayload } from '../helpers/payload'
+import { addOfficialDomains, testPayload } from '../helpers/payload'
 
 /**
  * Fixtures for the workflow tests. Every test file runs in its own process
@@ -136,13 +136,8 @@ export function lexical(...paragraphs: string[]) {
   }
 }
 
-/** Adds these to the official source domains (never removes: test files share the global). */
-export async function officialDomains(domains: string[]) {
-  const payload = await testPayload()
-  const current = ((await payload.findGlobal({ slug: 'editorial-rules', depth: 0, overrideAccess: true })) as Doc).officialSourceDomains as { domain: string }[] | undefined
-  const all = [...new Set([...(current ?? []).map((d) => d.domain), ...domains])]
-  await payload.updateGlobal({ slug: 'editorial-rules', data: { officialSourceDomains: all.map((domain) => ({ domain })) } as never, overrideAccess: true })
-}
+/** Adds these to the official source domains (never removes, and never loses another file's: tests/helpers/payload.ts). */
+export const officialDomains = (domains: string[]) => addOfficialDomains(domains)
 
 export const as = (u: U) => ({ user: u as never, overrideAccess: false as const })
 

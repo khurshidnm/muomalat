@@ -207,8 +207,9 @@ const stampKrCheck =
 // `ui` fields render a component and store nothing: no column, no migration, no generated type.
 const ADMIN = '/payload/admin'
 const workflowPanels: Field[] = [
-  { name: 'workflowActions', type: 'ui', admin: { position: 'sidebar', components: { Field: `${ADMIN}/WorkflowActions#WorkflowActions` } } },
-  { name: 'checksPanel', type: 'ui', admin: { position: 'sidebar', components: { Field: `${ADMIN}/ChecksPanel#ChecksPanel` } } },
+  // Panels, not data: labelled in Uzbek and kept out of the list's column picker.
+  { name: 'workflowActions', label: 'Ish jarayoni', type: 'ui', admin: { position: 'sidebar', disableListColumn: true, components: { Field: `${ADMIN}/WorkflowActions#WorkflowActions` } } },
+  { name: 'checksPanel', label: 'Tekshiruv natijalari', type: 'ui', admin: { position: 'sidebar', disableListColumn: true, components: { Field: `${ADMIN}/ChecksPanel#ChecksPanel` } } },
 ]
 
 // ── field groups ────────────────────────────────────────────────────────────
@@ -689,12 +690,12 @@ const sponsoredTab: Field[] = [
 ]
 
 const translationTab: Field[] = [
-  { name: 'translationStatus', type: 'ui', admin: { components: { Field: `${ADMIN}/TranslationStatus#TranslationStatus` } } },
+  { name: 'translationStatus', label: 'Tarjima holati', type: 'ui', admin: { disableListColumn: true, components: { Field: `${ADMIN}/TranslationStatus#TranslationStatus` } } },
   translationGroup(),
 ]
 
 const cyrillicTab: Field[] = [
-  { name: 'krPreview', type: 'ui', admin: { components: { Field: `${ADMIN}/KrPreview#KrPreview` } } },
+  { name: 'krPreview', label: 'Kirill koʻrinishi', type: 'ui', admin: { disableListColumn: true, components: { Field: `${ADMIN}/KrPreview#KrPreview` } } },
   {
     name: 'kr',
     label: 'Kirill nashri',

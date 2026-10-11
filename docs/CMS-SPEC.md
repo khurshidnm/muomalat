@@ -10,6 +10,11 @@ Version 1.2, 9 October 2026. Why each decision was made is in [CMS-RESEARCH.md](
 - Moves the Uzbek admin pack into Phase 1 (§6.6, §17).
 - §18 now shows what Phase 0 resolved and what is still open.
 
+**Changes after 1.2 (11 October 2026)**
+
+- §4.2 `users`: every active staff member reads other staff members' names and roles; personal fields keep their rules (see the staff directory note under the table).
+- §7.1: `npm run validate -- --source=payload` is built (the nightly run is not).
+
 Version 1.1 applied the corrections from an independent verification pass (CMS-RESEARCH, "Verification notes").
 
 **Conventions**
@@ -868,7 +873,7 @@ Implementation notes:
 | `institutions`, `milestones` | drafts | publish | publish | R | R |
 | `club-events` | R | create, update, publish | same | create, update drafts | R |
 | `media` | upload; edit metadata of own uploads | edit any | edit any; delete unused | upload (`sponsoredOnly`) | R |
-| `users` | read self | read self; names and roles of others | read all, including declared interests (for conflict checks) | read self | create, update, change role, disable (never delete) |
+| `users` | read self; names and roles of others | read self; names, roles, status and language of others | read all, including declared interests (for conflict checks) | read self; names and roles of others | read all; create, update, change role, disable (never delete) |
 | `club-applications` | — | — | read | read, update | read, update |
 | `digest-subscribers` | — | — | counts | counts | read, update, delete |
 | `contact-messages` | — | topics `tahririyat`, `tuzatish` | all | topics `reklama`, `klub` | all |
@@ -879,6 +884,8 @@ Implementation notes:
 | `telegram-posts` | R | create, approve (¬author), cancel | + retract | R sponsored; propose | R |
 | `redirects` | — | create, update | same | — | R |
 | `payload-query-presets` | own | own + share | own + share | own | own |
+
+Staff directory (`users`): every active staff member reads the other staff members' name and role, so a story's desk editor, approver and assignee show by name in the admin, not as «Nomsiz - ID: n». The rest of a colleague's row is decided by field access. Email, declared interests, Telegram id, last login time and country, known countries and `updatedAt` are read by the person, the editor-in-chief and admin only; `updatedAt` is in this group because every login writes the row, so it gives the login time. Account status (`active`, `offboardedAt`) and `preferredContentLocale` are read by the person and the desk (editor, editor-in-chief, admin). A query on a field the reader may not read finds no colleague, so nobody can search the directory by those fields. Writes are unchanged.
 
 **Globals**
 
@@ -1436,7 +1443,7 @@ async function loadArticle(slug, locale: Locale): Promise<ArticleView | undefine
   ```
 
 - **`scripts/validate-content.ts`** imports the module. Its output is unchanged for the mock data, and a regression test compares it with today's output.
-- **New mode `npm run validate -- --source=payload`** reads published content through the adapter. The worker runs it nightly and posts a summary to the editor-in-chief.
+- **New mode `npm run validate -- --source=payload`** reads published content as the public site does (Local API, no user) and checks it with the validation concern's own publish checks: every §7.2 rule on stories (warnings included), the collection rules on the glossary, market map, club and vocabulary, SP-7 and SET-1 on the settings, and KR-1 to KR-3 on the Cyrillic edition as the payload adapter renders it (src/payload/hooks/validate/published.ts). On the imported content it reports 0 errors. The worker runs it nightly and posts a summary to the editor-in-chief (not built yet).
 
 ### 7.2 Rule table
 

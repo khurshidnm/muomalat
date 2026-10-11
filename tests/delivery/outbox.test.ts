@@ -206,7 +206,8 @@ describe('retries', () => {
     const refusesPoison = vi.fn(async (t: { expire: string[] }) => {
       if (t.expire.includes(TAG.article(poison.id))) throw new Error('refused')
     })
-    const scope: Where = { docId: { in: [String(poison.id), String(fine.id)] } }
+    // Only these two stories' rows: an author or term of another file may share a docId.
+    const scope: Where = { and: [{ collection: { equals: 'articles' } }, { docId: { in: [String(poison.id), String(fine.id)] } }] }
     const result = await processOutbox(payload, deps({ revalidate: refusesPoison as never, now: () => Date.now() + 60_000 }), scope)
     expect(result).toEqual({ done: 1, retried: 1, failed: 0 })
     expect((await eventsFor(payload, 'articles', fine.id))[0]).toMatchObject({ status: 'done' })

@@ -1,0 +1,301 @@
+# Production stack (CMS-SPEC §12.5, §15) on one VPS. Step-by-step: docs/DEPLOY.md.
+#
+#   docker compose -p muomalat --env-file /etc/muomalat/muomalat.env -f docker/compose.prod.yml up -d
+#
+# Every setting comes from that one root-only file (.env.production.example
+# lists them all). Each container gets only the variables it needs: the owner
+# password reaches the migrate job alone, the tunnel token cloudflared alone,
+# the backup bucket keys the backup alone.
+#
+# No container publishes a port: Cloudflare Tunnel (cloudflared) is the only
+# way in, and Docker's published ports would bypass the host firewall anyway.
+# Postgres sits on an internal network with no route out.
+#
+# Services
+#   cloudflared  the tunnel to Cloudflare: muomalat.uz and cms.muomalat.uz → http://app:3000
+#   postgres     PostgreSQL 17; roles from docker/postgres/init on first start
+#   migrate      one-shot: migrations as the owner role, before app and worker (re-runs on every `up`)
+#   app          site + CMS (Next standalone server)
+#   worker       scheduler, publish outbox, retention, alerts (same image)
+#   backup       nightly encrypted pg_dump + media archive to the EU bucket
+#   restore      profile "restore": only for restores and drills (docs/RUNBOOKS.md)
+#
+# Images are deployed by digest (MUOMALAT_IMAGE, MUOMALAT_BACKUP_IMAGE), built
+# in CI from docker/Dockerfile; third-party images are pinned by digest here.
+name: muomalat
+
+x-hardened: &hardened
+  restart: unless-stopped
+  init: true
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 512
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+# Payload settings shared by the app, the worker and the one-off scripts run
+# in them. The startup guard refuses unsafe values in production (§12.1).
+x-payload-env: &payload-env
+  SITE_ENV: ${SITE_ENV:-production}
+  SITE_URL: ${SITE_URL:?set SITE_URL}
+  NEXT_PUBLIC_SITE_URL: ${SITE_URL}
+  CMS_URL: ${CMS_URL:?set CMS_URL}
+  SITE_HOST: ${SITE_HOST:?set SITE_HOST}
+  CMS_HOST: ${CMS_HOST:?set CMS_HOST}
+  CONTENT_SOURCE: payload
+  # The data-only role (§12.5). The owner's URL is never given to these containers.
+  DATABASE_URL: postgres://muomalat_app:${APP_DB_PASSWORD:?set APP_DB_PASSWORD}@postgres:5432/muomalat
+  PAYLOAD_SECRET: ${PAYLOAD_SECRET:?set PAYLOAD_SECRET}
+  INTERNAL_REVALIDATE_SECRET: ${INTERNAL_REVALIDATE_SECRET:?set INTERNAL_REVALIDATE_SECRET}
+  INTERNAL_APP_URL: http://app:3000
+  ACCESS_JWT_REQUIRED: ${ACCESS_JWT_REQUIRED:-true}
+  CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:-}
+  CF_ACCESS_AUD: ${CF_ACCESS_AUD:-}
+  CMS_READ_ONLY: ${CMS_READ_ONLY:-}
+  MEDIA_DIR: /data/media
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  MAIL_FROM: ${MAIL_FROM:-noreply@muomalat.uz}
+  ALERTS_BOT_TOKEN: ${ALERTS_BOT_TOKEN:-}
+  ALERTS_CHAT_ID: ${ALERTS_CHAT_ID:-}
+  ALERTS_EMAIL: ${ALERTS_EMAIL:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_CHANNEL: ${TELEGRAM_CHANNEL:-}
+  NEXT_PUBLIC_DEMO_NOTICE: ${NEXT_PUBLIC_DEMO_NOTICE:-}
+
+services:
+  cloudflared:
+    <<: *hardened
+    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
+    command: [tunnel, --no-autoupdate, run]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN}
+    networks: [edge]
+    mem_limit: 256m
+    depends_on:
+      app: { condition: service_healthy }
+
+  postgres:
+    <<: *hardened
+    image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    # The image's postgres user: no root step, so no capabilities are needed.
+    user: "70:70"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: --data-checksums
+      OWNER_DB_PASSWORD: ${OWNER_DB_PASSWORD:?set OWNER_DB_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:?set BACKUP_DB_PASSWORD}
+    # Sized for the 8 GB VPS of §1, shared with the app and the worker.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=3GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - max_connections=60
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - log_min_duration_statement=2000
+    shm_size: 256m
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/run/postgresql:size=1m,uid=70,gid=70,mode=0775
+      - /tmp:size=64m,uid=70,gid=70,mode=1777
+    networks: [db]
+    mem_limit: 2g
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "/var/run/postgresql", "-U", "postgres", "-d", "postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  migrate:
+    <<: *hardened
+    image: ${MUOMALAT_IMAGE:?set MUOMALAT_IMAGE}
+    command: [migrate]
+    restart: "no"
+    environment:
+      SITE_ENV: ${SITE_ENV:-production}
+      CMS_URL: ${CMS_URL}
+      DB_ROLE: owner
+      DATABASE_URL_MIGRATE: postgres://muomalat_owner:${OWNER_DB_PASSWORD}@postgres:5432/muomalat
+      MEDIA_DIR: /data/media
+    tmpfs: ["/tmp:size=64m,uid=1001,gid=1001,mode=1777"]
+    networks: [db]
+    mem_limit: 1g
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  app:
+    <<: *hardened
+    image: ${MUOMALAT_IMAGE}
+    command: [app]
+    environment:
+      <<: *payload-env
+      # Docker sets HOSTNAME to the container id; Next binds to this.
+      HOSTNAME: 0.0.0.0
+      NODE_OPTIONS: --max-old-space-size=1536
+    volumes:
+      - media:/data/media
+      # Next's data cache (unstable_cache) and resized images; survives restarts.
+      - next-cache:/app/.next/cache
+      # Pages rendered at run time. They name the JS files of the build that
+      # made them, so `muomalat app` empties this when the image changes.
+      - route-cache:/app/.next/server/route-cache
+    tmpfs:
+      - /tmp:size=128m,uid=1001,gid=1001,mode=1777
+    networks: [db, edge]
+    mem_limit: 2g
+    # Next finishes in-flight requests and after() callbacks on SIGTERM.
+    stop_grace_period: 30s
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "muomalat", "healthcheck", "app"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  worker:
+    <<: *hardened
+    image: ${MUOMALAT_IMAGE}
+    command: [worker]
+    environment:
+      <<: *payload-env
+      NODE_OPTIONS: --max-old-space-size=768
+      # Zone → Cache Purge only, this zone only (§12.3).
+      CF_API_TOKEN: ${CF_API_TOKEN:-}
+      CF_ZONE_ID: ${CF_ZONE_ID:-}
+      AUDIT_EXPORT_TARGET: ${AUDIT_EXPORT_TARGET:?set AUDIT_EXPORT_TARGET}
+      AUDIT_S3_ENDPOINT: ${AUDIT_S3_ENDPOINT:-}
+      AUDIT_S3_REGION: ${AUDIT_S3_REGION:-}
+      AUDIT_S3_ACCESS_KEY_ID: ${AUDIT_S3_ACCESS_KEY_ID:-}
+      AUDIT_S3_SECRET_ACCESS_KEY: ${AUDIT_S3_SECRET_ACCESS_KEY:-}
+      AUDIT_NIGHTLY_AT: ${AUDIT_NIGHTLY_AT:-02:30}
+      BACKUP_EXPECTED: ${BACKUP_EXPECTED:-true}
+    volumes:
+      - media:/data/media
+    tmpfs: ["/tmp:size=64m,uid=1001,gid=1001,mode=1777"]
+    networks: [db, edge]
+    mem_limit: 1g
+    stop_grace_period: 30s
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+      app: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "muomalat", "healthcheck", "worker"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  backup:
+    <<: *hardened
+    image: ${MUOMALAT_BACKUP_IMAGE:?set MUOMALAT_BACKUP_IMAGE}
+    command: [schedule]
+    environment: &backup-env
+      TZ: Asia/Tashkent
+      HOME: /tmp
+      BACKUP_AT: ${BACKUP_AT:-01:30}
+      BACKUP_KEEP_LOCAL: ${BACKUP_KEEP_LOCAL:-3}
+      BACKUP_PRUNE: ${BACKUP_PRUNE:-false}
+      BACKUP_AGE_RECIPIENTS: ${BACKUP_AGE_RECIPIENTS:?set BACKUP_AGE_RECIPIENTS}
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-store:${BACKUP_S3_BUCKET:-}/${BACKUP_S3_PREFIX:-production}}
+      # pg_dump as the read-only role.
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: muomalat
+      PGUSER: muomalat_backup
+      PGPASSWORD: ${BACKUP_DB_PASSWORD}
+      # rclone remote "store", from the environment (no config file).
+      RCLONE_CONFIG: /dev/null
+      RCLONE_CACHE_DIR: /tmp/rclone
+      RCLONE_CONFIG_STORE_TYPE: s3
+      RCLONE_CONFIG_STORE_PROVIDER: ${BACKUP_S3_PROVIDER:-Other}
+      RCLONE_CONFIG_STORE_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      RCLONE_CONFIG_STORE_REGION: ${BACKUP_S3_REGION:-}
+      RCLONE_CONFIG_STORE_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      RCLONE_CONFIG_STORE_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      RCLONE_CONFIG_STORE_FORCE_PATH_STYLE: ${BACKUP_S3_PATH_STYLE:-true}
+      RCLONE_CONFIG_STORE_NO_CHECK_BUCKET: "true"
+      # The ops.backup_ok / ops.backup_fail audit row is written through Payload as the app role.
+      SITE_ENV: ${SITE_ENV:-production}
+      CMS_URL: ${CMS_URL}
+      DATABASE_URL: postgres://muomalat_app:${APP_DB_PASSWORD}@postgres:5432/muomalat
+      MEDIA_DIR: /data/media
+    volumes:
+      - backups:/backups
+      - media:/data/media:ro
+    tmpfs: ["/tmp:size=256m,uid=1001,gid=1001,mode=1777"]
+    networks: [db, edge]
+    mem_limit: 1g
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "muomalat-backup", "healthcheck"]
+      interval: 5m
+      timeout: 10s
+      retries: 1
+      start_period: 30s
+      start_interval: 5s
+
+  # docker compose --profile restore run --rm -v /root/age-identity.txt:/run/secrets/age-identity:ro restore run …
+  restore:
+    <<: *hardened
+    profiles: [restore]
+    image: ${MUOMALAT_BACKUP_IMAGE}
+    restart: "no"
+    entrypoint: [/usr/local/bin/muomalat-restore]
+    command: [help]
+    environment:
+      <<: *backup-env
+      # Restores write: the schema owner, and bucket keys that may list and read.
+      PGUSER: muomalat_owner
+      PGPASSWORD: ${OWNER_DB_PASSWORD}
+      RCLONE_CONFIG_STORE_ACCESS_KEY_ID: ${RESTORE_S3_ACCESS_KEY_ID:-${BACKUP_S3_ACCESS_KEY_ID:-}}
+      RCLONE_CONFIG_STORE_SECRET_ACCESS_KEY: ${RESTORE_S3_SECRET_ACCESS_KEY:-${BACKUP_S3_SECRET_ACCESS_KEY:-}}
+    volumes:
+      - backups:/backups
+      - media:/data/media
+      - restore-scratch:/restore
+    tmpfs: ["/tmp:size=256m,uid=1001,gid=1001,mode=1777"]
+    networks: [db, edge]
+    mem_limit: 1g
+    depends_on:
+      postgres: { condition: service_healthy }
+
+networks:
+  # Postgres and its clients; no route to the internet.
+  db:
+    internal: true
+  # Outbound only (Cloudflare, SMTP, Telegram, the bucket); nothing is published.
+  edge: {}
+
+volumes:
+  pgdata: {}
+  media: {}
+  next-cache: {}
+  route-cache: {}
+  backups: {}
+  restore-scratch: {}

@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
-import { commonMessages } from '@/i18n/messages/common'
 import { listingMessages } from '@/i18n/messages/listing'
-import type { Author, Localized } from '@/content'
+import { getSponsoredLabel, type Author, type Localized } from '@/content'
 import { href, paths } from '@/lib/routes'
 import { Icon } from '@/components/ui/Icon'
 import { SponsoredLabel } from '@/components/ui/Labels'
@@ -23,9 +22,9 @@ export function isOrganisationByline(slug: string): boolean {
  * and a sample note render as placeholders. The newsroom byline explains it
  * is shared; the commercial byline says plainly that it is not the newsroom.
  */
-export function AuthorIntro({ author: a, locale }: { author: Localized<Author>; locale: Locale }) {
-  const t = pick(commonMessages, locale)
+export async function AuthorIntro({ author: a, locale }: { author: Localized<Author>; locale: Locale }) {
   const m = pick(listingMessages, locale)
+  const sponsoredLabel = a.slug === COMMERCIAL_BYLINE ? await getSponsoredLabel(locale) : ''
   return (
     <div className="mt-4 space-y-4">
       <p lang={a.contentLang} className="max-w-[60ch] font-serif text-lead leading-relaxed text-ink">
@@ -71,9 +70,9 @@ export function AuthorIntro({ author: a, locale }: { author: Localized<Author>; 
       ) : null}
 
       {a.slug === COMMERCIAL_BYLINE ? (
-        <aside aria-label={t.labels.sponsored} className="border border-brass bg-brass-wash p-4">
-          <SponsoredLabel>{t.labels.sponsored}</SponsoredLabel>
-          <p className="mt-2.5 text-ui text-ink">{m.author.commercialNote(t.labels.sponsored)}</p>
+        <aside aria-label={sponsoredLabel} className="border border-brass bg-brass-wash p-4">
+          <SponsoredLabel>{sponsoredLabel}</SponsoredLabel>
+          <p className="mt-2.5 text-ui text-ink">{m.author.commercialNote(sponsoredLabel)}</p>
           <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-meta font-medium">
             <Link href={href(locale, paths.advertise())} className="text-link">
               {m.author.advertiseLink}

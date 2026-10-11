@@ -17,11 +17,29 @@ type Doc = Record<string, unknown>
 
 afterAll(async () => (await testPayload()).destroy())
 
+/**
+ * The commercial byline that SP-1 puts on a commercial account's new story,
+ * linked to that account so the guard picks it whatever other files create.
+ */
+async function commercialByline(user: { id: number | string }) {
+  const payload = await testPayload()
+  const slug = 'combined-commercial-byline'
+  const found = await payload.find({ collection: 'authors', where: { slug: { equals: slug } }, limit: 1, depth: 0, overrideAccess: true })
+  if (found.docs[0]) return found.docs[0]
+  return payload.create({
+    collection: 'authors',
+    data: { name: 'Combined Hamkorlik', slug, role: 'hamkor', bio: 'Sinov uchun tijorat imzosi.', commercial: true, active: true, user: user.id, _status: 'published' } as never,
+    depth: 0,
+    overrideAccess: true,
+  })
+}
+
 describe('validation alongside the other concerns', () => {
   it('the admin create view saves an empty draft for every role that writes stories', async () => {
     // Payload's create view with autosave creates the document at once, with no title and no slug
     // (views/Document: payload.create({ data: {}, draft: true, overrideAccess: false })), then redirects to it.
     const payload = await testPayload()
+    await commercialByline(await staff('commercial', 'combined-commercial'))
     for (const role of ['reporter', 'editor', 'eic', 'commercial'] as const) {
       const user = await staff(role, `combined-${role}`)
       const doc = (await payload.create({ collection: 'articles', data: {}, depth: 0, draft: true, fallbackLocale: false, locale: 'uz', overrideAccess: false, user })) as unknown as Doc

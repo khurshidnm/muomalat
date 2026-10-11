@@ -4,7 +4,7 @@ import { isLocale, locales, localePath, type Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { listingMessages } from '@/i18n/messages/listing'
-import { getArticlesByAuthor, getAuthor, getAuthors, getLatest, getMostRead, isCommercialAuthor, isSlug, resolveMissing } from '@/content'
+import { getArticlesByAuthor, getAuthor, getAuthors, getLatest, getMostRead, getSponsoredLabel, isCommercialAuthor, isSlug, resolveMissing } from '@/content'
 import { site } from '@/content/data/site'
 import { absoluteUrl, href, paths } from '@/lib/routes'
 import { jsonLd, pageMetadata } from '@/lib/seo'
@@ -102,7 +102,7 @@ export default async function AuthorPage({ params }: Params) {
       <ListingHeader
         locale={locale}
         crumbs={crumbs}
-        kicker={commercial ? <SponsoredLabel>{t.labels.sponsored}</SponsoredLabel> : m.author.kicker}
+        kicker={commercial ? <SponsoredLabel>{await getSponsoredLabel(locale)}</SponsoredLabel> : m.author.kicker}
         title={a.name}
         titleLang={a.contentLang}
         description={a.role}

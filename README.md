@@ -24,6 +24,7 @@ Other scripts:
 |---|---|
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run validate` | Content checks: Uzbek orthography (ʻ U+02BB, ʼ U+02BC, «»), date spelling, banned religious material, real institution names, references between files, dates |
+| `npm run validate -- --source=payload` | The same checks on the published CMS content (the database in `.env`), with the rules the CMS applies at publication |
 | `node scripts/gen-images.mjs` | Regenerates the SVG illustration set in `public/images` |
 | `python scripts/fonts/fix-okina.py …` | Rebuilds the ʻ/ʼ patch font (see “Fonts”) |
 

@@ -1,0 +1,217 @@
+# CI (CMS-SPEC §12.8, §15): every push and pull request runs the checks; main
+# also builds the production images and pushes them to GHCR, where the VPS
+# pulls them by digest (docs/DEPLOY.md). Images are never built on the VPS.
+#
+# Actions are pinned by commit SHA (the tag is in the comment); Renovate
+# proposes updates. The base images are pinned by digest in docker/Dockerfile,
+# and the monthly run rebuilds on them for the Alpine security fixes.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # 03:00 UTC on the 1st: monthly rebuild (§12.5)
+    - cron: "0 3 1 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  NODE_VERSION: 24.21.0
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  # K14 on its own: a published advisory turns this red at once, without
+  # holding back the image of a commit whose tests pass. It needs only the
+  # lockfile, so it installs nothing.
+  audit:
+    name: Dependency audit (K14)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: No high or critical advisories in production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Payload packages on one exact version, at least 3.90.2 (K14)
+        run: |
+          node -e '
+            const deps = require("./package.json").dependencies
+            const v = deps.payload
+            const pkgs = Object.entries(deps).filter(([name]) => name === "payload" || name.startsWith("@payloadcms/"))
+            const off = pkgs.filter(([, version]) => version !== v)
+            const [maj, min, pat] = (v.match(/^(\d+)\.(\d+)\.(\d+)$/) || []).slice(1).map(Number)
+            const recent = maj === 3 && (min > 90 || (min === 90 && pat >= 2))
+            if (off.length || !recent) {
+              console.error("payload " + v + "; not on it: " + off.map(([n, x]) => n + "@" + x).join(", "))
+              process.exit(1)
+            }
+            console.log(pkgs.length + " Payload packages on " + v)
+          '
+
+  check:
+    name: Checks, tests and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      # The development database (docker/compose.dev.yml): the owner is the
+      # bootstrap superuser; the step below adds the app role and a test database.
+      postgres:
+        image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_DB: muomalat
+          POSTGRES_USER: muomalat_owner
+          POSTGRES_PASSWORD: dev-owner-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U muomalat_owner -d muomalat"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      # SMTP for the mail test (tests/personaldata/mailpit.test.ts)
+      mailpit:
+        image: axllent/mailpit:v1.29@sha256:757f22b56c1da03570afdb3d259effe5091018008a81bbedc8158cee7e16fdbc
+        ports: ["1025:1025", "8025:8025"]
+    env:
+      PGHOST: 127.0.0.1
+      PGUSER: muomalat_owner
+      PGPASSWORD: dev-owner-password
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install (npm ci from the lockfile)
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Validate content
+        run: npm run validate
+
+      - name: Settings for the tests (.env from .env.example)
+        run: |
+          cp .env.example .env
+          sed -i "s|^PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$(openssl rand -base64 64 | tr -d '\n')|" .env
+          sed -i "s|^INTERNAL_REVALIDATE_SECRET=.*|INTERNAL_REVALIDATE_SECRET=$(openssl rand -base64 32 | tr -d '\n')|" .env
+          sed -i "s|^CONTENT_SOURCE=.*|CONTENT_SOURCE=payload|" .env
+
+      - name: Test database (as scripts/test-db.sh)
+        run: |
+          psql -v ON_ERROR_STOP=1 -d muomalat -q <<'SQL'
+          CREATE ROLE muomalat_app LOGIN PASSWORD 'dev-app-password' NOSUPERUSER NOCREATEDB NOCREATEROLE;
+          CREATE DATABASE muomalat_test_ci OWNER muomalat_owner;
+          REVOKE CONNECT ON DATABASE muomalat_test_ci FROM PUBLIC;
+          GRANT CONNECT ON DATABASE muomalat_test_ci TO muomalat_app;
+          SQL
+          psql -v ON_ERROR_STOP=1 -d muomalat_test_ci -q <<'SQL'
+          REVOKE ALL ON SCHEMA public FROM PUBLIC;
+          GRANT USAGE ON SCHEMA public TO muomalat_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE muomalat_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO muomalat_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE muomalat_owner IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO muomalat_app;
+          SQL
+          DB_ROLE=owner DATABASE_URL_MIGRATE=postgres://muomalat_owner:dev-owner-password@127.0.0.1:5432/muomalat_test_ci npx payload migrate
+
+      - name: Unit and integration tests
+        run: npx vitest run
+        env:
+          DATABASE_URL: postgres://muomalat_app:dev-app-password@127.0.0.1:5432/muomalat_test_ci
+
+      - name: Build (mock content, no database)
+        run: npm run build
+        env:
+          CONTENT_SOURCE: mock
+
+  image:
+    name: Production images
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: App image (app, worker, migrate)
+        id: app
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:main
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Backup image
+        id: backup
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: backup
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}-backup:sha-${{ github.sha }}
+            ${{ env.IMAGE }}-backup:main
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Digests for the deploy
+        env:
+          APP_DIGEST: ${{ steps.app.outputs.digest }}
+          BACKUP_DIGEST: ${{ steps.backup.outputs.digest }}
+        run: |
+          {
+            echo "### Images for /etc/muomalat/muomalat.env"
+            echo
+            echo '```'
+            echo "MUOMALAT_IMAGE=${IMAGE}@${APP_DIGEST}"
+            echo "MUOMALAT_BACKUP_IMAGE=${IMAGE}-backup@${BACKUP_DIGEST}"
+            echo '```'
+            echo
+            echo "Commit ${GITHUB_SHA}"
+          } >> "$GITHUB_STEP_SUMMARY"

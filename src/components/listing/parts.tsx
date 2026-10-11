@@ -3,7 +3,7 @@ import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { articleMessages } from '@/i18n/messages/article'
 import { listingMessages } from '@/i18n/messages/listing'
-import type { ArticleView } from '@/content'
+import { getSponsoredLabel, type ArticleView } from '@/content'
 import { Icon } from '@/components/ui/Icon'
 import { Kicker } from '@/components/ui/Kicker'
 import { SponsoredLabel } from '@/components/ui/Labels'
@@ -18,7 +18,7 @@ export type KickerMode = 'kicker' | 'rubric'
  * SponsoredLabel; on rubric pages only a topical kicker is shown (the rubric
  * is the page), in mixed feeds the rubric name.
  */
-export function ItemKicker({
+export async function ItemKicker({
   article,
   locale,
   mode,
@@ -35,7 +35,7 @@ export function ItemKicker({
   if (article.sponsored)
     return (
       <SponsoredLabel lang={ui} className={className}>
-        {t.labels.sponsored}
+        {await getSponsoredLabel(locale)}
       </SponsoredLabel>
     )
   if (mode === 'rubric')

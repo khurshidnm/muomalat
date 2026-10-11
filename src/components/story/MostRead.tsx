@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
-import type { ArticleView } from '@/content'
+import { getSponsoredLabel, type ArticleView } from '@/content'
 import { href } from '@/lib/routes'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SponsoredLabel } from '@/components/ui/Labels'
@@ -16,7 +16,7 @@ import { keepNumberWords } from '@/components/ui/InlineText'
  * one rubric (`label="kicker"`), where that name would only repeat the scope
  * line, it is the story's topic instead, in the story's language.
  */
-export function MostRead({
+export async function MostRead({
   articles,
   locale,
   id = 'most-read',
@@ -31,6 +31,7 @@ export function MostRead({
 }) {
   const t = pick(commonMessages, locale)
   if (!articles.length) return null
+  const sponsoredLabel = await getSponsoredLabel(locale)
   return (
     <section aria-labelledby={id}>
       <SectionHeader id={id} title={t.labels.mostRead} description={description} />
@@ -45,7 +46,7 @@ export function MostRead({
               <div className="min-w-0">
                 {/* Partner content keeps its label wherever it appears (callers already leave it out of most read). */}
                 {a.sponsored ? (
-                  <SponsoredLabel className="mb-1">{t.labels.sponsored}</SponsoredLabel>
+                  <SponsoredLabel className="mb-1">{sponsoredLabel}</SponsoredLabel>
                 ) : text ? (
                   <p lang={label === 'kicker' ? a.contentLang : undefined} className="label-caps mb-1 text-ink-3">
                     {text}

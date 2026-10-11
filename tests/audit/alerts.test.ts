@@ -86,7 +86,10 @@ describe('other alert rules', () => {
     // Other files' busy accounts may trip the rule too: this one's must trip it exactly once.
     const mine = sent.filter((a) => a.kind === 'mass_change' && a.text.includes(busy.email))
     expect(mine).toHaveLength(1)
-    expect(sent.find((a) => a.kind === 'settings')!.text).toContain('labels')
+    // Other files change settings meanwhile (the Telegram worker switches posting off): this file's change is the editor-in-chief's.
+    const settings = sent.filter((a) => a.kind === 'settings' && a.text.includes(`Kim: ${eic.email}`))
+    expect(settings.length).toBeGreaterThan(0)
+    expect(settings.every((a) => a.text.includes('labels'))).toBe(true)
     expect(mine[0].text).toContain('11 ta hujjat')
   })
 

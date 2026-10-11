@@ -167,6 +167,19 @@ export async function search(locale: Locale, query: string): Promise<SearchResul
   return (await adapter()).search(locale, query)
 }
 
+// ── Interface labels from the CMS ─────────────────────────────────────────
+
+/**
+ * «Reklama · Hamkorlik materiali» and its translations: the label on partner
+ * content wherever it appears (pages, RSS, link-preview cards). With the CMS
+ * it is site-settings `labels.sponsored`, refreshed by the `settings` tag;
+ * empty, it is the interface message (src/i18n/messages/common.ts), which is
+ * all the mock adapter has.
+ */
+export async function getSponsoredLabel(locale: Locale): Promise<string> {
+  return (await adapter()).getSponsoredLabel(locale)
+}
+
 // ── Preview (§5.13) ───────────────────────────────────────────────────────
 
 /** True while a signed-in staff member previews drafts on the CMS host (draft mode); never with mock content. */

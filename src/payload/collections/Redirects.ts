@@ -35,6 +35,8 @@ const withRules = ({ defaultFields }: { defaultFields: Field[] }): Field[] =>
     if (field.type === 'group' && 'name' in field && field.name === 'to') {
       return {
         ...field,
+        // Without a label Payload names the group after the field: «To».
+        label: 'Yangi manzil',
         fields: field.fields.map((sub): Field => (sub.type === 'text' && !sub.hasMany && sub.name === 'url' ? { ...sub, validate: httpsOrSitePath } : sub)),
       }
     }

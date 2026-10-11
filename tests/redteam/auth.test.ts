@@ -27,14 +27,16 @@ afterAll(async () => {
 describe('CSRF: a foreign Origin with a valid cookie is not trusted', () => {
   it('a cross-origin POST /api/articles with a valid cookie creates nothing', async () => {
     const cookie = await cookieOf(reporter)
-    const before = (await (await testPayload()).count({ collection: 'articles', overrideAccess: true })).totalDocs
+    // Other files create stories meanwhile: count only what this request could have made.
+    const title = `CSRF ${Date.now()} ${Math.random().toString(36).slice(2, 8)}`
+    const mine = { or: [{ title: { equals: title } }, { slug: { equals: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') } }] }
     const r = await rest('POST', '/api/articles?locale=uz', {
       cookie,
       origin: 'https://evil.example',
-      body: { title: 'CSRF', slug: `csrf-${Date.now()}`, _status: 'draft' },
+      body: { title, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), _status: 'draft' },
     })
-    const after = (await (await testPayload()).count({ collection: 'articles', overrideAccess: true })).totalDocs
-    expect(after).toBe(before)
+    const made = await (await testPayload()).count({ collection: 'articles', where: mine as never, trash: true, overrideAccess: true })
+    expect(made.totalDocs).toBe(0)
     expect(r.status).toBeGreaterThanOrEqual(400)
   })
 

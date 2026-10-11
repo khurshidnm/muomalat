@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { publishDue } from '@/worker/jobs/scheduler'
 import { testPayload } from '../helpers/payload'
-import { account, as, go, goOk, latest, live, notices, publishedStory, rejects, restError, story, team, type Team, type U } from './helpers'
+import { account, as, cookieOf, go, goOk, latest, live, notices, publishedStory, rejects, rest, restError, story, team, type Team, type U } from './helpers'
 
 /**
  * Acceptance group E: embargo and scheduling (CMS-SPEC §5.10, §5.11; §16 E1–E5).
@@ -51,6 +51,28 @@ describe('E1: an active embargo blocks publishing and early scheduling', () => {
     const doc = await latest(id)
     expect(doc.workflowStatus).toBe('scheduled')
     expect(doc.scheduledBy).toBe(t.editorB.id)
+  })
+
+  it('the workflow panel offers no «Chop etish» while the embargo is active, and offers it again after `until`', async () => {
+    const id = await approved({ embargo: { until: inMinutes(10), source: 'Moliya vazirligi' } })
+    const cookie = await cookieOf(t.editorB)
+    const offered = async () => {
+      const r = await rest('GET', `/api/articles/${id}/transitions`, { cookie })
+      expect(r.status).toBe(200)
+      return (r.json.transitions as { id: string }[]).map((x) => x.id)
+    }
+    const during = await offered()
+    expect(during).not.toContain('publish')
+    expect(during).toContain('schedule')
+    // The hook refuses it all the same.
+    expect((await go(t.editorB, id, { action: 'publish' })).status).toBe(403)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(Date.now() + 11 * 60_000)
+      expect(await offered()).toContain('publish')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('an indefinite embargo cannot be scheduled at all', async () => {

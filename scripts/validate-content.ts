@@ -10,9 +10,16 @@
  *
  * Optional scope argument: articles | glossary | market | club | messages | kr
  *
- * TODO(§7.1): `--source=payload` reads published content through the
- * Payload content adapter (wave 3) and runs the `all` rule scope; the worker
- * then runs it nightly and posts a summary to the editor-in-chief.
+ * `--source=payload` (§7.1) checks the published CMS content instead, read
+ * through the Local API as the public site reads it, with the rules the CMS
+ * applies at publication (src/payload/hooks/validate/published.ts):
+ *
+ *   npm run validate -- --source=payload             the database in .env
+ *   npm run validate -- --source=payload articles    one scope
+ *
+ * A DATABASE_URL already in the environment wins over .env. Still to do
+ * (§7.1): the worker runs it nightly and posts a summary to the
+ * editor-in-chief.
  */
 import { yangiliklar } from '../src/content/data/articles/yangiliklar'
 import { tahlil } from '../src/content/data/articles/tahlil'
@@ -56,6 +63,46 @@ import * as marketModule from '../src/i18n/messages/market'
 import * as searchModule from '../src/i18n/messages/search'
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+
+// ── CMS content (--source=payload) ────────────────────────────────────────
+const SCOPES = ['articles', 'glossary', 'market', 'club', 'messages', 'kr'] as const
+const sourceArg = process.argv.slice(2).find((a) => a.startsWith('--source='))?.slice('--source='.length) ?? 'mock'
+if (sourceArg !== 'mock' && sourceArg !== 'payload') {
+  console.error(`--source: mock or payload, not «${sourceArg}»`)
+  process.exit(2)
+}
+if (sourceArg === 'payload') {
+  const scope = process.argv.slice(2).find((a) => !a.startsWith('--'))
+  if (scope && !(SCOPES as readonly string[]).includes(scope)) {
+    console.error(`scope: ${SCOPES.join(' | ')}`)
+    process.exit(2)
+  }
+  const own = process.env.DATABASE_URL
+  try {
+    process.loadEnvFile('.env')
+  } catch {}
+  if (own) process.env.DATABASE_URL = own
+  // Next's request storage and cache must exist before any next/* module loads (the Payload config loads one).
+  const { installIncrementalCache } = await import('../src/payload/import/next-shim')
+  installIncrementalCache()
+  const { getPayload } = await import('payload')
+  const { default: config } = await import('../src/payload.config')
+  const { validatePublished } = await import('../src/payload/hooks/validate/published')
+  const payload = await getPayload({ config })
+  let code = 1
+  try {
+    const r = await validatePublished(payload, scope as (typeof SCOPES)[number] | undefined)
+    for (const w of r.warnings) console.log('warn ', w)
+    for (const e of r.errors) console.log('ERROR', e)
+    const c = r.counts
+    console.log(`\nCMS: ${c.articles} articles · ${c.terms} terms · ${c.institutions} institutions · ${c.milestones} milestones · ${c.clubEvents} club events`)
+    console.log(`${r.errors.length} errors, ${r.warnings.length} warnings`)
+    code = r.errors.length ? 1 : 0
+  } finally {
+    await payload.destroy()
+  }
+  process.exit(code)
+}
 
 const NOW = Date.parse('2026-10-08T16:00:00+05:00')
 const errors: string[] = []

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Locale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
-import { contentNow, type ArticleView } from '@/content'
+import { contentNow, getSponsoredLabel, type ArticleView } from '@/content'
 import { formatDate, smartDate, tashkentDay } from '@/lib/format'
 import { href, paths } from '@/lib/routes'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -10,8 +10,9 @@ import { SponsoredLabel } from '@/components/ui/Labels'
 import { keepNumberWords } from '@/components/ui/InlineText'
 
 /** "Soʻnggi yangiliklar": timestamped wire, grouped by day. */
-export function LatestFeed({ articles, locale, id = 'latest' }: { articles: ArticleView[]; locale: Locale; id?: string }) {
+export async function LatestFeed({ articles, locale, id = 'latest' }: { articles: ArticleView[]; locale: Locale; id?: string }) {
   const t = pick(commonMessages, locale)
+  const sponsoredLabel = await getSponsoredLabel(locale)
   const now = contentNow()
   let lastDay = ''
   return (
@@ -35,7 +36,7 @@ export function LatestFeed({ articles, locale, id = 'latest' }: { articles: Arti
                   {formatDate(a.publishedAt, locale, 'time')}
                 </time>
                 <div className="min-w-0">
-                  {a.sponsored ? <SponsoredLabel className="mb-1">{t.labels.sponsored}</SponsoredLabel> : null}
+                  {a.sponsored ? <SponsoredLabel className="mb-1">{sponsoredLabel}</SponsoredLabel> : null}
                   <h3 lang={a.contentLang} className="font-serif text-lead leading-snug font-semibold text-ink">
                     <Link href={href(locale, a.url)} prefetch={false} className="headline-link">
                       {keepNumberWords(a.title)}

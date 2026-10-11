@@ -2,7 +2,7 @@ import { isLocale } from '@/i18n/config'
 import { pick } from '@/i18n/messages'
 import { commonMessages } from '@/i18n/messages/common'
 import { articleMessages } from '@/i18n/messages/article'
-import { getArticle, getArticles, isRubric, isSlug } from '@/content'
+import { getArticle, getArticles, getSponsoredLabel, isRubric, isSlug } from '@/content'
 import { locales } from '@/i18n/config'
 import { formatDate } from '@/lib/format'
 import { ogCard, ogSize } from '@/lib/og/card'
@@ -39,6 +39,6 @@ export default async function Image({ params }: { params: Promise<{ lang: string
     kicker: a.kicker ?? t.rubrics[a.rubric].name,
     title,
     footer: `${t.rubrics[a.rubric].name} · ${formatDate(a.publishedAt, locale, 'date')}`,
-    sponsored: a.sponsored ? t.labels.sponsored : undefined,
+    sponsored: a.sponsored ? await getSponsoredLabel(locale) : undefined,
   })
 }

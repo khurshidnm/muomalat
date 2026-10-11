@@ -1109,7 +1109,7 @@ export interface Request {
   createdAt: string;
 }
 /**
- * Kanalga yuboriladigan postlar. Har bir postni muallif boʻlmagan muharrir tasdiqlaydi.
+ * Kanalga yuboriladigan postlar. Har bir postni muallif boʻlmagan muharrir tasdiqlaydi; reklama va olib tashlashni bosh muharrir.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "telegram-posts".
@@ -1123,7 +1123,7 @@ export interface TelegramPost {
    */
   status: 'draft' | 'approved' | 'queued' | 'sent' | 'edit_pending' | 'edited' | 'cancelled' | 'retracted' | 'failed';
   /**
-   * Faqat <b>, <i>, <a>. Teglarsiz uzunlik: rasm bilan 1024, matn bilan 4096 belgigacha (UTF-16 hisobi; Telegram chegarasidan qatʼiyroq).
+   * Faqat <b>, <i>, <a>. Teglarsiz uzunlik: rasm bilan 1024, matn bilan 4096 belgigacha (UTF-16 hisobi; Telegram chegarasidan qatʼiyroq). Boʻsh qolsa, maqoladan shablon boʻyicha yasaladi.
    */
   captionHtml?: string | null;
   /**
@@ -1147,7 +1147,7 @@ export interface TelegramPost {
   messageId?: string | null;
   sentAt?: string | null;
   /**
-   * Tuzatish javob qilib yuboriladigan kanal xabarining message_id raqami.
+   * Tuzatish javob qilib yuboriladigan (yoki olib tashlanadigan) kanal xabarining message_id raqami.
    */
   replyTo?: string | null;
   /**

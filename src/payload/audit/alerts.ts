@@ -114,7 +114,10 @@ export async function alertFor(row: AuditRow, ctx: RuleContext): Promise<{ kind:
     case 'doc.unpublish':
       return { kind: 'unpublish' }
     case 'telegram.channel_admin_change':
-      return { kind: 'telegram_admin' }
+    // TELEGRAM (§10.5, §10.6): possible takeover of the channel or the bot token.
+    case 'telegram.rights_check_failed':
+    case 'telegram.token_conflict':
+      return { kind: 'telegram_admin', headline: row.summary ?? undefined }
     case 'ops.backup_fail':
       return { kind: 'backup_fail' }
     case 'ops.chain_break':

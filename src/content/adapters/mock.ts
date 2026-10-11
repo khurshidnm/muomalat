@@ -12,6 +12,8 @@
  */
 import type { ContentLang, Locale } from '@/i18n/config'
 import { deepCyrillic } from '@/i18n/translit'
+import { pick } from '@/i18n/messages'
+import { commonMessages } from '@/i18n/messages/common'
 import { readingMinutes } from '@/lib/format'
 import type { Article, ArticleBlock, Author, ClubEvent, GlossaryTerm, ImageRef, Institution, Milestone, RubricSlug, Tag } from '../types'
 import type { ArticleView, Localized, RubricView } from '../views'
@@ -250,4 +252,9 @@ export function search(locale: Locale, query: string): SearchResults {
 /** Mock data has no redirects. */
 export function resolveRedirect(): string | undefined {
   return undefined
+}
+
+/** The partner-content label: the interface message, as the CMS falls back to it (src/i18n/messages/common.ts). */
+export function getSponsoredLabel(locale: Locale): string {
+  return pick(commonMessages, locale).labels.sponsored
 }

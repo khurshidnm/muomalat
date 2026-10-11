@@ -7,6 +7,7 @@ import { backoffMs, MAX_ATTEMPTS } from '../../payload/delivery/outbox'
 import { secretUsable, signedRequest } from '../../payload/delivery/signature'
 import { mergeTargets, parseTargets, type Targets } from '../../payload/delivery/tags'
 import { warmUp, type WarmResult } from '../../payload/delivery/warm'
+import { telegramForEvent } from '../../payload/telegram/outbox'
 import type { PublishEvent } from '../../payload-types'
 import type { Job } from '../index'
 
@@ -20,7 +21,7 @@ import type { Job } from '../index'
  *   1. warm the pages, twice, 2 s apart;
  *   2. purge Cloudflare (exact URLs; prefixes and everything when the targets
  *      say so);
- *   3. Telegram: Phase 2, see queueTelegram;
+ *   3. Telegram: prepare the posts the change calls for (queueTelegram);
  *   4. mark the rows done. On failure: attempts + 1 and lastError, retried with
  *      backoff (5 s doubling, at most 15 min), and after 10 attempts marked
  *      failed with an alert.
@@ -52,17 +53,16 @@ export async function postRevalidate(targets: Targets, { fetch: doFetch = fetch,
 }
 
 /**
- * PHASE 2 hook point — Telegram (CMS-SPEC §10.3). Called once per event after
- * the purge. To build:
- * - `publish_first`, or `schedule_run` with `targets.first`, on a story with
- *   `telegram.autopost`: create the `draft` post from the template;
- * - `publish_change` with changeKind correction, clarification or
- *   editors_note: create the `edit_pending` post and, for a correction, the
- *   `correction_reply`;
- * - `withdraw`: start the retraction flow.
- * Posting is manual until then, so this does nothing.
+ * TELEGRAM hook point (CMS-SPEC §10.3). Called once per event after the
+ * purge; src/payload/telegram/outbox.ts prepares rows only (a `draft` on
+ * first publication, `edit_pending` and a `correction_reply` on a
+ * correction, a `retraction` on withdrawal), and nothing reaches Telegram
+ * before a person approves it. Idempotent, because a failed batch runs again.
+ * Without TELEGRAM_BOT_TOKEN it does nothing.
  */
-async function queueTelegram(_payload: Payload, _event: PublishEvent, _targets: Targets) {}
+async function queueTelegram(payload: Payload, event: PublishEvent, targets: Targets) {
+  await telegramForEvent(payload, event, targets)
+}
 
 /** After the last attempt: the staff alerts group (CMS-SPEC §9.3), through the audit concern's transports. */
 async function alertFailure(payload: Payload, event: PublishEvent, error: string) {
